@@ -14,6 +14,6 @@
     "api/event.js": { "maxDuration": 30 },
     "api/admin-api.js": { "maxDuration": 30 },
     "api/admin.js": { "maxDuration": 30 },
-    "api/og.mjs": { "maxDuration": 30 }
+    "api/og.js": { "maxDuration": 30 }
   }
 }
