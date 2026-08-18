@@ -1,6 +1,4 @@
 import { URL } from "node:url";
-import React from "react";
-import { ImageResponse } from "@vercel/og";
 
 const {
   SUPABASE_URL,
@@ -191,25 +189,7 @@ async function handler(req,res){
       return send(res,200,html,"text/html; charset=utf-8");
     }
 
-    const ogMatch=path.match(/^\/og\/event\/([0-9a-f-]+)\.png$/i);
-    if(ogMatch&&req.method==="GET"){
-      const e=await getCanonical(ogMatch[1]);if(!e)return send(res,404,{error:"Not found"});
-      const price=e.price_status==="free"?"Free":(e.price_display||"Details");
-      const when=new Date(e.start_time).toLocaleString("en-US",{timeZone:"America/Denver",weekday:"long",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
-      const node=React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",flexDirection:"column",justifyContent:"space-between",background:"#080610",color:"#f4eff8",padding:"64px",fontFamily:"sans-serif"}},
-        React.createElement("div",{style:{fontSize:34,fontWeight:900,color:"#ffb86b"}},"● Brinkberry"),
-        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:"20px"}},
-          React.createElement("div",{style:{fontSize:68,fontWeight:900,lineHeight:1.05}},e.title),
-          React.createElement("div",{style:{fontSize:30,color:"#c5bbd0"}},[e.venue?.display_name,when,price,e.vibe_labels?.[0]].filter(Boolean).join(" · "))
-        ),
-        React.createElement("div",{style:{fontSize:28,color:"#90869e"}},"What’s happening near you right now?")
-      );
-      const img=new ImageResponse(node,{width:1200,height:630});
-      res.statusCode=img.status;
-      img.headers.forEach((v,k)=>res.setHeader(k,v));
-      const ab=await img.arrayBuffer();return res.end(Buffer.from(ab));
-    }
-
+    // Keep the legacy route available during bridge, but it is no longer used by the consumer shell.
     if(path==="/api/brink"&&req.method==="GET"){
       return send(res,410,{error:"Legacy consumer route retired. Use /api/feed."});
     }
