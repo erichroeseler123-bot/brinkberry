@@ -2,12 +2,19 @@
   "version": 2,
   "rewrites": [
     {
+      "source": "/og/event/:id.png",
+      "destination": "/api/og?id=:id"
+    },
+    {
       "source": "/(.*)",
       "destination": "/api/index"
     }
   ],
   "functions": {
     "api/index.js": {
+      "maxDuration": 30
+    },
+    "api/og.js": {
       "maxDuration": 30
     }
   }
