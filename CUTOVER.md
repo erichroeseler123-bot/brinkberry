@@ -1,0 +1,11 @@
+# Phase A Consumer Cutover
+- Consumer root reads `/api/feed`, never `/api/brink`.
+- Explicit Now / Tonight / Tomorrow / Weekend windows.
+- Distance supplied by PostGIS RPC in miles.
+- Why This assembled from structured fields.
+- Free only when `price_status=free`.
+- Share URLs are Brinkberry canonical URLs.
+- `/event/{id}` resolves canonical event.
+- `/og/event/{id}.png` generates a branded 1200×630 social image using `@vercel/og`.
+- Legacy event-management dashboard routes are preserved.
+- `/api/brink` remains only as a 410 bridge tombstone in this build.
