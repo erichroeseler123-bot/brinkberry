@@ -9,3 +9,4 @@
 - `/og/event/{id}.png` generates a branded 1200×630 social image using `@vercel/og`.
 - Legacy event-management dashboard routes are preserved.
 - `/api/brink` remains only as a 410 bridge tombstone in this build.
+- Git-trigger marker: 2026-08-17 Phase A source connected to Vercel.
