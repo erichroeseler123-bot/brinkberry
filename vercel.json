@@ -1,17 +1,20 @@
 {
   "version": 2,
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/api/router"
-    }
+    { "source": "/api/feed", "destination": "/api/feed" },
+    { "source": "/api/events/:id", "destination": "/api/admin-api?id=:id" },
+    { "source": "/event/:id", "destination": "/api/event?id=:id" },
+    { "source": "/og/event/:id.png", "destination": "/api/og?id=:id" },
+    { "source": "/admin", "destination": "/api/admin" },
+    { "source": "/(.*)", "destination": "/api/router" }
   ],
   "functions": {
-    "api/router.js": {
-      "maxDuration": 30
-    },
-    "api/index.js": {
-      "maxDuration": 30
-    }
+    "api/router.js": { "maxDuration": 30 },
+    "api/index.js": { "maxDuration": 30 },
+    "api/feed.js": { "maxDuration": 30 },
+    "api/event.js": { "maxDuration": 30 },
+    "api/admin-api.js": { "maxDuration": 30 },
+    "api/admin.js": { "maxDuration": 30 },
+    "api/og.mjs": { "maxDuration": 30 }
   }
 }
