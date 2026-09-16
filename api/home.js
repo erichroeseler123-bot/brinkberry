@@ -172,6 +172,8 @@ module.exports = (req, res) => {
           <h4>Denver</h4>
           <a href="/denver/next-48-hours">Denver Next 48 Hours</a>
           <a href="/denver/music">Denver Live Music</a>
+          <a href="/denver/arts">Denver Arts & Exhibits</a>
+          <a href="/denver/theater">Denver Theater</a>
           <a href="/denver/free">Denver Free Events</a>
           <a href="/denver/outdoor">Denver Outdoor Activities</a>
         </div>
@@ -179,6 +181,8 @@ module.exports = (req, res) => {
           <h4>Boulder</h4>
           <a href="/boulder/next-48-hours">Boulder Next 48 Hours</a>
           <a href="/boulder/music">Boulder Live Music</a>
+          <a href="/boulder/arts">Boulder Arts & Exhibits</a>
+          <a href="/boulder/theater">Boulder Theater</a>
           <a href="/boulder/free">Boulder Free Events</a>
           <a href="/boulder/outdoor">Boulder Outdoor Activities</a>
         </div>
@@ -186,6 +190,8 @@ module.exports = (req, res) => {
           <h4>Golden</h4>
           <a href="/golden/next-48-hours">Golden Next 48 Hours</a>
           <a href="/golden/music">Golden Live Music</a>
+          <a href="/golden/arts">Golden Arts & Exhibits</a>
+          <a href="/golden/theater">Golden Theater</a>
           <a href="/golden/free">Golden Free Events</a>
           <a href="/golden/outdoor">Golden Outdoor Activities</a>
         </div>
@@ -193,6 +199,8 @@ module.exports = (req, res) => {
           <h4>Aurora</h4>
           <a href="/aurora/next-48-hours">Aurora Next 48 Hours</a>
           <a href="/aurora/music">Aurora Live Music</a>
+          <a href="/aurora/arts">Aurora Arts & Exhibits</a>
+          <a href="/aurora/theater">Aurora Theater</a>
           <a href="/aurora/free">Aurora Free Events</a>
           <a href="/aurora/outdoor">Aurora Outdoor Activities</a>
         </div>

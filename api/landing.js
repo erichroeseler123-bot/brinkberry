@@ -60,7 +60,7 @@ const TOPICS = {
     metaDescTemplate: (city) => `Discover what's happening in the next 48 hours in ${city.name}, CO. Live concerts, gatherings, outdoor activities, and things to do right now.`,
     intro: (city) => `Looking for immediate plans over the next 48 hours? Here is your curated radar of verified upcoming events, shows, and local gatherings happening across ${city.name} and the surrounding area.`,
     window: '48h',
-    mode: null
+    filter: (e) => true
   },
   'this-weekend': {
     slug: 'this-weekend',
@@ -70,40 +70,77 @@ const TOPICS = {
     metaDescTemplate: (city) => `Discover what's happening in the next 48 hours in ${city.name}, CO. Live concerts, gatherings, outdoor activities, and things to do right now.`,
     intro: (city) => `Looking for immediate plans over the next 48 hours? Here is your curated radar of verified upcoming events, shows, and local gatherings happening across ${city.name} and the surrounding area.`,
     window: '48h',
-    mode: null
+    filter: (e) => true
   },
   'music': {
     slug: 'music',
-    aliases: ['live-music', 'concerts'],
+    aliases: ['live-music', 'concerts', 'jazz'],
     title: 'Live Music & Concerts (Next 48 Hours)',
     headingSuffix: 'Live Music & Concerts (Next 48 Hours)',
-    metaDescTemplate: (city) => `Find live music and concerts happening in the next 48 hours in ${city.name}, CO. From intimate acoustic stages to iconic amphitheaters.`,
-    intro: (city) => `From legendary amphitheaters and indie rock stages to jazz clubs and underground electronic sets, explore tonight and the next 48 hours of live music across ${city.name}.`,
+    metaDescTemplate: (city) => `Find live music, concerts, and jazz sessions in the next 48 hours in ${city.name}, CO. From indie rock stages to jazz clubs and acoustic showcases.`,
+    intro: (city) => `From jazz clubs and indie rock stages to underground electronic sets and acoustic open stages, explore genuine live music across ${city.name} tonight and over the next 48 hours.`,
     window: '48h',
-    mode: 'date',
-    categoryFilter: ['music', 'arts', 'entertainment']
+    filter: (e) => {
+      const tags = e.category_tags || [];
+      const musicTags = ['music', 'jazz', 'rock', 'indie', 'bluegrass', 'roots', 'electronic', 'acoustic', 'concert'];
+      return tags.some(t => musicTags.includes(t)) && !tags.includes('museum') && !tags.includes('gallery');
+    }
+  },
+  'arts': {
+    slug: 'arts',
+    aliases: ['art', 'museums', 'exhibits', 'galleries'],
+    title: 'Arts & Museum Exhibits (Next 48 Hours)',
+    headingSuffix: 'Arts & Museum Exhibits (Next 48 Hours)',
+    metaDescTemplate: (city) => `Explore art exhibitions, museum gallery tours, and cultural happenings in the next 48 hours in ${city.name}, CO.`,
+    intro: (city) => `Immerse yourself in world-class art collections, contemporary gallery walks, botanical demonstrations, and cultural exhibits across ${city.name} happening over the next 48 hours.`,
+    window: '48h',
+    filter: (e) => {
+      const tags = e.category_tags || [];
+      return tags.some(t => ['arts', 'museum', 'gallery', 'exhibit'].includes(t));
+    }
+  },
+  'theater': {
+    slug: 'theater',
+    aliases: ['theatre', 'stage', 'plays', 'broadway', 'performing-arts'],
+    title: 'Theater & Performing Arts (Next 48 Hours)',
+    headingSuffix: 'Theater & Performing Arts (Next 48 Hours)',
+    metaDescTemplate: (city) => `Find live theater, stage plays, and performing arts in the next 48 hours in ${city.name}, CO.`,
+    intro: (city) => `Experience live stage productions, Broadway vocal showcases, and local playwright previews in ${city.name} happening within the next 48 hours.`,
+    window: '48h',
+    filter: (e) => {
+      const tags = e.category_tags || [];
+      return tags.some(t => ['theater', 'theatre', 'stage', 'broadway', 'play'].includes(t));
+    }
   },
   'free': {
     slug: 'free',
     aliases: ['free-events', 'cheap'],
-    title: 'Free & Cheap Events (Next 48 Hours)',
+    title: 'Free & Budget-Friendly Events (Next 48 Hours)',
     headingSuffix: 'Free & Budget-Friendly Events (Next 48 Hours)',
     metaDescTemplate: (city) => `Free things to do in the next 48 hours in ${city.name}, CO. Free admission concerts, open galleries, community markets, and outdoor gatherings.`,
     intro: (city) => `You don't need a huge budget to experience Colorado. Discover free admission events, community workouts, gallery walks, and open public gatherings across ${city.name} happening over the next 48 hours.`,
     window: '48h',
-    mode: 'cheap',
-    priceFilter: 'free'
+    filter: (e) => e.price_status === 'free' || (e.price_min != null && e.price_min === 0)
   },
   'outdoor': {
     slug: 'outdoor',
     aliases: ['outside', 'outdoor-events'],
     title: 'Outdoor Events & Activities (Next 48 Hours)',
-    headingSuffix: 'Outdoor Events & Adventures (Next 48 Hours)',
+    headingSuffix: 'Outdoor Events & Activities (Next 48 Hours)',
     metaDescTemplate: (city) => `Outdoor events and open-air activities in the next 48 hours in ${city.name}, CO. Guided hikes, open-air yoga, outdoor amphitheater concerts, and park festivals.`,
     intro: (city) => `Take advantage of 300+ days of Colorado sunshine. Find guided hikes, rooftop fitness sessions, open-air amphitheater shows, and park activities across ${city.name} occurring within the next 48 hours.`,
     window: '48h',
-    mode: 'outside',
-    indoorOutdoorFilter: ['outdoor', 'mixed']
+    filter: (e) => e.indoor_outdoor === 'outdoor' || (e.indoor_outdoor === 'mixed' && (e.category_tags || []).includes('outdoor'))
+  },
+  'comedy': {
+    slug: 'comedy',
+    aliases: ['standup', 'improv', 'comedy-shows'],
+    title: 'Live Comedy Shows (Next 48 Hours)',
+    headingSuffix: 'Live Comedy Shows (Next 48 Hours)',
+    metaDescTemplate: (city) => `Find live standup comedy and improv shows in the next 48 hours in ${city.name}, CO.`,
+    intro: (city) => `Catch top touring headliners, local showcase nights, and uncensored standup comedy sets across ${city.name} over the next 48 hours.`,
+    window: '48h',
+    filter: (e) => (e.category_tags || []).includes('comedy')
   }
 };
 
@@ -139,7 +176,7 @@ async function fetchEvents(city, topic) {
       p_radius_miles: city.radius || 25,
       p_window_start: start.toISOString(),
       p_window_end: end.toISOString(),
-      p_mode: topic.mode || null
+      p_mode: null
     })
   });
 
@@ -159,15 +196,9 @@ async function fetchEvents(city, topic) {
     return t >= nowMs && t <= max48Ms;
   });
 
-  // If topic has strict price or outdoor filters, refine in-memory
-  if (topic.priceFilter === 'free') {
-    events = events.filter(e => e.price_status === 'free' || (e.price_min != null && e.price_min === 0));
-  }
-  if (topic.indoorOutdoorFilter) {
-    events = events.filter(e => topic.indoorOutdoorFilter.includes(e.indoor_outdoor));
-  }
-  if (topic.categoryFilter) {
-    events = events.filter(e => (e.category_tags || []).some(t => topic.categoryFilter.includes(t)) || topic.categoryFilter.includes(e.category));
+  // Apply topic filter
+  if (typeof topic.filter === 'function') {
+    events = events.filter(topic.filter);
   }
 
   return events;
@@ -348,8 +379,11 @@ module.exports = async (req, res) => {
       <nav class="subnav">
         <a class="${(topicKey === 'next-48-hours' || topicKey === 'this-weekend') ? 'active' : ''}" href="/${city.slug}/next-48-hours">⚡ Next 48 Hours</a>
         <a class="${topicKey === 'music' ? 'active' : ''}" href="/${city.slug}/music">🎵 Live Music</a>
+        <a class="${topicKey === 'arts' ? 'active' : ''}" href="/${city.slug}/arts">🎨 Arts & Culture</a>
+        <a class="${topicKey === 'theater' ? 'active' : ''}" href="/${city.slug}/theater">🎭 Theater</a>
         <a class="${topicKey === 'free' ? 'active' : ''}" href="/${city.slug}/free">🎟️ Free / Cheap</a>
         <a class="${topicKey === 'outdoor' ? 'active' : ''}" href="/${city.slug}/outdoor">🌲 Outdoor</a>
+        <a class="${topicKey === 'comedy' ? 'active' : ''}" href="/${city.slug}/comedy">🎤 Comedy</a>
       </nav>
     </div>
 
@@ -433,10 +467,13 @@ module.exports = async (req, res) => {
         <h3 style="font-size:16px; margin-bottom:8px; color:#fff">Explore Other Front Range Cities:</h3>
         <div class="cities-nav">
           ${Object.values(CITIES).filter(c => c.slug !== city.slug).map(c => `
-            <a href="/${c.slug}/next-48-hours">${c.name} 48h Events</a>
+            <a href="/${c.slug}/next-48-hours">${c.name} 48h</a>
             <a href="/${c.slug}/music">${c.name} Music</a>
+            <a href="/${c.slug}/arts">${c.name} Arts</a>
+            <a href="/${c.slug}/theater">${c.name} Theater</a>
             <a href="/${c.slug}/free">${c.name} Free</a>
             <a href="/${c.slug}/outdoor">${c.name} Outdoor</a>
+            <a href="/${c.slug}/comedy">${c.name} Comedy</a>
           `).join('')}
         </div>
       </div>

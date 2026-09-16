@@ -336,9 +336,11 @@ describe('Brinkberry Production Verification Suite', () => {
     const pagesToTest = [
       { url: '/denver/next-48-hours', city: 'Denver', matchText: /Denver Events in the Next 48 Hours/i },
       { url: '/denver/this-weekend', city: 'Denver', matchText: /Denver Events in the Next 48 Hours/i },
-      { url: '/denver/music', city: 'Denver', matchText: /Denver Live Music/i },
+      { url: '/denver/music', city: 'Denver', matchText: /Denver Live Music & Concerts/i },
+      { url: '/denver/arts', city: 'Denver', matchText: /Denver Arts & Museum Exhibits/i },
+      { url: '/denver/theater', city: 'Denver', matchText: /Denver Theater & Performing Arts/i },
       { url: '/denver/free', city: 'Denver', matchText: /Free & Budget-Friendly Events/i },
-      { url: '/denver/outdoor', city: 'Denver', matchText: /Outdoor Events & Adventures/i },
+      { url: '/denver/outdoor', city: 'Denver', matchText: /Outdoor Events & Activities/i },
       { url: '/boulder/next-48-hours', city: 'Boulder', matchText: /Boulder Events in the Next 48 Hours/i },
       { url: '/boulder/music', city: 'Boulder', matchText: /Boulder Live Music/i },
       { url: '/golden/next-48-hours', city: 'Golden', matchText: /Golden Events in the Next 48 Hours/i },
@@ -389,8 +391,7 @@ describe('Brinkberry Production Verification Suite', () => {
       assert.equal(statusCode, 404);
     });
 
-    test('landing page with no events renders honest empty state and noindex meta tag', async () => {
-      // Mock fetch in landing page context or verify behavior
+    test('music guide contains only genuine music/concert events and excludes museum/arts', async () => {
       let responseHtml = '';
       let statusCode = null;
       const req = { url: '/denver/music' };
@@ -408,7 +409,34 @@ describe('Brinkberry Production Verification Suite', () => {
 
       await landingHandler(req, res);
       assert.equal(statusCode, 200);
-      assert.ok(responseHtml.includes('<meta name="robots"'));
+      assert.match(responseHtml, /Jazz Jam|Showcase|Funk & Soul|Bluegrass/i);
+      // Must not include generic museum or gallery tours
+      assert.ok(!responseHtml.includes('Indigenous Arts of North America Guided Gallery Walk'));
+      assert.ok(!responseHtml.includes('Modern & Contemporary Art Highlights Tour'));
+      assert.ok(!responseHtml.includes('Pilates with Phoebe'));
+    });
+
+    test('visible count, page title, and JSON-LD ItemList count agree exactly', async () => {
+      let responseHtml = '';
+      const req = { url: '/denver/music' };
+      const res = {
+        setHeader() {},
+        status(c) {
+          return {
+            send(body) {
+              responseHtml = body;
+            }
+          };
+        }
+      };
+
+      await landingHandler(req, res);
+      const jsonLdMatch = responseHtml.match(/<script type="application\/ld\+json">(.*?)<\/script>/s);
+      assert.ok(jsonLdMatch, 'Page must contain JSON-LD block');
+      const data = JSON.parse(jsonLdMatch[1]);
+      assert.equal(typeof data.numberOfItems, 'number');
+      assert.equal(data.itemListElement.length, data.numberOfItems);
+      assert.match(responseHtml, new RegExp(`${data.numberOfItems} verified listings`));
     });
   });
 

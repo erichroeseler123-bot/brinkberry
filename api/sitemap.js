@@ -10,11 +10,40 @@ const CITIES = {
 };
 
 const TOPICS = {
-  'next-48-hours': { window: '48h', mode: null },
-  'this-weekend': { window: '48h', mode: null },
-  'music': { window: '48h', mode: 'date', categoryFilter: ['music', 'arts', 'entertainment'] },
-  'free': { window: '48h', mode: 'cheap', priceFilter: 'free' },
-  'outdoor': { window: '48h', mode: 'outside', indoorOutdoorFilter: ['outdoor', 'mixed'] }
+  'next-48-hours': {
+    filter: (e) => true
+  },
+  'this-weekend': {
+    filter: (e) => true
+  },
+  'music': {
+    filter: (e) => {
+      const tags = e.category_tags || [];
+      const musicTags = ['music', 'jazz', 'rock', 'indie', 'bluegrass', 'roots', 'electronic', 'acoustic', 'concert'];
+      return tags.some(t => musicTags.includes(t)) && !tags.includes('museum') && !tags.includes('gallery');
+    }
+  },
+  'arts': {
+    filter: (e) => {
+      const tags = e.category_tags || [];
+      return tags.some(t => ['arts', 'museum', 'gallery', 'exhibit'].includes(t));
+    }
+  },
+  'theater': {
+    filter: (e) => {
+      const tags = e.category_tags || [];
+      return tags.some(t => ['theater', 'theatre', 'stage', 'broadway', 'play'].includes(t));
+    }
+  },
+  'free': {
+    filter: (e) => e.price_status === 'free' || (e.price_min != null && e.price_min === 0)
+  },
+  'outdoor': {
+    filter: (e) => e.indoor_outdoor === 'outdoor' || (e.indoor_outdoor === 'mixed' && (e.category_tags || []).includes('outdoor'))
+  },
+  'comedy': {
+    filter: (e) => (e.category_tags || []).includes('comedy')
+  }
 };
 
 function distMiles(lat1, lon1, lat2, lon2) {
@@ -84,16 +113,7 @@ module.exports = async (req, res) => {
       if (cityEvents.length > 0) {
         staticUrls.push({ loc: `${ORIGIN}/${cSlug}`, priority: '0.9', changefreq: 'daily' });
         for (const [tSlug, topic] of Object.entries(TOPICS)) {
-          let matching = cityEvents;
-          if (topic.priceFilter === 'free') {
-            matching = matching.filter(e => e.price_status === 'free' || (e.price_min != null && e.price_min === 0));
-          }
-          if (topic.indoorOutdoorFilter) {
-            matching = matching.filter(e => topic.indoorOutdoorFilter.includes(e.indoor_outdoor));
-          }
-          if (topic.categoryFilter) {
-            matching = matching.filter(e => (e.category_tags || []).some(t => topic.categoryFilter.includes(t)) || topic.categoryFilter.includes(e.category));
-          }
+          const matching = cityEvents.filter(topic.filter);
           if (matching.length > 0) {
             staticUrls.push({ loc: `${ORIGIN}/${cSlug}/${tSlug}`, priority: '0.8', changefreq: 'daily' });
           }

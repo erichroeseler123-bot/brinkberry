@@ -120,7 +120,7 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
   });
 
   test('Step 5: City & Topic landing pages serve pre-rendered event listings', async () => {
-    const landingPages = ['/denver/this-weekend', '/boulder/music', '/golden/outdoor', '/aurora/free'];
+    const landingPages = ['/denver/this-weekend', '/boulder/music', '/golden/outdoor', '/aurora/free', '/denver/arts', '/denver/theater'];
     for (const url of landingPages) {
       let pageHtml = '';
       let statusCode = 200;
@@ -135,6 +135,57 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
       assert.match(pageHtml, /rel="canonical"/);
       assert.match(pageHtml, /Get Tickets/);
     }
+  });
+
+  test('Step 6: Complete visitor path from Location -> Next 48h -> Topic -> Event Page -> Ticket Redirect', async () => {
+    // 1. Visit Denver Music Landing Page
+    let landingHtml = '';
+    await landingHandler({ url: '/denver/music' }, {
+      setHeader() {},
+      status() { return this; },
+      send(b) { landingHtml = b; }
+    });
+    assert.match(landingHtml, /Denver Live Music & Concerts/);
+
+    // Extract first event ID from JSON-LD
+    const jsonLdMatch = landingHtml.match(/<script type="application\/ld\+json">(.*?)<\/script>/s);
+    assert.ok(jsonLdMatch);
+    const jsonLd = JSON.parse(jsonLdMatch[1]);
+    assert.ok(jsonLd.itemListElement.length > 0);
+    const firstEvent = jsonLd.itemListElement[0].item;
+    const eventUrl = firstEvent.url; // https://brinkberry.com/event/<id>
+    const eventId = eventUrl.split('/').pop();
+
+    // 2. Open Standalone Event Page
+    let eventHtml = '';
+    await eventHandler({ query: { id: eventId } }, {
+      setHeader() {},
+      status() { return this; },
+      send(b) { eventHtml = b; }
+    });
+    assert.match(eventHtml, new RegExp(firstEvent.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+
+    // 3. Outbound Ticket Redirect
+    const ticketTarget = firstEvent.offers.url;
+    let redirectedStatus = null;
+    let redirectHeaders = null;
+    await clickHandler({
+      url: `/api/click?url=${encodeURIComponent(ticketTarget)}&eventId=${encodeURIComponent(eventId)}&surface=visitor_journey`
+    }, {
+      writeHead(status, headers) {
+        redirectedStatus = status;
+        redirectHeaders = headers;
+      },
+      status(c) {
+        redirectedStatus = c;
+        return this;
+      },
+      json() {},
+      end() {}
+    });
+
+    assert.equal(redirectedStatus, 302);
+    assert.equal(redirectHeaders.Location, ticketTarget);
   });
 
 });
