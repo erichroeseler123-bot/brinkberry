@@ -1,9 +1,12 @@
-{
+﻿{
   "name": "brinkberry",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "engines": {
     "node": "24.x"
+  },
+  "scripts": {
+    "test": "node --test test/suite.test.mjs"
   },
   "dependencies": {
     "@vercel/og": "^0.8.5",

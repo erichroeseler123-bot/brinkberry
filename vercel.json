@@ -1,8 +1,9 @@
-{
+﻿{
   "version": 2,
   "rewrites": [
     { "source": "/", "destination": "/api/home" },
     { "source": "/api/feed", "destination": "/api/feed" },
+    { "source": "/api/click", "destination": "/api/click" },
     { "source": "/api/weather", "destination": "/api/weather" },
     { "source": "/api/route", "destination": "/api/route" },
     { "source": "/api/events/:id", "destination": "/api/admin-api?id=:id" },
@@ -16,6 +17,7 @@
     "api/router.js": { "maxDuration": 30 },
     "api/index.js": { "maxDuration": 30 },
     "api/feed.js": { "maxDuration": 30 },
+    "api/click.js": { "maxDuration": 30 },
     "api/weather.js": { "maxDuration": 30 },
     "api/route.js": { "maxDuration": 30 },
     "api/event.js": { "maxDuration": 30 },

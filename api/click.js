@@ -1,0 +1,54 @@
+﻿const { isValidTicketUrl } = require('../lib/affiliate');
+
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co';
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+function logClickTelemetry(eventId, targetUrl, surface) {
+  if (!SERVICE_KEY) return;
+  
+  const payload = {
+    event_id: eventId && /^[0-9a-f-]{36}$/i.test(eventId) ? eventId : null,
+    target_url: targetUrl,
+    surface: String(surface || 'feed').slice(0, 50)
+  };
+
+  fetch(`${SUPABASE_URL}/rest/v1/outbound_clicks`, {
+    method: 'POST',
+    headers: {
+      apikey: SERVICE_KEY,
+      authorization: `Bearer ${SERVICE_KEY}`,
+      'content-type': 'application/json',
+      prefer: 'return=minimal'
+    },
+    body: JSON.stringify(payload)
+  }).catch(() => {});
+}
+
+module.exports = async (req, res) => {
+  try {
+    const u = new URL(req.url, 'https://brinkberry.local');
+    const target = u.searchParams.get('url') || u.searchParams.get('dest');
+    const eventId = u.searchParams.get('eventId');
+    const surface = u.searchParams.get('surface') || 'feed';
+
+    if (!target) {
+      return res.status(400).json({ error: 'Missing target url parameter' });
+    }
+
+    if (!isValidTicketUrl(target)) {
+      return res.status(400).json({ error: 'Invalid or disallowed destination URL' });
+    }
+
+    // Safe, non-blocking click telemetry
+    logClickTelemetry(eventId, target, surface);
+
+    res.writeHead(302, {
+      Location: target,
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+    });
+    res.end();
+  } catch (err) {
+    console.error('Click redirect error:', err);
+    res.status(500).json({ error: 'Internal redirect error' });
+  }
+};
