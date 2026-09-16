@@ -1,6 +1,6 @@
 const { isValidTicketUrl } = require('../lib/affiliate');
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co';
+const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co').replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function logClickTelemetry(eventId, targetUrl, surface) {

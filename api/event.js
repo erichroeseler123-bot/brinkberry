@@ -1,6 +1,6 @@
-﻿const { buildSafeAffiliateUrl, isValidTicketUrl } = require('../lib/affiliate');
+const { buildSafeAffiliateUrl, isValidTicketUrl } = require('../lib/affiliate');
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co';
+const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co').replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
 const KEY = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_2ygc158CkPm28E9j6zNdmA_Cvvj5kGr';
 const ORIGIN = process.env.BRINKBERRY_ORIGIN || 'https://brinkberry.com';
 
