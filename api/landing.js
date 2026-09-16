@@ -170,31 +170,6 @@ async function fetchEvents(city, topic) {
     events = events.filter(e => (e.category_tags || []).some(t => topic.categoryFilter.includes(t)) || topic.categoryFilter.includes(e.category));
   }
 
-  // Fallback: If filtered list is small, load general city upcoming 48h events
-  if (events.length === 0) {
-    const fallbackRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/bb_get_feed_events_v2`, {
-      method: 'POST',
-      headers: { apikey: KEY, authorization: `Bearer ${KEY}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        p_user_lat: city.lat,
-        p_user_lng: city.lon,
-        p_radius_miles: city.radius || 25,
-        p_window_start: start.toISOString(),
-        p_window_end: end.toISOString(),
-        p_mode: null
-      })
-    });
-    if (fallbackRes.ok) {
-      const allEvents = await fallbackRes.json();
-      if (Array.isArray(allEvents)) {
-        events = allEvents.filter(e => {
-          const t = new Date(e.start_time).getTime();
-          return t >= nowMs && t <= max48Ms;
-        }).slice(0, 8);
-      }
-    }
-  }
-
   return events;
 }
 
@@ -271,6 +246,7 @@ module.exports = async (req, res) => {
   <title>${esc(pageTitle)}</title>
   <meta name="description" content="${esc(metaDesc)}">
   <link rel="canonical" href="${esc(pageUrl)}">
+  <meta name="robots" content="${events.length === 0 ? 'noindex, follow' : 'index, follow'}">
   
   <meta property="og:type" content="website">
   <meta property="og:title" content="${esc(pageTitle)}">
@@ -386,8 +362,8 @@ module.exports = async (req, res) => {
       
       ${events.length === 0 ? `
         <div style="background:#151120; border:1px solid var(--card-border); border-radius:18px; padding:48px 20px; text-align:center;">
-          <h3 style="margin-top:0">New listings arriving soon for this window</h3>
-          <p style="color:var(--text-dim)">Check our live interactive radar to view events across the full Denver metro area.</p>
+          <h3 style="margin-top:0">No ${esc(topic.headingSuffix.toLowerCase())} found right now in ${esc(city.name)}</h3>
+          <p style="color:var(--text-dim)">We only list verified events happening within the next 48 hours. Check back soon or explore our live interactive radar for nearby events.</p>
           <a class="btn-ticket-sm" href="/" style="margin-top:12px">View Full Live Radar →</a>
         </div>
       ` : `

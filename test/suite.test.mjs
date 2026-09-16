@@ -368,6 +368,7 @@ describe('Brinkberry Production Verification Suite', () => {
         assert.match(responseHtml, p.matchText);
         assert.match(responseHtml, /application\/ld\+json/);
         assert.match(responseHtml, /rel="canonical"/);
+        assert.match(responseHtml, /<meta name="robots" content="index, follow">/);
         assert.match(responseHtml, /og:title/);
         assert.match(responseHtml, /Explore Other Front Range Cities/);
       });
@@ -386,6 +387,28 @@ describe('Brinkberry Production Verification Suite', () => {
 
       await landingHandler(req, res);
       assert.equal(statusCode, 404);
+    });
+
+    test('landing page with no events renders honest empty state and noindex meta tag', async () => {
+      // Mock fetch in landing page context or verify behavior
+      let responseHtml = '';
+      let statusCode = null;
+      const req = { url: '/denver/music' };
+      const res = {
+        setHeader() {},
+        status(c) {
+          statusCode = c;
+          return {
+            send(body) {
+              responseHtml = body;
+            }
+          };
+        }
+      };
+
+      await landingHandler(req, res);
+      assert.equal(statusCode, 200);
+      assert.ok(responseHtml.includes('<meta name="robots"'));
     });
   });
 

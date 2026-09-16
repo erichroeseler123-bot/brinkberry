@@ -248,12 +248,15 @@ module.exports = (req, res) => {
       $('brinkAlert').innerHTML = brinkCount ? \`<div class="brink-alert">⚡ <b>On the Brink</b> · \${brinkCount} nearby \${brinkCount === 1 ? 'event starts' : 'events start'} within the hour.</div>\` : '';
 
       if (!S.events.length) {
+        const modeLabels = { cheap: 'Cheap / Free', date: 'Date Night', outside: 'Outside', kids: 'Kids' };
+        const modeText = S.mode && modeLabels[S.mode] ? ' for "' + modeLabels[S.mode] + '"' : '';
         $('feed').innerHTML = \`
           <div class="empty">
-            <h3>No events matched this exact window</h3>
-            <p>Try expanding your radius or checking a different time filter.</p>
-            <div class="row" style="justify-content:center; margin-top:14px;">
-              <button onclick="S.radius=50; S.window='48h'; initControls(); loadFeed();" style="background:var(--primary); color:var(--primary-dark); font-weight:800">
+            <h3>No events matched this exact window\${modeText}</h3>
+            <p>We strictly show verified events happening in the next 48 hours. Try expanding your radius or checking a different vibe filter.</p>
+            <div class="row" style="justify-content:center; margin-top:14px; gap:8px;">
+              \${S.mode ? '<button onclick="S.mode=\\'\\'; initControls(); loadFeed();" style="background:#191424; color:#fff">Clear Vibe Filter</button>' : ''}
+              <button onclick="S.radius=50; S.window='48h'; S.mode=''; initControls(); loadFeed();" style="background:var(--primary); color:var(--primary-dark); font-weight:800">
                 Search 50 Miles / Next 48 Hours →
               </button>
             </div>
