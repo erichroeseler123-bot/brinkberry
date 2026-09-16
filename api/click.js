@@ -1,10 +1,11 @@
-﻿const { isValidTicketUrl } = require('../lib/affiliate');
+const { isValidTicketUrl } = require('../lib/affiliate');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co';
-const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_2ygc158CkPm28E9j6zNdmA_Cvvj5kGr';
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function logClickTelemetry(eventId, targetUrl, surface) {
-  if (!KEY) return;
+  // Telemetry requires server-side service role key; skip safely if unavailable
+  if (!SERVICE_ROLE_KEY) return;
   
   const payload = {
     event_id: eventId && /^[0-9a-f-]{36}$/i.test(eventId) ? eventId : null,
@@ -12,16 +13,22 @@ function logClickTelemetry(eventId, targetUrl, surface) {
     surface: String(surface || 'feed').slice(0, 50)
   };
 
-  fetch(`${SUPABASE_URL}/rest/v1/outbound_clicks`, {
-    method: 'POST',
-    headers: {
-      apikey: KEY,
-      authorization: `Bearer ${KEY}`,
-      'content-type': 'application/json',
-      prefer: 'return=minimal'
-    },
-    body: JSON.stringify(payload)
-  }).catch(() => {});
+  try {
+    fetch(`${SUPABASE_URL}/rest/v1/outbound_clicks`, {
+      method: 'POST',
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        'content-type': 'application/json',
+        prefer: 'return=minimal'
+      },
+      body: JSON.stringify(payload)
+    }).catch(() => {
+      // Non-blocking telemetry failure must never impact user flow
+    });
+  } catch (_) {
+    // Non-blocking failure
+  }
 }
 
 module.exports = async (req, res) => {
@@ -39,7 +46,7 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Invalid or disallowed destination URL' });
     }
 
-    // Safe, non-blocking click telemetry
+    // Telemetry logging is isolated and non-blocking
     logClickTelemetry(eventId, target, surface);
 
     res.writeHead(302, {

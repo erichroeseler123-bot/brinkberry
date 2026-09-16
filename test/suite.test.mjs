@@ -1,4 +1,4 @@
-﻿import { test, describe } from 'node:test';
+import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
@@ -170,7 +170,7 @@ describe('Brinkberry Production Verification Suite', () => {
   });
 
   describe('Outbound Click Redirect Handler (/api/click)', () => {
-    test('successfully performs 302 redirect for valid allowed ticket URL', async () => {
+    test('valid ticket redirects still return 302', async () => {
       const validUrl = 'https://redrocksonline.com/events/concert-123';
       const req = { url: `/api/click?url=${encodeURIComponent(validUrl)}&eventId=83672173-3883-419e-8545-8171ed5c9ae1&surface=feed_card` };
       let redirectedStatus = null;
@@ -193,6 +193,65 @@ describe('Brinkberry Production Verification Suite', () => {
       assert.equal(ended, true);
     });
 
+    test('telemetry failure or missing service key never breaks the redirect', async () => {
+      const originalKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      const validUrl = 'https://www.ticketmaster.com/event/test-tm';
+      const req = { url: `/api/click?url=${encodeURIComponent(validUrl)}&eventId=83672173-3883-419e-8545-8171ed5c9ae1` };
+      let redirectedStatus = null;
+      let redirectHeaders = null;
+      let ended = false;
+
+      const res = {
+        writeHead(status, headers) {
+          redirectedStatus = status;
+          redirectHeaders = headers;
+        },
+        end() {
+          ended = true;
+        }
+      };
+
+      await clickHandler(req, res);
+      assert.equal(redirectedStatus, 302);
+      assert.equal(redirectHeaders.Location, validUrl);
+      assert.equal(ended, true);
+
+      if (originalKey) process.env.SUPABASE_SERVICE_ROLE_KEY = originalKey;
+    });
+
+    test('malicious URLs remain blocked with 400', async () => {
+      const dangerousTargets = [
+        'javascript:alert(1)',
+        'data:text/html,<script>alert(1)</script>',
+        'https://attacker.com/steal-creds',
+        'http://ticketmaster.com.evil.com',
+        'ftp://evil.com/payload'
+      ];
+
+      for (const evilUrl of dangerousTargets) {
+        const req = { url: `/api/click?url=${encodeURIComponent(evilUrl)}` };
+        let statusCode = null;
+        let errorBody = null;
+
+        const res = {
+          status(code) {
+            statusCode = code;
+            return this;
+          },
+          json(data) {
+            errorBody = data;
+            return this;
+          }
+        };
+
+        await clickHandler(req, res);
+        assert.equal(statusCode, 400, `Expected 400 for malicious target: ${evilUrl}`);
+        assert.match(errorBody.error, /disallowed destination URL/i);
+      }
+    });
+
     test('rejects missing target URL with 400', async () => {
       const req = { url: '/api/click' };
       let statusCode = null;
@@ -212,28 +271,6 @@ describe('Brinkberry Production Verification Suite', () => {
       await clickHandler(req, res);
       assert.equal(statusCode, 400);
       assert.match(errorBody.error, /Missing target url/i);
-    });
-
-    test('rejects invalid or unallowed redirect targets with 400', async () => {
-      const evilUrl = 'https://attacker.com/steal-creds';
-      const req = { url: `/api/click?url=${encodeURIComponent(evilUrl)}` };
-      let statusCode = null;
-      let errorBody = null;
-
-      const res = {
-        status(code) {
-          statusCode = code;
-          return this;
-        },
-        json(data) {
-          errorBody = data;
-          return this;
-        }
-      };
-
-      await clickHandler(req, res);
-      assert.equal(statusCode, 400);
-      assert.match(errorBody.error, /disallowed destination URL/i);
     });
   });
 
@@ -378,6 +415,35 @@ describe('Brinkberry Production Verification Suite', () => {
         })
       });
       assert.ok(res.status === 401 || res.status === 403, `Direct write should be blocked with 401/403, got ${res.status}`);
+    });
+
+    test('anon cannot SELECT outbound_clicks (permission denied / zero records exposed)', async () => {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/outbound_clicks?select=*`, {
+        method: 'GET',
+        headers: {
+          apikey: KEY,
+          authorization: `Bearer ${KEY}`
+        }
+      });
+      // Anon has no SELECT privilege or RLS policy, returning 401/403 or empty array
+      assert.ok(res.status === 401 || res.status === 403, `Anon SELECT should be rejected with 401/403, got ${res.status}`);
+    });
+
+    test('anon cannot INSERT outbound_clicks (permission denied)', async () => {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/outbound_clicks`, {
+        method: 'POST',
+        headers: {
+          apikey: KEY,
+          authorization: `Bearer ${KEY}`,
+          'content-type': 'application/json',
+          prefer: 'return=representation'
+        },
+        body: JSON.stringify({
+          target_url: 'https://redrocksonline.com/events/1',
+          surface: 'malicious_direct_injection'
+        })
+      });
+      assert.ok(res.status === 401 || res.status === 403, `Anon INSERT should be rejected with 401/403, got ${res.status}`);
     });
   });
 
