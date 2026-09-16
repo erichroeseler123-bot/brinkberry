@@ -1,10 +1,10 @@
 ﻿const { isValidTicketUrl } = require('../lib/affiliate');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co';
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_2ygc158CkPm28E9j6zNdmA_Cvvj5kGr';
 
 function logClickTelemetry(eventId, targetUrl, surface) {
-  if (!SERVICE_KEY) return;
+  if (!KEY) return;
   
   const payload = {
     event_id: eventId && /^[0-9a-f-]{36}$/i.test(eventId) ? eventId : null,
@@ -15,8 +15,8 @@ function logClickTelemetry(eventId, targetUrl, surface) {
   fetch(`${SUPABASE_URL}/rest/v1/outbound_clicks`, {
     method: 'POST',
     headers: {
-      apikey: SERVICE_KEY,
-      authorization: `Bearer ${SERVICE_KEY}`,
+      apikey: KEY,
+      authorization: `Bearer ${KEY}`,
       'content-type': 'application/json',
       prefer: 'return=minimal'
     },
