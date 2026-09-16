@@ -12,6 +12,9 @@ const routeHandler = require('./route');
 const adminApiHandler = require('./admin-api');
 const adminHandler = require('./admin');
 const ogHandler = require('./og');
+const sitemapHandler = require('./sitemap');
+const robotsHandler = require('./robots');
+const landingHandler = require('./landing');
 
 function wrapRes(res) {
   if (!res.status) {
@@ -53,6 +56,12 @@ module.exports = async (req, res) => {
     if (p === '/' || p === '/index.html') {
       return homeHandler(req, res);
     }
+    if (p === '/sitemap.xml' || p === '/sitemap') {
+      return sitemapHandler(req, res);
+    }
+    if (p === '/robots.txt') {
+      return robotsHandler(req, res);
+    }
     if (p === '/api/click') {
       return clickHandler(req, res);
     }
@@ -86,6 +95,13 @@ module.exports = async (req, res) => {
       if (match) req.query.id = match[1];
       return adminApiHandler(req, res);
     }
+
+    // City & category landing pages: /denver/this-weekend, /boulder/music, etc.
+    const cityMatch = p.match(/^\/(denver|boulder|golden|aurora)(\/([a-z0-9-]+))?$/i);
+    if (cityMatch) {
+      return landingHandler(req, res);
+    }
+
     return app(req, res);
   } catch (e) {
     console.error('Router error:', e);

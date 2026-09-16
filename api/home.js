@@ -1,4 +1,4 @@
-﻿module.exports = (req, res) => {
+module.exports = (req, res) => {
   res.setHeader('content-type', 'text/html; charset=utf-8');
   res.end(`<!doctype html>
 <html lang="en">
@@ -6,7 +6,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Brinkberry — Find What’s Happening Near You Right Now</title>
-  <meta name="description" content="Discover real-world events, live music, sports, outdoor activities, and things to do near you right now. Pick a time, find a reason, go.">
+  <meta name="description" content="Discover real-world events, live music, sports, outdoor activities, and things to do near you right now in Denver, Boulder, Golden, and Aurora.">
+  <link rel="canonical" href="https://brinkberry.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Brinkberry — Find What’s Happening Near You Right Now">
+  <meta property="og:description" content="Discover real-world events, live music, sports, outdoor activities, and things to do near you right now. Pick a location, set a time, and go.">
+  <meta property="og:url" content="https://brinkberry.com/">
+  <meta name="twitter:card" content="summary_large_image">
+  
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQ3ynHBWqOU7MZVnKfXKjMZKnS4W9TQ=" crossorigin="">
   <style>
     :root {
@@ -24,7 +31,7 @@
     body { margin: 0; background: var(--bg); color: var(--text); font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.45; }
     .app { max-width: 1080px; margin: auto; padding: 18px 20px 60px; }
     .top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid #1c1628; }
-    .brand { font-size: 24px; font-weight: 900; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
+    .brand { font-size: 24px; font-weight: 900; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; color: #fff; text-decoration: none; }
     .brand b { color: var(--accent); }
     .hero { padding: 24px 0 16px; }
     .hero h1 { font-size: clamp(30px, 6vw, 50px); line-height: 1.05; margin: 0 0 8px; font-weight: 850; letter-spacing: -0.03em; }
@@ -45,6 +52,9 @@
       font-weight: 600;
       cursor: pointer;
       transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
     button:hover, a.btn:hover { background: #261f36; border-color: #403458; }
     button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -55,20 +65,22 @@
     .planb { display: none; margin: 12px 0; padding: 12px 16px; border-radius: 14px; background: #24141d; border: 1px solid #632644; color: #ffb8d2; }
     .brink-alert { margin: 12px 0; padding: 12px 16px; border-radius: 14px; background: #2a101d; border: 1px solid #822247; color: #ff809d; font-weight: 700; }
     
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 16px; }
-    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.15s, border-color 0.15s; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; margin-top: 16px; }
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.15s, border-color 0.15s; cursor: pointer; }
     .card:hover { transform: translateY(-2px); border-color: #4a3a66; }
     .card.brink { border-color: var(--accent); }
-    .card-img { height: 145px; background: linear-gradient(135deg, #24142d, #4a1832); background-size: cover; background-position: center; position: relative; }
+    .card-img { height: 145px; background: linear-gradient(135deg, #24142d, #4a1832); background-size: cover; background-position: center; position: relative; display: flex; align-items: flex-end; padding: 10px; }
+    .card-badge { background: rgba(8, 6, 16, 0.85); backdrop-filter: blur(4px); border: 1px solid #362a4d; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; color: #fff; }
     .card-body { padding: 16px; flex: 1; display: flex; flex-direction: column; }
-    .card-title { font-size: 18px; font-weight: 800; line-height: 1.2; margin: 4px 0 8px; color: #fff; }
+    .card-title { font-size: 18px; font-weight: 800; line-height: 1.25; margin: 4px 0 8px; color: #fff; }
     .card-meta { color: var(--text-dim); font-size: 13px; margin-bottom: 4px; }
     .why-tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
     .why-tag { font-size: 11px; font-weight: 700; background: var(--tag-bg); border: 1px solid #362a4d; color: #d6cced; padding: 3px 8px; border-radius: 999px; }
     .brinktag { font-size: 11px; font-weight: 900; letter-spacing: 0.08em; color: var(--accent); text-transform: uppercase; margin-bottom: 4px; }
     .card-footer { margin-top: auto; padding-top: 12px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #201930; }
     .card-price { font-weight: 800; color: #fff; font-size: 14px; }
-    .btn-ticket-sm { background: var(--primary); color: var(--primary-dark); font-size: 13px; font-weight: 800; padding: 6px 12px; border-radius: 999px; text-decoration: none; border: 0; }
+    .btn-ticket-sm { background: var(--primary); color: var(--primary-dark); font-size: 13px; font-weight: 800; padding: 7px 14px; border-radius: 999px; text-decoration: none; border: 0; }
+    .btn-ticket-sm:hover { background: #ffa84d; }
     
     #radar { display: none; height: 540px; border-radius: 18px; overflow: hidden; margin-top: 16px; border: 1px solid var(--card-border); }
     .empty { padding: 60px 20px; text-align: center; color: var(--text-dim); }
@@ -76,17 +88,28 @@
     
     dialog { border: 1px solid var(--card-border); background: #120e1a; color: #fff; border-radius: 20px; width: min(600px, 94vw); padding: 22px; }
     dialog::backdrop { background: rgba(5, 3, 10, 0.85); }
-    .actions-bar { display: flex; gap: 10px; margin-top: 18px; }
+    .actions-bar { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+    
+    /* City Guides Footer */
+    .city-guides-footer { margin-top: 50px; padding-top: 30px; border-top: 1px solid #1c1628; }
+    .city-guides-footer h3 { font-size: 18px; font-weight: 800; margin-bottom: 14px; color: #fff; }
+    .city-links-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .city-links-col h4 { margin: 0 0 8px; font-size: 14px; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; }
+    .city-links-col a { display: block; color: var(--text-dim); text-decoration: none; font-size: 13.5px; margin-bottom: 6px; }
+    .city-links-col a:hover { color: #fff; text-decoration: underline; }
+    
     @media (max-width: 640px) {
       .grid { grid-template-columns: 1fr; }
       #radar { height: 400px; }
+      .app { padding: 14px 14px 50px; }
+      .hero h1 { font-size: 32px; }
     }
   </style>
 </head>
 <body>
   <div class="app">
     <header class="top">
-      <div class="brand"><b>●</b> Brinkberry</div>
+      <a class="brand" href="/"><b>●</b> Brinkberry</a>
       <button id="locBtn">📍 Use my location</button>
     </header>
 
@@ -140,13 +163,49 @@
     <!-- Main Feed & Map -->
     <main id="feed"><div class="empty">Finding events…</div></main>
     <div id="radar"></div>
+
+    <!-- Front Range City Guides Indexable Footer -->
+    <section class="city-guides-footer">
+      <h3>Popular Front Range Event Guides</h3>
+      <div class="city-links-grid">
+        <div class="city-links-col">
+          <h4>Denver</h4>
+          <a href="/denver/this-weekend">Denver This Weekend</a>
+          <a href="/denver/music">Denver Live Music</a>
+          <a href="/denver/free">Denver Free Events</a>
+          <a href="/denver/outdoor">Denver Outdoor Activities</a>
+        </div>
+        <div class="city-links-col">
+          <h4>Boulder</h4>
+          <a href="/boulder/this-weekend">Boulder This Weekend</a>
+          <a href="/boulder/music">Boulder Live Music</a>
+          <a href="/boulder/free">Boulder Free Events</a>
+          <a href="/boulder/outdoor">Boulder Outdoor Activities</a>
+        </div>
+        <div class="city-links-col">
+          <h4>Golden</h4>
+          <a href="/golden/this-weekend">Golden This Weekend</a>
+          <a href="/golden/music">Golden Live Music</a>
+          <a href="/golden/free">Golden Free Events</a>
+          <a href="/golden/outdoor">Golden Outdoor Activities</a>
+        </div>
+        <div class="city-links-col">
+          <h4>Aurora</h4>
+          <a href="/aurora/this-weekend">Aurora This Weekend</a>
+          <a href="/aurora/music">Aurora Live Music</a>
+          <a href="/aurora/free">Aurora Free Events</a>
+          <a href="/aurora/outdoor">Aurora Outdoor Activities</a>
+        </div>
+      </div>
+    </section>
   </div>
 
   <!-- Event Detail Dialog -->
   <dialog id="detailDlg">
     <div id="detailBody"></div>
     <div class="actions-bar">
-      <button id="closeDetail" style="margin-left:auto">Close</button>
+      <button id="shareModalBtn" class="btn" style="background:#191424; color:#fff">🔗 Share Event</button>
+      <button id="closeDetail" class="btn" style="margin-left:auto">Close</button>
     </div>
   </dialog>
 
@@ -162,7 +221,8 @@
       events: [],
       weather: null,
       map: null,
-      markers: []
+      markers: [],
+      currentDetailEvent: null
     };
 
     const $ = id => document.getElementById(id);
@@ -190,7 +250,7 @@
       if (!S.events.length) {
         $('feed').innerHTML = \`
           <div class="empty">
-            <h3>No events matched this window</h3>
+            <h3>No events matched this exact window</h3>
             <p>Try expanding your radius or checking a different time filter.</p>
             <div class="row" style="justify-content:center; margin-top:14px;">
               <button onclick="S.radius=50; S.window='weekend'; initControls(); loadFeed();" style="background:var(--primary); color:var(--primary-dark); font-weight:800">
@@ -203,10 +263,12 @@
 
       $('feed').innerHTML = '<div class="grid">' + S.events.map(e => \`
         <article class="card \${e.onTheBrink ? 'brink' : ''}" data-id="\${e.id}">
-          <div class="card-img" style="\${e.image ? 'background-image:url(' + JSON.stringify(e.image) + ')' : ''}"></div>
+          <div class="card-img" style="\${e.image ? 'background-image:url(' + JSON.stringify(e.image) + ')' : ''}">
+            <span class="card-badge">\${esc(e.category)}</span>
+          </div>
           <div class="card-body">
             \${e.onTheBrink ? '<div class="brinktag">Starts Soon</div>' : ''}
-            <div class="card-meta">\${esc(e.category)}\${e.neighborhood ? ' · ' + esc(e.neighborhood) : ''}</div>
+            <div class="card-meta">\${e.neighborhood ? esc(e.neighborhood) : esc(e.city || 'Nearby')}</div>
             <div class="card-title">\${esc(e.title)}</div>
             <div class="card-meta">📍 \${esc(e.venue)}\${e.city ? ', ' + esc(e.city) : ''}</div>
             <div class="card-meta">⏰ \${esc(fmtTime(e.start))}\${e.distanceMiles != null ? ' · <b>' + e.distanceMiles.toFixed(1) + ' mi</b>' : ''}</div>
@@ -274,6 +336,7 @@
     function openDetail(id) {
       const e = S.events.find(x => x.id === id);
       if (!e) return;
+      S.currentDetailEvent = e;
       const clickUrl = \`/api/click?url=\${encodeURIComponent(e.ticketUrl)}&eventId=\${encodeURIComponent(e.id)}&surface=detail_modal\`;
       $('detailBody').innerHTML = \`
         <h2 style="margin-top:0">\${esc(e.title)}</h2>
@@ -281,9 +344,9 @@
         <p style="color:var(--text-dim)">⏰ \${esc(fmtTime(e.start))}</p>
         <p><b>Admission:</b> \${esc(e.priceDisplay || 'Details on ticket page')}</p>
         \${e.desc ? \`<p style="line-height:1.5">\${esc(e.desc)}</p>\` : ''}
-        <div style="display:flex; gap:10px; margin-top:20px;">
+        <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap">
           <a class="btn" style="background:var(--primary); color:var(--primary-dark); font-weight:800" href="\${esc(clickUrl)}" target="_blank" rel="noopener noreferrer">Get Tickets & Details →</a>
-          <a class="btn" href="/event/\${encodeURIComponent(e.id)}" target="_blank">Event Page</a>
+          <a class="btn" href="/event/\${encodeURIComponent(e.id)}" target="_blank">Standalone Event Page</a>
         </div>
       \`;
       $('detailDlg').showModal();
@@ -292,18 +355,26 @@
     function renderRadar() {
       if (!$('radar') || $('radar').style.display === 'none' || !window.L) return;
       if (!S.map) {
-        S.map = L.map('radar').setView([S.lat, S.lon], 12);
+        S.map = L.map('radar').setView([S.lat, S.lon], 11);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(S.map);
       }
       S.markers.forEach(m => m.remove());
       S.markers = [];
+      const latLngs = [];
       S.events.forEach(e => {
         if (e.lat == null || e.lon == null) return;
-        const m = L.marker([e.lat, e.lon]).addTo(S.map)
-          .bindPopup(\`<b>\${esc(e.title)}</b><br>\${esc(e.venue)}<br>\${e.distanceMiles != null ? e.distanceMiles.toFixed(1) + ' mi' : ''}\`);
+        const ll = [e.lat, e.lon];
+        latLngs.push(ll);
+        const m = L.marker(ll).addTo(S.map)
+          .bindPopup(\`<b>\${esc(e.title)}</b><br>\${esc(e.venue)}<br>\${e.distanceMiles != null ? e.distanceMiles.toFixed(1) + ' mi' : ''}<br><a href="/event/\${encodeURIComponent(e.id)}" target="_blank">View Event →</a>\`);
         S.markers.push(m);
       });
-      S.map.setView([S.lat, S.lon], 12);
+      if (latLngs.length > 0) {
+        const bounds = L.latLngBounds(latLngs);
+        S.map.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
+      } else {
+        S.map.setView([S.lat, S.lon], 11);
+      }
       setTimeout(() => S.map.invalidateSize(), 50);
     }
 
@@ -327,6 +398,18 @@
       }, () => {
         alert('Location access denied. Using Denver as default.');
       }, { timeout: 8000 });
+    };
+
+    $('shareModalBtn').onclick = async () => {
+      const e = S.currentDetailEvent;
+      if (!e) return;
+      const url = location.origin + '/event/' + e.id;
+      const shareData = { title: e.title, text: e.title + ' — ' + fmtTime(e.start) + ' at ' + e.venue, url };
+      if (navigator.share) {
+        try { await navigator.share(shareData); return; } catch {}
+      }
+      await navigator.clipboard.writeText(url);
+      alert('Event link copied to clipboard: ' + url);
     };
 
     $('closeDetail').onclick = () => $('detailDlg').close();

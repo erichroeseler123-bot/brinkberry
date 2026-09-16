@@ -9,8 +9,12 @@ const clickHandler = require('../api/click.js');
 const feedHandler = require('../api/feed.js');
 const homeHandler = require('../api/home.js');
 const eventHandler = require('../api/event.js');
+const landingHandler = require('../api/landing.js');
+const sitemapHandler = require('../api/sitemap.js');
+const robotsHandler = require('../api/robots.js');
+const routerHandler = require('../api/router.js');
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co';
+const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co').replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
 const KEY = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_2ygc158CkPm28E9j6zNdmA_Cvvj5kGr';
 
 describe('Brinkberry Production Verification Suite', () => {
@@ -290,6 +294,7 @@ describe('Brinkberry Production Verification Suite', () => {
       assert.match(outputHtml, /presetDenver/i);
       assert.match(outputHtml, /radiusFilters/i);
       assert.match(outputHtml, /timeWindows/i);
+      assert.match(outputHtml, /Denver This Weekend/i);
     });
 
     test('event detail page renders 400 for missing ID', async () => {
@@ -324,6 +329,149 @@ describe('Brinkberry Production Verification Suite', () => {
 
       await eventHandler(req, res);
       assert.equal(statusCode, 404);
+    });
+  });
+
+  describe('City & Category SEO Landing Pages', () => {
+    const pagesToTest = [
+      { url: '/denver/this-weekend', city: 'Denver', matchText: /Denver Events This Weekend/i },
+      { url: '/denver/music', city: 'Denver', matchText: /Denver Live Music/i },
+      { url: '/denver/free', city: 'Denver', matchText: /Free & Budget-Friendly Events/i },
+      { url: '/denver/outdoor', city: 'Denver', matchText: /Outdoor Events & Adventures/i },
+      { url: '/boulder/this-weekend', city: 'Boulder', matchText: /Boulder Events This Weekend/i },
+      { url: '/boulder/music', city: 'Boulder', matchText: /Boulder Live Music/i },
+      { url: '/golden/this-weekend', city: 'Golden', matchText: /Golden Events This Weekend/i },
+      { url: '/aurora/this-weekend', city: 'Aurora', matchText: /Aurora Events This Weekend/i }
+    ];
+
+    for (const p of pagesToTest) {
+      test(`renders indexable guide for ${p.url}`, async () => {
+        let statusCode = null;
+        let responseHtml = '';
+
+        const req = { url: p.url };
+        const res = {
+          setHeader() {},
+          status(c) {
+            statusCode = c;
+            return {
+              send(body) {
+                responseHtml = body;
+              }
+            };
+          }
+        };
+
+        await landingHandler(req, res);
+        assert.equal(statusCode, 200);
+        assert.match(responseHtml, p.matchText);
+        assert.match(responseHtml, /application\/ld\+json/);
+        assert.match(responseHtml, /rel="canonical"/);
+        assert.match(responseHtml, /og:title/);
+        assert.match(responseHtml, /Explore Other Front Range Cities/);
+      });
+    }
+
+    test('renders 404 for non-existent city', async () => {
+      let statusCode = null;
+      const req = { url: '/atlantis/this-weekend' };
+      const res = {
+        setHeader() {},
+        status(c) {
+          statusCode = c;
+          return { send() {} };
+        }
+      };
+
+      await landingHandler(req, res);
+      assert.equal(statusCode, 404);
+    });
+  });
+
+  describe('Sitemap & Robots Handlers', () => {
+    test('sitemap.xml returns valid XML with city guides and canonical URLs', async () => {
+      let statusCode = null;
+      let contentType = null;
+      let outputXml = '';
+
+      const req = { url: '/sitemap.xml' };
+      const res = {
+        setHeader(name, value) {
+          if (name.toLowerCase() === 'content-type') contentType = value;
+        },
+        status(c) {
+          statusCode = c;
+          return {
+            send(body) {
+              outputXml = body;
+            }
+          };
+        }
+      };
+
+      await sitemapHandler(req, res);
+      assert.equal(statusCode, 200);
+      assert.match(contentType, /application\/xml/);
+      assert.match(outputXml, /<urlset xmlns="http:\/\/www.sitemaps.org\/schemas\/sitemap\/0.9">/);
+      assert.match(outputXml, /https:\/\/brinkberry.com\/denver\/this-weekend/);
+      assert.match(outputXml, /https:\/\/brinkberry.com\/boulder\/music/);
+      assert.match(outputXml, /https:\/\/brinkberry.com\/golden\/outdoor/);
+      assert.match(outputXml, /https:\/\/brinkberry.com\/aurora\/free/);
+    });
+
+    test('robots.txt allows all search engines and references sitemap.xml', async () => {
+      let statusCode = null;
+      let outputText = '';
+
+      const req = { url: '/robots.txt' };
+      const res = {
+        setHeader() {},
+        status(c) {
+          statusCode = c;
+          return {
+            send(body) {
+              outputText = body;
+            }
+          };
+        }
+      };
+
+      robotsHandler(req, res);
+      assert.equal(statusCode, 200);
+      assert.match(outputText, /User-agent: \*/);
+      assert.match(outputText, /Allow: \//);
+      assert.match(outputText, /Sitemap: https:\/\/brinkberry.com\/sitemap.xml/);
+    });
+
+    test('router dispatches sitemap, robots, and city guides accurately', async () => {
+      let endContent = '';
+      let statusCode = 200;
+
+      const testRoute = async (url) => {
+        const req = { url, method: 'GET' };
+        const res = {
+          statusCode: 200,
+          setHeader() {},
+          status(c) { this.statusCode = c; return this; },
+          send(body) { endContent = body; return this; },
+          json(d) { endContent = JSON.stringify(d); return this; },
+          end(d) { if (d) endContent = d; return this; }
+        };
+        await routerHandler(req, res);
+        return { status: res.statusCode, content: endContent };
+      };
+
+      const sm = await testRoute('/sitemap.xml');
+      assert.equal(sm.status, 200);
+      assert.match(sm.content, /urlset/);
+
+      const rb = await testRoute('/robots.txt');
+      assert.equal(rb.status, 200);
+      assert.match(rb.content, /Sitemap:/);
+
+      const dg = await testRoute('/denver/this-weekend');
+      assert.equal(dg.status, 200);
+      assert.match(dg.content, /Denver Events This Weekend/);
     });
   });
 
