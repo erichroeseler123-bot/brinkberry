@@ -1,0 +1,2 @@
+{"timestamp":"2026-09-16T23:39:27.450Z","status":"DEFECT","defectsCount":2,"feedStatus":200,"feedLatencyMs":1294,"qualifyingEvents":33,"expiringSoon":6,"newlyAppearedCount":33,"expiredCount":0,"validTickets":"31/33","sitemapUrls":70}
+{"timestamp":"2026-09-16T23:39:36.723Z","status":"HEALTHY","defectsCount":0,"feedStatus":200,"feedLatencyMs":349,"qualifyingEvents":33,"expiringSoon":6,"newlyAppearedCount":0,"expiredCount":0,"validTickets":"33/33","sitemapUrls":70}
