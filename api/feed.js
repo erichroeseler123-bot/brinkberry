@@ -61,29 +61,37 @@ function zoned(s, h) {
 
 function bounds(w) {
   const now = new Date();
+  const max48 = new Date(now.getTime() + 48 * 3600e3);
   const p = parts();
   const d = `${p.year}-${p.month}-${p.day}`;
   const h = Number(p.hour);
 
+  let start = now;
+  let end = max48;
+
   if (w === 'now') {
-    return [now, new Date(now.getTime() + 4 * 3600e3)];
-  }
-  if (w === 'tomorrow') {
+    end = new Date(now.getTime() + 4 * 3600e3);
+  } else if (w === 'tomorrow') {
     const x = addDays(d, 1);
-    return [zoned(x, 0), zoned(addDays(x, 1), 0)];
+    start = zoned(x, 0);
+    end = zoned(addDays(x, 1), 0);
+  } else if (w === 'tonight') {
+    if (h < 2) {
+      start = zoned(addDays(d, -1), 17);
+      end = zoned(d, 4);
+    } else {
+      start = zoned(d, 17);
+      end = zoned(addDays(d, 1), 4);
+    }
+  } else if (w === 'weekend' || w === '48h' || w === 'next-48h') {
+    start = now;
+    end = max48;
   }
-  if (w === 'weekend') {
-    const wd = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', weekday: 'short' }).format(now);
-    const m = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-    const day = m[wd];
-    const delta = day === 0 ? -2 : day === 6 ? -1 : 5 - day;
-    const fri = addDays(d, delta);
-    return [zoned(fri, 15), zoned(addDays(fri, 3), 2)];
-  }
-  if (h < 2) {
-    return [zoned(addDays(d, -1), 17), zoned(d, 2)];
-  }
-  return [zoned(d, 17), zoned(addDays(d, 1), 2)];
+
+  // Strict 48-hour rolling window clamping: never before now, never beyond now + 48 hours
+  const clampedStart = new Date(Math.max(start.getTime(), now.getTime()));
+  const clampedEnd = new Date(Math.min(end.getTime(), max48.getTime()));
+  return [clampedStart, clampedEnd];
 }
 
 function score(e, mode) {
@@ -130,7 +138,9 @@ function timeCue(start, window, mins) {
   });
   if (window === 'tonight') return `Tonight at ${t}`;
   if (window === 'tomorrow') return `Tomorrow at ${t}`;
-  if (window === 'weekend') return `This weekend · ${new Date(start).toLocaleDateString('en-US', { timeZone: 'America/Denver', weekday: 'short' })} ${t}`;
+  if (window === 'weekend' || window === '48h' || window === 'next-48h') {
+    return `Next 48h · ${new Date(start).toLocaleDateString('en-US', { timeZone: 'America/Denver', weekday: 'short' })} ${t}`;
+  }
   return t;
 }
 
@@ -158,7 +168,14 @@ module.exports = async (req, res) => {
       p_mode: mode || null
     });
 
-    const rows = (raw || [])
+    const nowMs = Date.now();
+    const max48Ms = nowMs + 48 * 3600e3;
+    const filtered = (raw || []).filter(e => {
+      const t = new Date(e.start_time).getTime();
+      return t >= nowMs && t <= max48Ms;
+    });
+
+    const rows = filtered
       .map(e => ({ ...e, _score: score(e, mode) }))
       .sort((a, b) => b._score - a._score || new Date(a.start_time) - new Date(b.start_time));
     const ranked = diversify(rows);

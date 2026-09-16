@@ -39,9 +39,12 @@ module.exports = async (req, res) => {
     }
 
     const e = await getEvent(id);
-    if (!e) {
+    const nowMs = Date.now();
+    const startTime = e ? new Date(e.start_time).getTime() : 0;
+    // Brinkberry strictly presents events in the active rolling 48-hour window
+    if (!e || startTime < (nowMs - 4 * 3600e3) || startTime > (nowMs + 48 * 3600e3)) {
       res.setHeader('content-type', 'text/html; charset=utf-8');
-      return res.status(404).send('<!doctype html><html><body style="background:#080610;color:#fff;font-family:system-ui;padding:40px;text-align:center"><h1>Event Not Found</h1><p style="color:#90869e">This event may have expired or is no longer listed.</p><p><a href="/" style="color:#ffb86b;font-weight:bold;text-decoration:none">← Find events near you</a></p></body></html>');
+      return res.status(404).send('<!doctype html><html><body style="background:#080610;color:#fff;font-family:system-ui;padding:40px;text-align:center"><h1>Event Not Found</h1><p style="color:#90869e">This event is not in the active 48-hour window or is no longer listed.</p><p><a href="/" style="color:#ffb86b;font-weight:bold;text-decoration:none">← Find what’s happening right now</a></p></body></html>');
     }
 
     const price = e.price_status === 'free' ? 'Free' : (e.price_display || 'Check tickets');

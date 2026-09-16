@@ -294,7 +294,7 @@ describe('Brinkberry Production Verification Suite', () => {
       assert.match(outputHtml, /presetDenver/i);
       assert.match(outputHtml, /radiusFilters/i);
       assert.match(outputHtml, /timeWindows/i);
-      assert.match(outputHtml, /Denver This Weekend/i);
+      assert.match(outputHtml, /Denver Next 48 Hours/i);
     });
 
     test('event detail page renders 400 for missing ID', async () => {
@@ -334,14 +334,15 @@ describe('Brinkberry Production Verification Suite', () => {
 
   describe('City & Category SEO Landing Pages', () => {
     const pagesToTest = [
-      { url: '/denver/this-weekend', city: 'Denver', matchText: /Denver Events This Weekend/i },
+      { url: '/denver/next-48-hours', city: 'Denver', matchText: /Denver Events in the Next 48 Hours/i },
+      { url: '/denver/this-weekend', city: 'Denver', matchText: /Denver Events in the Next 48 Hours/i },
       { url: '/denver/music', city: 'Denver', matchText: /Denver Live Music/i },
       { url: '/denver/free', city: 'Denver', matchText: /Free & Budget-Friendly Events/i },
       { url: '/denver/outdoor', city: 'Denver', matchText: /Outdoor Events & Adventures/i },
-      { url: '/boulder/this-weekend', city: 'Boulder', matchText: /Boulder Events This Weekend/i },
+      { url: '/boulder/next-48-hours', city: 'Boulder', matchText: /Boulder Events in the Next 48 Hours/i },
       { url: '/boulder/music', city: 'Boulder', matchText: /Boulder Live Music/i },
-      { url: '/golden/this-weekend', city: 'Golden', matchText: /Golden Events This Weekend/i },
-      { url: '/aurora/this-weekend', city: 'Aurora', matchText: /Aurora Events This Weekend/i }
+      { url: '/golden/next-48-hours', city: 'Golden', matchText: /Golden Events in the Next 48 Hours/i },
+      { url: '/aurora/next-48-hours', city: 'Aurora', matchText: /Aurora Events in the Next 48 Hours/i }
     ];
 
     for (const p of pagesToTest) {
@@ -388,6 +389,52 @@ describe('Brinkberry Production Verification Suite', () => {
     });
   });
 
+  describe('Strict Rolling 48-Hour Boundary Tests', () => {
+    test('feed handler strictly includes event at NOW + 47h and excludes event at NOW + 49h and NOW - 1h', async () => {
+      let resultData = null;
+      const req = { url: '/api/feed?lat=39.7392&lng=-104.9903&radius=50&window=48h' };
+      const res = {
+        statusCode: 200,
+        status(c) { this.statusCode = c; return this; },
+        json(d) { resultData = d; }
+      };
+
+      await feedHandler(req, res);
+      assert.equal(res.statusCode, 200);
+      assert.ok(Array.isArray(resultData.events));
+
+      const now = Date.now();
+      const max48 = now + 48 * 3600 * 1000;
+
+      for (const e of resultData.events) {
+        const t = new Date(e.start).getTime();
+        assert.ok(t >= now - 60000, `Event ${e.title} start ${e.start} must not be in the past`);
+        assert.ok(t <= max48 + 60000, `Event ${e.title} start ${e.start} must not exceed 48 hours`);
+      }
+    });
+
+    test('sitemap.xml strictly excludes events starting beyond 48 hours', async () => {
+      let outputXml = '';
+      const req = { url: '/sitemap.xml' };
+      const res = {
+        setHeader() {},
+        status(c) {
+          return {
+            send(body) {
+              outputXml = body;
+            }
+          };
+        }
+      };
+
+      await sitemapHandler(req, res);
+      assert.match(outputXml, /https:\/\/brinkberry.com\/denver\/next-48-hours/);
+
+      // Verify that known far-future events in DB (such as October events) are NOT in sitemap
+      assert.ok(!outputXml.includes('DTU Monthly Board Meeting'));
+    });
+  });
+
   describe('Sitemap & Robots Handlers', () => {
     test('sitemap.xml returns valid XML with city guides and canonical URLs', async () => {
       let statusCode = null;
@@ -413,7 +460,7 @@ describe('Brinkberry Production Verification Suite', () => {
       assert.equal(statusCode, 200);
       assert.match(contentType, /application\/xml/);
       assert.match(outputXml, /<urlset xmlns="http:\/\/www.sitemaps.org\/schemas\/sitemap\/0.9">/);
-      assert.match(outputXml, /https:\/\/brinkberry.com\/denver\/this-weekend/);
+      assert.match(outputXml, /https:\/\/brinkberry.com\/denver\/next-48-hours/);
       assert.match(outputXml, /https:\/\/brinkberry.com\/boulder\/music/);
       assert.match(outputXml, /https:\/\/brinkberry.com\/golden\/outdoor/);
       assert.match(outputXml, /https:\/\/brinkberry.com\/aurora\/free/);
@@ -471,7 +518,7 @@ describe('Brinkberry Production Verification Suite', () => {
 
       const dg = await testRoute('/denver/this-weekend');
       assert.equal(dg.status, 200);
-      assert.match(dg.content, /Denver Events This Weekend/);
+      assert.match(dg.content, /Denver Events in the Next 48 Hours/);
     });
   });
 

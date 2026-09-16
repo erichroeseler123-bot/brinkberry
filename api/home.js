@@ -170,28 +170,28 @@ module.exports = (req, res) => {
       <div class="city-links-grid">
         <div class="city-links-col">
           <h4>Denver</h4>
-          <a href="/denver/this-weekend">Denver This Weekend</a>
+          <a href="/denver/next-48-hours">Denver Next 48 Hours</a>
           <a href="/denver/music">Denver Live Music</a>
           <a href="/denver/free">Denver Free Events</a>
           <a href="/denver/outdoor">Denver Outdoor Activities</a>
         </div>
         <div class="city-links-col">
           <h4>Boulder</h4>
-          <a href="/boulder/this-weekend">Boulder This Weekend</a>
+          <a href="/boulder/next-48-hours">Boulder Next 48 Hours</a>
           <a href="/boulder/music">Boulder Live Music</a>
           <a href="/boulder/free">Boulder Free Events</a>
           <a href="/boulder/outdoor">Boulder Outdoor Activities</a>
         </div>
         <div class="city-links-col">
           <h4>Golden</h4>
-          <a href="/golden/this-weekend">Golden This Weekend</a>
+          <a href="/golden/next-48-hours">Golden Next 48 Hours</a>
           <a href="/golden/music">Golden Live Music</a>
           <a href="/golden/free">Golden Free Events</a>
           <a href="/golden/outdoor">Golden Outdoor Activities</a>
         </div>
         <div class="city-links-col">
           <h4>Aurora</h4>
-          <a href="/aurora/this-weekend">Aurora This Weekend</a>
+          <a href="/aurora/next-48-hours">Aurora Next 48 Hours</a>
           <a href="/aurora/music">Aurora Live Music</a>
           <a href="/aurora/free">Aurora Free Events</a>
           <a href="/aurora/outdoor">Aurora Outdoor Activities</a>
@@ -234,8 +234,8 @@ module.exports = (req, res) => {
       $('radiusFilters').innerHTML = radii.map(r => \`<button class="\${S.radius === r ? 'active' : ''}" data-r="\${r}">\${r} mi</button>\`).join('');
       document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { S.radius = Number(b.dataset.r); initControls(); loadFeed(); });
 
-      const windows = [['now', 'Now'], ['tonight', 'Tonight'], ['tomorrow', 'Tomorrow'], ['weekend', 'This Weekend']];
-      $('timeWindows').innerHTML = windows.map(([k, l]) => \`<button class="\${S.window === k ? 'active' : ''}" data-w="\${k}">\${l}</button>\`).join('');
+      const windows = [['now', 'Now'], ['tonight', 'Tonight'], ['tomorrow', 'Tomorrow'], ['48h', 'Next 48 Hours']];
+      $('timeWindows').innerHTML = windows.map(([k, l]) => \`<button class="\${(S.window === k || (k === '48h' && S.window === 'weekend')) ? 'active' : ''}" data-w="\${k}">\${l}</button>\`).join('');
       document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { S.window = b.dataset.w; initControls(); loadFeed(); });
 
       const modes = [['', 'All'], ['cheap', 'Cheap / Free'], ['date', 'Date Night'], ['outside', 'Outside'], ['kids', 'Kids']];
@@ -253,8 +253,8 @@ module.exports = (req, res) => {
             <h3>No events matched this exact window</h3>
             <p>Try expanding your radius or checking a different time filter.</p>
             <div class="row" style="justify-content:center; margin-top:14px;">
-              <button onclick="S.radius=50; S.window='weekend'; initControls(); loadFeed();" style="background:var(--primary); color:var(--primary-dark); font-weight:800">
-                Search 50 Miles / Weekend →
+              <button onclick="S.radius=50; S.window='48h'; initControls(); loadFeed();" style="background:var(--primary); color:var(--primary-dark); font-weight:800">
+                Search 50 Miles / Next 48 Hours →
               </button>
             </div>
           </div>\`;
