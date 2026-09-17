@@ -278,7 +278,31 @@ describe('Hybrid Dynamic Event Engine Suite', () => {
       assert.ok(result.latency.totalMs >= 0);
     });
 
-    test('unconfigured dynamic providers return clear diagnostic reason and mark distant city unsupported', async () => {
+    test('unconfigured dynamic providers return clear diagnostic reason and mark distant unconnected city unsupported', async () => {
+      let feedData = null;
+      let statusCode = 200;
+      // Omaha, NE: lat 41.2565, lon -95.9345 (no curated and no local community feeds)
+      const req = { url: '/api/feed?lat=41.2565&lng=-95.9345&radius=25&window=48h' };
+      const res = {
+        status(c) { statusCode = c; return this; },
+        json(d) { feedData = d; }
+      };
+
+      await feedHandler(req, res);
+      assert.equal(statusCode, 200);
+      assert.ok(feedData.meta.coverage);
+      assert.equal(feedData.meta.coverage.isSupported, false);
+      assert.equal(feedData.meta.coverage.isCuratedMarket, false);
+      assert.equal(feedData.meta.coverage.geographicCoverage, 'dynamic_aggregators_only');
+      assert.equal(feedData.events.length, 0);
+      assert.ok(feedData.meta.providerHealth);
+      assert.equal(feedData.meta.providerHealth.ticketmaster.status, 'unconfigured');
+      assert.equal(feedData.meta.providerHealth.seatgeek.status, 'unconfigured');
+      assert.match(feedData.meta.providerHealth.ticketmaster.reason, /TICKETMASTER_API_KEY/);
+      assert.match(feedData.meta.providerHealth.seatgeek.reason, /SEATGEEK_CLIENT_ID/);
+    });
+
+    test('Eau Claire market connects to official community feed registry', async () => {
       let feedData = null;
       let statusCode = 200;
       const req = { url: '/api/feed?lat=44.8113&lng=-91.4985&radius=25&window=48h' };
@@ -290,14 +314,9 @@ describe('Hybrid Dynamic Event Engine Suite', () => {
       await feedHandler(req, res);
       assert.equal(statusCode, 200);
       assert.ok(feedData.meta.coverage);
-      assert.equal(feedData.meta.coverage.isSupported, false);
-      assert.equal(feedData.meta.coverage.isCuratedMarket, false);
-      assert.equal(feedData.events.length, 0);
-      assert.ok(feedData.meta.providers);
-      assert.equal(feedData.meta.providers.ticketmaster.status, 'unconfigured');
-      assert.equal(feedData.meta.providers.seatgeek.status, 'unconfigured');
-      assert.match(feedData.meta.providers.ticketmaster.reason, /TICKETMASTER_API_KEY/);
-      assert.match(feedData.meta.providers.seatgeek.reason, /SEATGEEK_CLIENT_ID/);
+      assert.equal(feedData.meta.coverage.isSupported, true);
+      assert.equal(feedData.meta.coverage.geographicCoverage, 'community_connected');
+      assert.match(feedData.meta.coverage.locationName, /Eau Claire/i);
     });
 
     test('mock/configured dynamic providers return regional events and activate coverage', async () => {

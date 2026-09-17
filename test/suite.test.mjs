@@ -713,11 +713,11 @@ describe('Brinkberry Production Verification Suite', () => {
       assert.equal(feedData.meta.coverage.nearestMarket, 'Denver');
     });
 
-    test('unconfigured dynamic providers return isSupported = false and clear diagnostic reason', async () => {
+    test('unconfigured dynamic providers return isSupported = false and clear diagnostic reason for unconnected city', async () => {
       let feedData = null;
       let statusCode = 200;
-      // Eau Claire, WI: lat 44.8113, lon -91.4985
-      const req = { url: '/api/feed?lat=44.8113&lng=-91.4985&radius=25&window=48h' };
+      // Omaha, NE: lat 41.2565, lon -95.9345 (unconnected market without curated or community feeds)
+      const req = { url: '/api/feed?lat=41.2565&lng=-95.9345&radius=25&window=48h' };
       const res = {
         status(c) { statusCode = c; return this; },
         json(d) { feedData = d; }
@@ -729,6 +729,24 @@ describe('Brinkberry Production Verification Suite', () => {
       assert.equal(feedData.meta.coverage.isSupported, false);
       assert.equal(feedData.events.length, 0, 'Unconfigured dynamic providers must not invent fake events');
       assert.ok(feedData.meta.providers.ticketmaster.reason);
+      assert.match(feedData.meta.coverage.locationName, /Omaha/i);
+    });
+
+    test('Eau Claire market connects to community feeds and marks coverage community_connected', async () => {
+      let feedData = null;
+      let statusCode = 200;
+      const req = { url: '/api/feed?lat=44.8113&lng=-91.4985&radius=25&window=48h' };
+      const res = {
+        status(c) { statusCode = c; return this; },
+        json(d) { feedData = d; }
+      };
+
+      await feedHandler(req, res);
+      assert.equal(statusCode, 200);
+      assert.ok(feedData.meta.coverage);
+      assert.equal(feedData.meta.coverage.isSupported, true);
+      assert.equal(feedData.meta.coverage.geographicCoverage, 'community_connected');
+      assert.ok(feedData.meta.providers.community.active);
       assert.match(feedData.meta.coverage.locationName, /Eau Claire/i);
     });
 

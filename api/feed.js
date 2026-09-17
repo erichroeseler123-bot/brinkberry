@@ -112,14 +112,24 @@ function checkCoverage(lat, lng, hybridResult) {
 
   const nearest = distances[0] || { market: { name: 'Denver' }, distanceMiles: 0 };
   const isCuratedMarket = nearest.distanceMiles <= 60;
+  const isCommunityActive = Boolean(hybridResult?.providers?.community?.count > 0 || hybridResult?.providers?.community?.feedsConfigured > 0);
   const isDynamicActive = Boolean(hybridResult?.hybrid?.dynamicActive);
   const isDynamicConfigured = Boolean(hybridResult?.hybrid?.dynamicConfigured);
 
-  // A location is supported if it is within curated Front Range OR if dynamic providers are active
-  const isSupported = isCuratedMarket || isDynamicActive;
+  let geographicCoverage = 'dynamic_aggregators_only';
+  if (isCuratedMarket) {
+    geographicCoverage = 'dense_curated';
+  } else if (isCommunityActive) {
+    geographicCoverage = 'community_connected';
+  }
+
+  // A location is supported if it is within curated Front Range OR if dynamic providers or community feeds are active
+  const isSupported = isCuratedMarket || isDynamicActive || isCommunityActive;
 
   return {
     isSupported,
+    coordinateSupport: true,
+    geographicCoverage,
     isCuratedMarket,
     dynamicProvidersConfigured: isDynamicConfigured,
     dynamicProvidersActive: isDynamicActive,
@@ -191,7 +201,7 @@ module.exports = async (req, res) => {
       curatedMs = Date.now() - curatedStart;
     }
 
-    // 2. Execute Hybrid Dynamic Engine (Curated + Ticketmaster + SeatGeek)
+    // 2. Execute Hybrid Dynamic Engine (Curated + Ticketmaster + SeatGeek + Community Feeds)
     const hybridResult = await executeHybridFeed({
       lat,
       lon: lng,
@@ -220,6 +230,13 @@ module.exports = async (req, res) => {
         mode: mode || 'all',
         radiusMiles,
         coverage,
+        verifiedInventory: {
+          total: hybridResult.events.length,
+          curated: hybridResult.hybrid.curatedCount,
+          commercial: hybridResult.hybrid.commercialCount || 0,
+          community: hybridResult.hybrid.communityCount || 0
+        },
+        providerHealth: hybridResult.providers,
         providers: hybridResult.providers,
         hybrid: hybridResult.hybrid,
         latency: {

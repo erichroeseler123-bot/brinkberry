@@ -188,17 +188,17 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
     assert.equal(redirectHeaders.Location, ticketTarget);
   });
 
-  test('Step 7: Eau Claire user flow (out-of-coverage prompt without credentials, dynamic feed when enabled)', async () => {
-    // 1. Query feed for Eau Claire, WI without credentials (default)
+  test('Step 7: Unconnected market out-of-coverage prompt & dynamic/community market flows', async () => {
+    // 1. Query feed for Omaha, NE without credentials (unconnected market)
     let feedData = null;
-    await feedHandler({ url: '/api/feed?lat=44.8113&lng=-91.4985&radius=25&window=48h' }, {
+    await feedHandler({ url: '/api/feed?lat=41.2565&lng=-95.9345&radius=25&window=48h' }, {
       status() { return this; },
       json(d) { feedData = d; }
     });
 
     assert.equal(feedData.events.length, 0);
     assert.equal(feedData.meta.coverage.isSupported, false);
-    assert.match(feedData.meta.coverage.locationName, /Eau Claire/i);
+    assert.match(feedData.meta.coverage.locationName, /Omaha/i);
     assert.ok(feedData.meta.providers.ticketmaster.reason);
 
     // 2. Check homepage renders out-of-coverage state structure with market request
@@ -213,7 +213,7 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
     assert.match(homeHtml, /requestMarketForm/);
     assert.match(homeHtml, /submitMarketRequest/);
 
-    // 3. Query with dynamic mock mode enabled
+    // 3. Query Eau Claire with community adapter & mock mode
     let mockData = null;
     await feedHandler({ url: '/api/feed?lat=44.8113&lng=-91.4985&radius=25&window=48h&mock=true' }, {
       status() { return this; },
