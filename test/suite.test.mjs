@@ -693,4 +693,82 @@ describe('Brinkberry Production Verification Suite', () => {
     });
   });
 
+  describe('Geographic Coverage & Market Support', () => {
+    const marketRequestHandler = require('../api/market-request.js');
+
+    test('supported Colorado location returns isSupported = true with events', async () => {
+      let feedData = null;
+      let statusCode = 200;
+      const req = { url: '/api/feed?lat=39.7392&lng=-104.9903&radius=25&window=48h' };
+      const res = {
+        status(c) { statusCode = c; return this; },
+        json(d) { feedData = d; }
+      };
+
+      await feedHandler(req, res);
+      assert.equal(statusCode, 200);
+      assert.ok(feedData.meta.coverage);
+      assert.equal(feedData.meta.coverage.isSupported, true);
+      assert.ok(feedData.events.length > 0, 'Denver location must return events');
+      assert.equal(feedData.meta.coverage.nearestMarket, 'Denver');
+    });
+
+    test('unsupported Eau Claire Wisconsin location returns isSupported = false without Colorado events', async () => {
+      let feedData = null;
+      let statusCode = 200;
+      // Eau Claire, WI: lat 44.8113, lon -91.4985
+      const req = { url: '/api/feed?lat=44.8113&lng=-91.4985&radius=25&window=48h' };
+      const res = {
+        status(c) { statusCode = c; return this; },
+        json(d) { feedData = d; }
+      };
+
+      await feedHandler(req, res);
+      assert.equal(statusCode, 200);
+      assert.ok(feedData.meta.coverage);
+      assert.equal(feedData.meta.coverage.isSupported, false);
+      assert.equal(feedData.events.length, 0, 'Eau Claire must not pretend Colorado events are local');
+      assert.ok(feedData.meta.coverage.distanceToNearestMarketMiles > 600);
+      assert.match(feedData.meta.coverage.locationName, /Eau Claire/i);
+    });
+
+    test('no events inside supported market area returns isSupported = true and empty list', async () => {
+      let feedData = null;
+      // Remote point in mountains near Golden with 1 mile radius and obscure filter
+      const req = { url: '/api/feed?lat=39.7555&lng=-105.2211&radius=1&window=now&mode=kids' };
+      const res = {
+        status(c) { return this; },
+        json(d) { feedData = d; }
+      };
+
+      await feedHandler(req, res);
+      assert.ok(feedData.meta.coverage);
+      assert.equal(feedData.meta.coverage.isSupported, true);
+      assert.equal(Array.isArray(feedData.events), true);
+    });
+
+    test('market request endpoint successfully logs user request for unsupported market', async () => {
+      let responseJson = null;
+      let statusCode = 200;
+      const req = {
+        method: 'POST',
+        on(event, cb) {
+          if (event === 'data') cb(Buffer.from(JSON.stringify({ city: 'Eau Claire, WI', lat: 44.8113, lng: -91.4985 })));
+          if (event === 'end') cb();
+        }
+      };
+      const res = {
+        setHeader() {},
+        status(c) { statusCode = c; return this; },
+        json(d) { responseJson = d; }
+      };
+
+      await marketRequestHandler(req, res);
+      assert.equal(statusCode, 200);
+      assert.equal(responseJson.success, true);
+      assert.equal(responseJson.city, 'Eau Claire, WI');
+      assert.match(responseJson.message, /recorded your market request for Eau Claire, WI/);
+    });
+  });
+
 });

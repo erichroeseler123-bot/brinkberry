@@ -223,10 +223,12 @@ module.exports = (req, res) => {
       lat: 39.7392,
       lon: -104.9903,
       city: 'Denver',
+      locationName: 'Denver, CO',
       radius: 25,
       window: 'tonight',
       mode: '',
       events: [],
+      coverage: { isSupported: true, nearestMarket: 'Denver', supportedMarkets: [] },
       weather: null,
       map: null,
       markers: [],
@@ -255,6 +257,46 @@ module.exports = (req, res) => {
       const brinkCount = S.events.filter(e => e.onTheBrink).length;
       $('brinkAlert').innerHTML = brinkCount ? \`<div class="brink-alert">⚡ <b>On the Brink</b> · \${brinkCount} nearby \${brinkCount === 1 ? 'event starts' : 'events start'} within the hour.</div>\` : '';
 
+      // Out of coverage market state
+      if (S.coverage && S.coverage.isSupported === false) {
+        const locTitle = S.locationName || S.city || 'Your Location';
+        $('feed').innerHTML = \`
+          <div class="empty out-of-coverage">
+            <div style="font-size:38px; margin-bottom:12px">📍</div>
+            <h3 style="font-size:22px; margin:0 0 8px; color:#fff">Brinkberry is not covering \${esc(locTitle)} yet</h3>
+            <p style="max-width:540px; margin:0 auto 18px; color:var(--text-dim); line-height:1.55">
+              We strictly show verified, real-world events happening in the next 48 hours. We currently have active event coverage across the <b>Colorado Front Range</b>.
+            </p>
+
+            <div style="margin:22px 0">
+              <div style="font-size:12px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px">
+                Explore a Supported Market:
+              </div>
+              <div class="row" style="justify-content:center; gap:8px;">
+                <button onclick="setPreset('Denver', 39.7392, -104.9903); $('presetDenver').classList.add('active');" style="background:var(--primary); color:var(--primary-dark); font-weight:800">Explore Denver →</button>
+                <button onclick="setPreset('Boulder', 40.0150, -105.2705); $('presetBoulder').classList.add('active');">Boulder</button>
+                <button onclick="setPreset('Golden', 39.7555, -105.2211); $('presetGolden').classList.add('active');">Golden</button>
+                <button onclick="setPreset('Aurora', 39.7294, -104.8319); $('presetAurora').classList.add('active');">Aurora</button>
+              </div>
+            </div>
+
+            <div class="market-request-box" style="background:#130f1c; border:1px solid var(--card-border); border-radius:16px; padding:18px 22px; max-width:480px; margin:24px auto 0; text-align:left">
+              <h4 style="margin:0 0 6px; font-size:15px; color:#fff">Want Brinkberry in \${esc(locTitle)}?</h4>
+              <p style="margin:0 0 12px; font-size:13px; color:var(--text-dim)">Submit this city as a requested market so our local curators know where to launch next.</p>
+              <div id="requestMarketForm" style="display:flex; gap:8px">
+                <input type="text" id="marketInput" value="\${esc(locTitle)}" style="flex:1; background:#191424; border:1px solid var(--card-border); color:#fff; padding:8px 14px; border-radius:999px; font-size:13.5px">
+                <button id="submitMarketBtn" onclick="submitMarketRequest()" style="background:var(--accent); color:#fff; font-weight:700">Request City</button>
+              </div>
+              <div id="requestMarketSuccess" style="display:none; color:#a9ffcb; font-size:13px; font-weight:600; margin-top:8px">
+                ✓ Thanks! We’ve recorded your request for <span id="requestedCityLabel"></span>.
+              </div>
+            </div>
+          </div>\`;
+        renderRadar();
+        return;
+      }
+
+      // Empty in supported market
       if (!S.events.length) {
         const modeLabels = { cheap: 'Cheap / Free', date: 'Date Night', outside: 'Outside', kids: 'Kids' };
         const modeText = S.mode && modeLabels[S.mode] ? ' for "' + modeLabels[S.mode] + '"' : '';
@@ -301,14 +343,43 @@ module.exports = (req, res) => {
       renderPlanB();
     }
 
+    async function submitMarketRequest() {
+      const input = $('marketInput');
+      const city = input ? input.value.trim() : (S.locationName || S.city);
+      if (!city) return;
+      const btn = $('submitMarketBtn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+      try {
+        await fetch('/api/market-request', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ city, lat: S.lat, lng: S.lon })
+        });
+      } catch (_) {}
+      if ($('requestMarketForm')) $('requestMarketForm').style.display = 'none';
+      if ($('requestMarketSuccess')) {
+        $('requestMarketSuccess').style.display = 'block';
+        $('requestedCityLabel').textContent = city;
+      }
+    }
+
     async function loadFeed() {
       $('status').textContent = \`Finding events near \${S.city} (\${S.radius} mi) · \${S.window}…\`;
       try {
-        const r = await fetch(\`/api/feed?lat=\${S.lat}&lng=\${S.lon}&radius=\${S.radius}&window=\${S.window}&mode=\${encodeURIComponent(S.mode)}\`);
+        const r = await fetch(\`/api/feed?lat=\${S.lat}&lng=\${S.lon}&radius=\${S.radius}&window=\${S.window}&mode=\${encodeURIComponent(S.mode)}&city=\${encodeURIComponent(S.city)}\`);
         const data = await r.json();
         if (!r.ok) throw new Error(data.error || r.status);
         S.events = data.events || [];
-        $('status').textContent = \`\${S.events.length} events found near \${S.city} (\${S.radius} mi radius)\`;
+        S.coverage = data.meta?.coverage || { isSupported: true };
+        if (data.meta?.coverage?.locationName) {
+          S.locationName = data.meta.coverage.locationName;
+        }
+
+        if (S.coverage && S.coverage.isSupported === false) {
+          $('status').innerHTML = \`📍 <b>\${esc(S.locationName || S.city)}</b> is outside our active coverage area.\`;
+        } else {
+          $('status').textContent = \`\${S.events.length} events found near \${S.city} (\${S.radius} mi radius)\`;
+        }
         renderFeed();
         loadWeather();
       } catch (err) {
@@ -396,7 +467,7 @@ module.exports = (req, res) => {
     // Preset handlers
     const setPreset = (name, lat, lon) => {
       ['presetDenver', 'presetBoulder', 'presetGolden', 'presetAurora'].forEach(id => $(id)?.classList.remove('active'));
-      S.city = name; S.lat = lat; S.lon = lon; loadFeed();
+      S.city = name; S.locationName = name; S.lat = lat; S.lon = lon; loadFeed();
     };
     $('presetDenver').onclick = e => { setPreset('Denver', 39.7392, -104.9903); e.target.classList.add('active'); };
     $('presetBoulder').onclick = e => { setPreset('Boulder', 40.0150, -105.2705); e.target.classList.add('active'); };
@@ -404,10 +475,16 @@ module.exports = (req, res) => {
     $('presetAurora').onclick = e => { setPreset('Aurora', 39.7294, -104.8319); e.target.classList.add('active'); };
 
     $('locBtn').onclick = () => {
+      $('status').textContent = 'Detecting your location…';
+      ['presetDenver', 'presetBoulder', 'presetGolden', 'presetAurora'].forEach(id => $(id)?.classList.remove('active'));
+      if (!navigator.geolocation) {
+        $('status').innerHTML = '⚠️ Geolocation is not supported by your browser. Please choose a supported market below:';
+        return;
+      }
       navigator.geolocation.getCurrentPosition(p => {
         setPreset('Your Location', p.coords.latitude, p.coords.longitude);
       }, () => {
-        alert('Location access denied. Using Denver as default.');
+        $('status').innerHTML = '⚠️ Location access was not granted. Please select one of our supported Colorado markets below:';
       }, { timeout: 8000 });
     };
 

@@ -188,4 +188,42 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
     assert.equal(redirectHeaders.Location, ticketTarget);
   });
 
+  test('Step 7: Unsupported Eau Claire user receives honest out-of-coverage UI with market request', async () => {
+    // 1. Query feed for Eau Claire, WI
+    let feedData = null;
+    await feedHandler({ url: '/api/feed?lat=44.8113&lng=-91.4985&radius=25&window=48h' }, {
+      status() { return this; },
+      json(d) { feedData = d; }
+    });
+
+    assert.equal(feedData.events.length, 0);
+    assert.equal(feedData.meta.coverage.isSupported, false);
+    assert.match(feedData.meta.coverage.locationName, /Eau Claire/i);
+
+    // 2. Check homepage renders out-of-coverage state structure
+    let homeHtml = '';
+    homeHandler({ url: '/' }, {
+      setHeader() {},
+      end(b) { homeHtml = b; }
+    });
+    assert.match(homeHtml, /Brinkberry is not covering/);
+    assert.match(homeHtml, /Explore a Supported Market/);
+    assert.match(homeHtml, /Want Brinkberry in/);
+    assert.match(homeHtml, /requestMarketForm/);
+    assert.match(homeHtml, /submitMarketRequest/);
+  });
+
+  test('Step 8: Geolocation denied fallback maintains usable UI and prompts market selection', async () => {
+    let homeHtml = '';
+    homeHandler({ url: '/' }, {
+      setHeader() {},
+      end(b) { homeHtml = b; }
+    });
+    assert.match(homeHtml, /Location access was not granted/);
+    assert.match(homeHtml, /presetDenver/);
+    assert.match(homeHtml, /presetBoulder/);
+    assert.match(homeHtml, /presetGolden/);
+    assert.match(homeHtml, /presetAurora/);
+  });
+
 });

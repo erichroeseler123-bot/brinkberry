@@ -16,6 +16,8 @@ const sitemapHandler = require('./sitemap');
 const robotsHandler = require('./robots');
 const landingHandler = require('./landing');
 
+const marketRequestHandler = require('./market-request');
+
 function wrapRes(res) {
   if (!res.status) {
     res.status = function(code) {
@@ -67,6 +69,9 @@ module.exports = async (req, res) => {
     }
     if (p === '/api/feed') {
       return feedHandler(req, res);
+    }
+    if (p === '/api/market-request') {
+      return marketRequestHandler(req, res);
     }
     if (p === '/api/weather') {
       return weatherHandler(req, res);

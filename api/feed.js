@@ -94,6 +94,63 @@ function bounds(w) {
   return [clampedStart, clampedEnd];
 }
 
+const SUPPORTED_MARKETS = [
+  { name: 'Denver', slug: 'denver', state: 'CO', lat: 39.7392, lon: -104.9903, maxRadiusMiles: 60 },
+  { name: 'Boulder', slug: 'boulder', state: 'CO', lat: 40.0150, lon: -105.2705, maxRadiusMiles: 60 },
+  { name: 'Golden', slug: 'golden', state: 'CO', lat: 39.7555, lon: -105.2211, maxRadiusMiles: 60 },
+  { name: 'Aurora', slug: 'aurora', state: 'CO', lat: 39.7294, lon: -104.8319, maxRadiusMiles: 60 }
+];
+
+function distMiles(lat1, lon1, lat2, lon2) {
+  const R = 3958.8;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function checkCoverage(lat, lng) {
+  const distances = SUPPORTED_MARKETS.map(m => ({
+    market: m,
+    distanceMiles: distMiles(lat, lng, m.lat, m.lon)
+  })).sort((a, b) => a.distanceMiles - b.distanceMiles);
+
+  const nearest = distances[0];
+  const isSupported = nearest.distanceMiles <= 60;
+
+  return {
+    isSupported,
+    nearestMarket: nearest.market.name,
+    distanceToNearestMarketMiles: Math.round(nearest.distanceMiles),
+    supportedMarkets: SUPPORTED_MARKETS.map(m => ({ name: m.name, slug: m.slug, state: m.state, lat: m.lat, lon: m.lon }))
+  };
+}
+
+async function resolveLocationName(lat, lng, fallbackName) {
+  if (fallbackName && fallbackName !== 'Your Location' && fallbackName !== 'Nearby' && fallbackName !== 'Denver') {
+    return fallbackName;
+  }
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1200);
+    const p = await fetch(`https://api.weather.gov/points/${lat.toFixed(4)},${lng.toFixed(4)}`, {
+      headers: { 'User-Agent': 'Brinkberry/1.0 (https://brinkberry.com)' },
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (p.ok) {
+      const data = await p.json();
+      const city = data.properties?.relativeLocation?.properties?.city;
+      const state = data.properties?.relativeLocation?.properties?.state;
+      if (city && state) return `${city}, ${state}`;
+      if (city) return city;
+    }
+  } catch (_) {}
+  return fallbackName || 'Your Location';
+}
+
 function score(e, mode) {
   const mins = Math.max(0, (new Date(e.start_time) - Date.now()) / 60000);
   const d = Number(e.distance_miles);
@@ -226,13 +283,19 @@ module.exports = async (req, res) => {
       };
     });
 
+    const locationParam = u.searchParams.get('city') || u.searchParams.get('locationName') || '';
+    const coverage = checkCoverage(lat, lng);
+    const resolvedLocationName = await resolveLocationName(lat, lng, locationParam);
+    coverage.locationName = resolvedLocationName;
+
     res.status(200).json({
       events,
       meta: {
         count: events.length,
         window,
         mode: mode || 'all',
-        radiusMiles
+        radiusMiles,
+        coverage
       }
     });
   } catch (e) {
