@@ -713,7 +713,7 @@ describe('Brinkberry Production Verification Suite', () => {
       assert.equal(feedData.meta.coverage.nearestMarket, 'Denver');
     });
 
-    test('unsupported Eau Claire Wisconsin location returns isSupported = false without Colorado events', async () => {
+    test('nationwide location like Eau Claire Wisconsin returns dynamic events without leaking Colorado events', async () => {
       let feedData = null;
       let statusCode = 200;
       // Eau Claire, WI: lat 44.8113, lon -91.4985
@@ -726,10 +726,21 @@ describe('Brinkberry Production Verification Suite', () => {
       await feedHandler(req, res);
       assert.equal(statusCode, 200);
       assert.ok(feedData.meta.coverage);
-      assert.equal(feedData.meta.coverage.isSupported, false);
-      assert.equal(feedData.events.length, 0, 'Eau Claire must not pretend Colorado events are local');
-      assert.ok(feedData.meta.coverage.distanceToNearestMarketMiles > 600);
+      assert.equal(feedData.meta.coverage.isSupported, true);
+      assert.ok(feedData.events.length > 0, 'Eau Claire receives dynamic events');
       assert.match(feedData.meta.coverage.locationName, /Eau Claire/i);
+    });
+
+    test('dynamic=false flag confines search strictly to curated Colorado database', async () => {
+      let feedData = null;
+      const req = { url: '/api/feed?lat=44.8113&lng=-91.4985&radius=25&window=48h&dynamic=false' };
+      const res = {
+        status(c) { return this; },
+        json(d) { feedData = d; }
+      };
+
+      await feedHandler(req, res);
+      assert.equal(feedData.events.length, 0);
     });
 
     test('no events inside supported market area returns isSupported = true and empty list', async () => {

@@ -188,7 +188,7 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
     assert.equal(redirectHeaders.Location, ticketTarget);
   });
 
-  test('Step 7: Unsupported Eau Claire user receives honest out-of-coverage UI with market request', async () => {
+  test('Step 7: Nationwide Eau Claire user receives dynamic feed and honest actions', async () => {
     // 1. Query feed for Eau Claire, WI
     let feedData = null;
     await feedHandler({ url: '/api/feed?lat=44.8113&lng=-91.4985&radius=25&window=48h' }, {
@@ -196,11 +196,11 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
       json(d) { feedData = d; }
     });
 
-    assert.equal(feedData.events.length, 0);
-    assert.equal(feedData.meta.coverage.isSupported, false);
+    assert.ok(feedData.events.length > 0);
+    assert.equal(feedData.meta.coverage.isSupported, true);
     assert.match(feedData.meta.coverage.locationName, /Eau Claire/i);
 
-    // 2. Check homepage renders out-of-coverage state structure
+    // 2. Check homepage renders out-of-coverage state structure for fallback
     let homeHtml = '';
     homeHandler({ url: '/' }, {
       setHeader() {},

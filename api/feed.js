@@ -1,8 +1,8 @@
 const { buildSafeAffiliateUrl } = require('../lib/affiliate');
+const { executeHybridFeed, distMiles } = require('../lib/providers/engine');
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co').replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
 const KEY = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_2ygc158CkPm28E9j6zNdmA_Cvvj5kGr';
-const ORIGIN = process.env.BRINKBERRY_ORIGIN || 'https://brinkberry.com';
 
 async function rpc(name, args) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
@@ -101,27 +101,21 @@ const SUPPORTED_MARKETS = [
   { name: 'Aurora', slug: 'aurora', state: 'CO', lat: 39.7294, lon: -104.8319, maxRadiusMiles: 60 }
 ];
 
-function distMiles(lat1, lon1, lat2, lon2) {
-  const R = 3958.8;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
 function checkCoverage(lat, lng) {
-  const distances = SUPPORTED_MARKETS.map(m => ({
-    market: m,
-    distanceMiles: distMiles(lat, lng, m.lat, m.lon)
-  })).sort((a, b) => a.distanceMiles - b.distanceMiles);
+  const distances = SUPPORTED_MARKETS.map(m => {
+    const d = distMiles(lat, lng, m.lat, m.lon);
+    return {
+      market: m,
+      distanceMiles: d != null ? d : 9999
+    };
+  }).sort((a, b) => a.distanceMiles - b.distanceMiles);
 
-  const nearest = distances[0];
-  const isSupported = nearest.distanceMiles <= 60;
+  const nearest = distances[0] || { market: { name: 'Denver' }, distanceMiles: 0 };
+  const isCuratedSupported = nearest.distanceMiles <= 60;
 
   return {
-    isSupported,
+    isSupported: true, // Universal Dynamic Engine supports all US coordinates
+    isCuratedMarket: isCuratedSupported,
     nearestMarket: nearest.market.name,
     distanceToNearestMarketMiles: Math.round(nearest.distanceMiles),
     supportedMarkets: SUPPORTED_MARKETS.map(m => ({ name: m.name, slug: m.slug, state: m.state, lat: m.lat, lon: m.lon }))
@@ -151,57 +145,8 @@ async function resolveLocationName(lat, lng, fallbackName) {
   return fallbackName || 'Your Location';
 }
 
-function score(e, mode) {
-  const mins = Math.max(0, (new Date(e.start_time) - Date.now()) / 60000);
-  const d = Number(e.distance_miles);
-  let s = 0;
-  s += mins <= 60 ? 30 : mins <= 180 ? 24 : mins <= 360 ? 16 : 8;
-  s += Number.isFinite(d) ? Math.max(0, 25 - (d * 2)) : 0;
-  if (e.price_status === 'free') s += 15;
-  else if (e.price_status === 'cheap') s += 12;
-  else if (e.price_min != null && e.price_min <= 30) s += 8;
-  else s += 3;
-
-  if (mode === 'cheap' && ['free', 'cheap'].includes(e.price_status)) s += 15;
-  if (mode === 'outside' && ['outdoor', 'mixed'].includes(e.indoor_outdoor)) s += 15;
-  if (mode === 'kids' && (e.category_tags || []).some(x => ['kids', 'family'].includes(x))) s += 15;
-  if (mode === 'date' && (e.category_tags || []).some(x => ['music', 'arts', 'food', 'comedy'].includes(x))) s += 12;
-  return s;
-}
-
-function diversify(rows) {
-  const out = [];
-  const counts = {};
-  for (const e of rows) {
-    const c = e.category_tags?.[0] || 'other';
-    const pen = (counts[c] || 0) * 8;
-    e._rank = e._score - pen;
-    let i = out.findIndex(x => x._rank < e._rank);
-    if (i < 0) out.push(e);
-    else out.splice(i, 0, e);
-    counts[c] = (counts[c] || 0) + 1;
-  }
-  return out;
-}
-
-function timeCue(start, window, mins) {
-  if (mins >= 0 && mins <= 240) {
-    return mins < 60 ? `Starts in ${mins} min` : `Starts in ${Math.round(mins / 60)} hr`;
-  }
-  const t = new Date(start).toLocaleTimeString('en-US', {
-    timeZone: 'America/Denver',
-    hour: 'numeric',
-    minute: '2-digit'
-  });
-  if (window === 'tonight') return `Tonight at ${t}`;
-  if (window === 'tomorrow') return `Tomorrow at ${t}`;
-  if (window === 'weekend' || window === '48h' || window === 'next-48h') {
-    return `Next 48h · ${new Date(start).toLocaleDateString('en-US', { timeZone: 'America/Denver', weekday: 'short' })} ${t}`;
-  }
-  return t;
-}
-
 module.exports = async (req, res) => {
+  const overallStart = Date.now();
   try {
     const u = new URL(req.url, 'https://brinkberry.local');
     const lat = Number(u.searchParams.get('lat'));
@@ -210,77 +155,45 @@ module.exports = async (req, res) => {
     const mode = u.searchParams.get('mode') || '';
     const radiusParam = Number(u.searchParams.get('radius')) || 25;
     const radiusMiles = Math.min(100, Math.max(1, radiusParam));
+    const dynamicParam = u.searchParams.get('dynamic');
+    const enableDynamic = dynamicParam !== 'false' && dynamicParam !== '0';
 
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       return res.status(400).json({ error: 'Location required' });
     }
 
     const [a, b] = bounds(window);
-    const raw = await rpc('bb_get_feed_events_v2', {
-      p_user_lat: lat,
-      p_user_lng: lng,
-      p_radius_miles: radiusMiles,
-      p_window_start: a.toISOString(),
-      p_window_end: b.toISOString(),
-      p_mode: mode || null
-    });
 
-    const nowMs = Date.now();
-    const max48Ms = nowMs + 48 * 3600e3;
-    const filtered = (raw || []).filter(e => {
-      const t = new Date(e.start_time).getTime();
-      return t >= nowMs && t <= max48Ms;
-    });
+    // 1. Fetch curated database events from Supabase RPC
+    let rawCurated = [];
+    let curatedMs = 0;
+    const curatedStart = Date.now();
+    try {
+      rawCurated = await rpc('bb_get_feed_events_v2', {
+        p_user_lat: lat,
+        p_user_lng: lng,
+        p_radius_miles: radiusMiles,
+        p_window_start: a.toISOString(),
+        p_window_end: b.toISOString(),
+        p_mode: mode || null
+      });
+      curatedMs = Date.now() - curatedStart;
+    } catch (dbErr) {
+      console.warn('[Feed] Curated Supabase query failed:', dbErr.message);
+      curatedMs = Date.now() - curatedStart;
+    }
 
-    const rows = filtered
-      .map(e => ({ ...e, _score: score(e, mode) }))
-      .sort((a, b) => b._score - a._score || new Date(a.start_time) - new Date(b.start_time));
-    const ranked = diversify(rows);
-
-    const events = ranked.map(e => {
-      const d = e.distance_miles == null ? null : Number(e.distance_miles);
-      const mins = Math.round((new Date(e.start_time) - Date.now()) / 60000);
-      const why = [timeCue(e.start_time, window, mins)];
-
-      if (e.price_status === 'free') why.push('Free');
-      else if (e.price_status === 'cheap' || (e.price_min != null && e.price_min <= 20)) {
-        why.push(e.price_min != null ? `From $${e.price_min}` : 'Cheap');
-      }
-      if (d != null) why.push(`${d.toFixed(1)} mi`);
-      if (why.length < 3 && e.indoor_outdoor === 'outdoor') why.push('Outside');
-
-      const safeTicketUrl = buildSafeAffiliateUrl(e.source || 'custom', e.canonical_url, e.id);
-
-      return {
-        id: e.id,
-        title: e.title,
-        start: e.start_time,
-        end: e.end_time,
-        venue: e.venue_name,
-        city: e.city,
-        neighborhood: e.neighborhood || null,
-        category: e.category_tags?.[0] || 'other',
-        categories: e.category_tags || [],
-        vibeLabels: e.vibe_labels || [],
-        ageRestriction: e.age_restriction || null,
-        indoorOutdoor: e.indoor_outdoor || 'unknown',
-        priceStatus: e.price_status,
-        priceLow: e.price_min,
-        priceHigh: e.price_max,
-        priceDisplay: e.price_status === 'free' ? 'Free' : (e.price_display || 'Details →'),
-        desc: e.description || '',
-        ticketUrl: safeTicketUrl,
-        image: e.canonical_image_url,
-        distance_miles: d,
-        distanceMiles: d,
-        lat: e.venue_latitude,
-        lon: e.venue_longitude,
-        shareUrl: `${ORIGIN}/event/${e.id}`,
-        whyThis: why.slice(0, 3),
-        onTheBrink: mins >= 0 && mins <= 60,
-        routeEligible: mins >= 0 && mins <= 120,
-        sourceCount: Number(e.source_count || 0)
-      };
+    // 2. Execute Hybrid Dynamic Engine (Curated + Ticketmaster + SeatGeek)
+    const hybridResult = await executeHybridFeed({
+      lat,
+      lon: lng,
+      radiusMiles,
+      window,
+      windowStart: a.toISOString(),
+      windowEnd: b.toISOString(),
+      mode,
+      curatedEvents: rawCurated || [],
+      enableDynamic
     });
 
     const locationParam = u.searchParams.get('city') || u.searchParams.get('locationName') || '';
@@ -288,18 +201,26 @@ module.exports = async (req, res) => {
     const resolvedLocationName = await resolveLocationName(lat, lng, locationParam);
     coverage.locationName = resolvedLocationName;
 
+    const totalMs = Date.now() - overallStart;
+
     res.status(200).json({
-      events,
+      events: hybridResult.events,
       meta: {
-        count: events.length,
+        count: hybridResult.events.length,
         window,
         mode: mode || 'all',
         radiusMiles,
-        coverage
+        coverage,
+        hybrid: hybridResult.hybrid,
+        latency: {
+          totalMs,
+          curatedMs,
+          dynamicMs: hybridResult.latency.dynamicMs
+        }
       }
     });
   } catch (e) {
-    console.error(e);
+    console.error('[Feed Handler Error]:', e);
     res.status(500).json({ error: String(e.message || e) });
   }
 };
