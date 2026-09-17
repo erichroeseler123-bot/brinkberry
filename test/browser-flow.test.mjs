@@ -188,19 +188,20 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
     assert.equal(redirectHeaders.Location, ticketTarget);
   });
 
-  test('Step 7: Nationwide Eau Claire user receives dynamic feed and honest actions', async () => {
-    // 1. Query feed for Eau Claire, WI
+  test('Step 7: Eau Claire user flow (out-of-coverage prompt without credentials, dynamic feed when enabled)', async () => {
+    // 1. Query feed for Eau Claire, WI without credentials (default)
     let feedData = null;
     await feedHandler({ url: '/api/feed?lat=44.8113&lng=-91.4985&radius=25&window=48h' }, {
       status() { return this; },
       json(d) { feedData = d; }
     });
 
-    assert.ok(feedData.events.length > 0);
-    assert.equal(feedData.meta.coverage.isSupported, true);
+    assert.equal(feedData.events.length, 0);
+    assert.equal(feedData.meta.coverage.isSupported, false);
     assert.match(feedData.meta.coverage.locationName, /Eau Claire/i);
+    assert.ok(feedData.meta.providers.ticketmaster.reason);
 
-    // 2. Check homepage renders out-of-coverage state structure for fallback
+    // 2. Check homepage renders out-of-coverage state structure with market request
     let homeHtml = '';
     homeHandler({ url: '/' }, {
       setHeader() {},
@@ -211,6 +212,15 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
     assert.match(homeHtml, /Want Brinkberry in/);
     assert.match(homeHtml, /requestMarketForm/);
     assert.match(homeHtml, /submitMarketRequest/);
+
+    // 3. Query with dynamic mock mode enabled
+    let mockData = null;
+    await feedHandler({ url: '/api/feed?lat=44.8113&lng=-91.4985&radius=25&window=48h&mock=true' }, {
+      status() { return this; },
+      json(d) { mockData = d; }
+    });
+    assert.ok(mockData.events.length > 0);
+    assert.equal(mockData.meta.coverage.isSupported, true);
   });
 
   test('Step 8: Geolocation denied fallback maintains usable UI and prompts market selection', async () => {

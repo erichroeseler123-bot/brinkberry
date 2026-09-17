@@ -101,7 +101,7 @@ const SUPPORTED_MARKETS = [
   { name: 'Aurora', slug: 'aurora', state: 'CO', lat: 39.7294, lon: -104.8319, maxRadiusMiles: 60 }
 ];
 
-function checkCoverage(lat, lng) {
+function checkCoverage(lat, lng, hybridResult) {
   const distances = SUPPORTED_MARKETS.map(m => {
     const d = distMiles(lat, lng, m.lat, m.lon);
     return {
@@ -111,11 +111,18 @@ function checkCoverage(lat, lng) {
   }).sort((a, b) => a.distanceMiles - b.distanceMiles);
 
   const nearest = distances[0] || { market: { name: 'Denver' }, distanceMiles: 0 };
-  const isCuratedSupported = nearest.distanceMiles <= 60;
+  const isCuratedMarket = nearest.distanceMiles <= 60;
+  const isDynamicActive = Boolean(hybridResult?.hybrid?.dynamicActive);
+  const isDynamicConfigured = Boolean(hybridResult?.hybrid?.dynamicConfigured);
+
+  // A location is supported if it is within curated Front Range OR if dynamic providers are active
+  const isSupported = isCuratedMarket || isDynamicActive;
 
   return {
-    isSupported: true, // Universal Dynamic Engine supports all US coordinates
-    isCuratedMarket: isCuratedSupported,
+    isSupported,
+    isCuratedMarket,
+    dynamicProvidersConfigured: isDynamicConfigured,
+    dynamicProvidersActive: isDynamicActive,
     nearestMarket: nearest.market.name,
     distanceToNearestMarketMiles: Math.round(nearest.distanceMiles),
     supportedMarkets: SUPPORTED_MARKETS.map(m => ({ name: m.name, slug: m.slug, state: m.state, lat: m.lat, lon: m.lon }))
@@ -157,6 +164,7 @@ module.exports = async (req, res) => {
     const radiusMiles = Math.min(100, Math.max(1, radiusParam));
     const dynamicParam = u.searchParams.get('dynamic');
     const enableDynamic = dynamicParam !== 'false' && dynamicParam !== '0';
+    const useTestMock = u.searchParams.get('mock') === 'true';
 
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       return res.status(400).json({ error: 'Location required' });
@@ -193,11 +201,12 @@ module.exports = async (req, res) => {
       windowEnd: b.toISOString(),
       mode,
       curatedEvents: rawCurated || [],
-      enableDynamic
+      enableDynamic,
+      useTestMock
     });
 
     const locationParam = u.searchParams.get('city') || u.searchParams.get('locationName') || '';
-    const coverage = checkCoverage(lat, lng);
+    const coverage = checkCoverage(lat, lng, hybridResult);
     const resolvedLocationName = await resolveLocationName(lat, lng, locationParam);
     coverage.locationName = resolvedLocationName;
 
@@ -211,6 +220,7 @@ module.exports = async (req, res) => {
         mode: mode || 'all',
         radiusMiles,
         coverage,
+        providers: hybridResult.providers,
         hybrid: hybridResult.hybrid,
         latency: {
           totalMs,

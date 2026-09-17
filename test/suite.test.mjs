@@ -713,7 +713,7 @@ describe('Brinkberry Production Verification Suite', () => {
       assert.equal(feedData.meta.coverage.nearestMarket, 'Denver');
     });
 
-    test('nationwide location like Eau Claire Wisconsin returns dynamic events without leaking Colorado events', async () => {
+    test('unconfigured dynamic providers return isSupported = false and clear diagnostic reason', async () => {
       let feedData = null;
       let statusCode = 200;
       // Eau Claire, WI: lat 44.8113, lon -91.4985
@@ -726,8 +726,26 @@ describe('Brinkberry Production Verification Suite', () => {
       await feedHandler(req, res);
       assert.equal(statusCode, 200);
       assert.ok(feedData.meta.coverage);
+      assert.equal(feedData.meta.coverage.isSupported, false);
+      assert.equal(feedData.events.length, 0, 'Unconfigured dynamic providers must not invent fake events');
+      assert.ok(feedData.meta.providers.ticketmaster.reason);
+      assert.match(feedData.meta.coverage.locationName, /Eau Claire/i);
+    });
+
+    test('mock/configured nationwide location returns dynamic events without leaking Colorado events', async () => {
+      let feedData = null;
+      let statusCode = 200;
+      const req = { url: '/api/feed?lat=44.8113&lng=-91.4985&radius=25&window=48h&mock=true' };
+      const res = {
+        status(c) { statusCode = c; return this; },
+        json(d) { feedData = d; }
+      };
+
+      await feedHandler(req, res);
+      assert.equal(statusCode, 200);
+      assert.ok(feedData.meta.coverage);
       assert.equal(feedData.meta.coverage.isSupported, true);
-      assert.ok(feedData.events.length > 0, 'Eau Claire receives dynamic events');
+      assert.ok(feedData.events.length > 0, 'Eau Claire receives mock dynamic events');
       assert.match(feedData.meta.coverage.locationName, /Eau Claire/i);
     });
 

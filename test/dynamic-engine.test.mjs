@@ -278,7 +278,7 @@ describe('Hybrid Dynamic Event Engine Suite', () => {
       assert.ok(result.latency.totalMs >= 0);
     });
 
-    test('Eau Claire dynamic query returns live regional events and marks coverage supported', async () => {
+    test('unconfigured dynamic providers return clear diagnostic reason and mark distant city unsupported', async () => {
       let feedData = null;
       let statusCode = 200;
       const req = { url: '/api/feed?lat=44.8113&lng=-91.4985&radius=25&window=48h' };
@@ -290,8 +290,30 @@ describe('Hybrid Dynamic Event Engine Suite', () => {
       await feedHandler(req, res);
       assert.equal(statusCode, 200);
       assert.ok(feedData.meta.coverage);
+      assert.equal(feedData.meta.coverage.isSupported, false);
+      assert.equal(feedData.meta.coverage.isCuratedMarket, false);
+      assert.equal(feedData.events.length, 0);
+      assert.ok(feedData.meta.providers);
+      assert.equal(feedData.meta.providers.ticketmaster.status, 'unconfigured');
+      assert.equal(feedData.meta.providers.seatgeek.status, 'unconfigured');
+      assert.match(feedData.meta.providers.ticketmaster.reason, /TICKETMASTER_API_KEY/);
+      assert.match(feedData.meta.providers.seatgeek.reason, /SEATGEEK_CLIENT_ID/);
+    });
+
+    test('mock/configured dynamic providers return regional events and activate coverage', async () => {
+      let feedData = null;
+      let statusCode = 200;
+      const req = { url: '/api/feed?lat=44.8113&lng=-91.4985&radius=25&window=48h&mock=true' };
+      const res = {
+        status(c) { statusCode = c; return this; },
+        json(d) { feedData = d; }
+      };
+
+      await feedHandler(req, res);
+      assert.equal(statusCode, 200);
+      assert.ok(feedData.meta.coverage);
       assert.equal(feedData.meta.coverage.isSupported, true);
-      assert.ok(feedData.events.length > 0, 'Eau Claire should return dynamic events');
+      assert.ok(feedData.events.length > 0, 'Eau Claire should return dynamic events in mock mode');
       assert.match(feedData.meta.coverage.locationName, /Eau Claire/i);
 
       // Verify no Colorado events falsely leaked into Eau Claire
@@ -303,7 +325,7 @@ describe('Hybrid Dynamic Event Engine Suite', () => {
       }
     });
 
-    test('Denver query returns hybrid feed combining curated and dynamic events', async () => {
+    test('Denver query returns curated feed and marks isCuratedMarket = true', async () => {
       let feedData = null;
       let statusCode = 200;
       const req = { url: '/api/feed?lat=39.7392&lng=-104.9903&radius=25&window=48h' };
@@ -315,12 +337,13 @@ describe('Hybrid Dynamic Event Engine Suite', () => {
       await feedHandler(req, res);
       assert.equal(statusCode, 200);
       assert.equal(feedData.meta.coverage.isSupported, true);
+      assert.equal(feedData.meta.coverage.isCuratedMarket, true);
       assert.ok(feedData.events.length > 0);
       assert.ok(feedData.meta.latency.curatedMs >= 0);
       assert.ok(feedData.meta.latency.dynamicMs >= 0);
     });
 
-    test('remote zero-event coordinate returns clean empty list with isSupported = true', async () => {
+    test('remote zero-event coordinate returns clean empty list', async () => {
       let feedData = null;
       // Remote point in Atlantic Ocean
       const req = { url: '/api/feed?lat=25.0000&lng=-45.0000&radius=10&window=now' };
@@ -330,7 +353,7 @@ describe('Hybrid Dynamic Event Engine Suite', () => {
       };
 
       await feedHandler(req, res);
-      assert.equal(feedData.meta.coverage.isSupported, true);
+      assert.equal(feedData.meta.coverage.isSupported, false);
       assert.equal(feedData.events.length, 0);
     });
   });
