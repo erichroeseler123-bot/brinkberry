@@ -302,7 +302,7 @@ module.exports = (req, res) => {
         const modeText = S.mode && modeLabels[S.mode] ? ' for "' + modeLabels[S.mode] + '"' : '';
         $('feed').innerHTML = \`
           <div class="empty">
-            <h3>No events matched this exact window\${modeText}</h3>
+            <h3>No qualifying events found within \${S.radius} miles in the next 48 hours\${modeText}</h3>
             <p>We strictly show verified events happening in the next 48 hours. Try expanding your radius or checking a different vibe filter.</p>
             <div class="row" style="justify-content:center; margin-top:14px; gap:8px;">
               \${S.mode ? '<button onclick="S.mode=\\'\\'; initControls(); loadFeed();" style="background:#191424; color:#fff">Clear Vibe Filter</button>' : ''}

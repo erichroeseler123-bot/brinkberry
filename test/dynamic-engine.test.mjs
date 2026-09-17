@@ -7,7 +7,7 @@ const { normalizeEvent, normalizeCategory, normalizePrice } = require('../lib/pr
 const { deduplicateEvents, isSameEvent, getFingerprint } = require('../lib/providers/deduplicator.js');
 const { GeoCache } = require('../lib/providers/geo-cache.js');
 const { QuotaTracker, PROVIDER_LIMITS } = require('../lib/providers/quota-tracker.js');
-const { fetchTicketmasterEvents } = require('../lib/providers/ticketmaster.js');
+const { fetchTicketmasterEvents, resetTicketmasterState } = require('../lib/providers/ticketmaster.js');
 const { fetchSeatGeekEvents } = require('../lib/providers/seatgeek.js');
 const { executeHybridFeed, distMiles, scoreEvent } = require('../lib/providers/engine.js');
 const feedHandler = require('../api/feed.js');
@@ -341,6 +341,121 @@ describe('Hybrid Dynamic Event Engine Suite', () => {
       assert.ok(feedData.events.length > 0);
       assert.ok(feedData.meta.latency.curatedMs >= 0);
       assert.ok(feedData.meta.latency.dynamicMs >= 0);
+    });
+
+    test('SeatGeek results populate a city with no curated data', async () => {
+      const mockSeatGeekFetch = async (url) => {
+        if (url.includes('seatgeek')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              events: [
+                {
+                  id: 998877,
+                  title: 'First Avenue Live Show',
+                  datetime_utc: new Date(Date.now() + 8 * 3600e3).toISOString(),
+                  venue: { name: 'First Avenue', city: 'Minneapolis', state: 'MN', location: { lat: 44.9778, lon: -93.2750 } },
+                  type: 'concert',
+                  taxonomies: [{ name: 'music' }],
+                  stats: { lowest_price: 25, highest_price: 50 },
+                  url: 'https://seatgeek.com/first-ave/998877'
+                }
+              ]
+            })
+          };
+        }
+        return { ok: false, status: 404 };
+      };
+
+      const result = await executeHybridFeed({
+        lat: 44.9778,
+        lon: -93.2650,
+        radiusMiles: 25,
+        window: '48h',
+        curatedEvents: [], // No curated data in Minneapolis
+        enableDynamic: true,
+        fetchFn: mockSeatGeekFetch
+      });
+
+      assert.equal(result.events.length, 1);
+      assert.equal(result.events[0].city, 'Minneapolis, MN');
+      assert.equal(result.events[0].venue, 'First Avenue');
+      assert.equal(result.hybrid.curatedCount, 0);
+      assert.equal(result.hybrid.dynamicCount, 1);
+    });
+
+    test('zero results are distinguished from provider failure in telemetry', async () => {
+      const mockEmptyFetch = async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ events: [] })
+      });
+
+      const result = await executeHybridFeed({
+        lat: 44.8113,
+        lon: -91.4985,
+        radiusMiles: 25,
+        window: '48h',
+        curatedEvents: [],
+        enableDynamic: true,
+        fetchFn: mockEmptyFetch
+      });
+
+      assert.equal(result.events.length, 0);
+      assert.equal(result.providers.seatgeek.status, 'ok');
+      assert.equal(result.providers.seatgeek.count, 0);
+      assert.equal(result.providers.seatgeek.reason, null);
+    });
+
+    test('invalid Ticketmaster credentials (401) do not break SeatGeek results', async () => {
+      resetTicketmasterState();
+      const mockMixedFetch = async (url) => {
+        if (url.includes('ticketmaster')) {
+          return {
+            ok: false,
+            status: 401,
+            text: async () => '{"fault":{"faultstring":"Invalid ApiKey"}}'
+          };
+        }
+        if (url.includes('seatgeek')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              events: [
+                {
+                  id: 112244,
+                  title: 'Austin City Limits Nightly Showcase',
+                  datetime_utc: new Date(Date.now() + 5 * 3600e3).toISOString(),
+                  venue: { name: 'Moody Theater', city: 'Austin', state: 'TX', location: { lat: 30.2672, lon: -97.7431 } },
+                  type: 'concert',
+                  taxonomies: [{ name: 'music' }],
+                  stats: { lowest_price: 30, highest_price: 75 },
+                  url: 'https://seatgeek.com/austin/112244'
+                }
+              ]
+            })
+          };
+        }
+        return { ok: false, status: 500 };
+      };
+
+      const result = await executeHybridFeed({
+        lat: 30.2672,
+        lon: -97.7431,
+        radiusMiles: 25,
+        window: '48h',
+        curatedEvents: [],
+        enableDynamic: true,
+        fetchFn: mockMixedFetch
+      });
+
+      assert.equal(result.events.length, 1);
+      assert.equal(result.events[0].title, 'Austin City Limits Nightly Showcase');
+      assert.equal(result.providers.ticketmaster.status, 'inactive');
+      assert.equal(result.providers.seatgeek.status, 'ok');
+      assert.equal(result.providers.seatgeek.count, 1);
     });
 
     test('remote zero-event coordinate returns clean empty list', async () => {
