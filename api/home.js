@@ -85,7 +85,7 @@ module.exports = (req, res) => {
     .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.15s, border-color 0.15s; cursor: pointer; }
     .card:hover { transform: translateY(-2px); border-color: #4a3a66; }
     .card.brink { border-color: var(--accent); }
-    .card-img { height: 145px; background: linear-gradient(135deg, #24142d, #4a1832); background-size: cover; background-position: center; position: relative; display: flex; align-items: flex-end; padding: 10px; }
+    .card-img { height: 145px; background: linear-gradient(135deg, #24142d, #4a1832); position: relative; overflow: hidden; display: flex; align-items: flex-end; padding: 10px; }
     .card-badge { background: rgba(8, 6, 16, 0.85); backdrop-filter: blur(4px); border: 1px solid #362a4d; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; color: #fff; }
     .card-body { padding: 16px; flex: 1; display: flex; flex-direction: column; }
     .card-title { font-size: 18px; font-weight: 800; line-height: 1.25; margin: 4px 0 8px; color: #fff; }
@@ -365,8 +365,8 @@ module.exports = (req, res) => {
 
       $('feed').innerHTML = '<div class="grid">' + S.events.map(e => \`
         <article class="card \${e.onTheBrink ? 'brink' : ''}" data-id="\${e.id}">
-          <div class="card-img" style="\${e.image ? 'background-image:url(\'' + encodeURI(e.image).replace(/'/g, '%27') + '\');' : ''}">
-            \${e.image ? '<img src="' + esc(e.image) + '" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;" loading="lazy" onerror="this.style.display=\\'none\\'">' : ''}
+          <div class="card-img">
+            \${e.image ? '<img src="' + esc(e.image) + '" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;" loading="lazy">' : ''}
             <span class="card-badge" style="position:relative; z-index:1;">\${esc(e.category)}</span>
           </div>
           <div class="card-body">
