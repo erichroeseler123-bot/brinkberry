@@ -365,8 +365,9 @@ module.exports = (req, res) => {
 
       $('feed').innerHTML = '<div class="grid">' + S.events.map(e => \`
         <article class="card \${e.onTheBrink ? 'brink' : ''}" data-id="\${e.id}">
-          <div class="card-img" style="\${e.image ? 'background-image:url(' + JSON.stringify(e.image) + ')' : ''}">
-            <span class="card-badge">\${esc(e.category)}</span>
+          <div class="card-img" style="\${e.image ? 'background-image:url(\'' + encodeURI(e.image).replace(/'/g, '%27') + '\');' : ''}">
+            \${e.image ? '<img src="' + esc(e.image) + '" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;" loading="lazy" onerror="this.style.display=\\'none\\'">' : ''}
+            <span class="card-badge" style="position:relative; z-index:1;">\${esc(e.category)}</span>
           </div>
           <div class="card-body">
             \${e.onTheBrink ? '<div class="brinktag">Starts Soon</div>' : ''}
@@ -475,6 +476,7 @@ module.exports = (req, res) => {
       S.currentDetailEvent = e;
       const clickUrl = \`/api/click?url=\${encodeURIComponent(e.ticketUrl)}&eventId=\${encodeURIComponent(e.id)}&surface=detail_modal\`;
       $('detailBody').innerHTML = \`
+        \${e.image ? '<img src="' + esc(e.image) + '" alt="" style="width:100%; max-height:220px; object-fit:cover; border-radius:12px; margin-bottom:14px;">' : ''}
         <h2 style="margin-top:0">\${esc(e.title)}</h2>
         <p style="color:var(--text-dim)">📍 \${esc(e.venue)}\${e.city ? ', ' + esc(e.city) : ''} \${e.distanceMiles != null ? ' · ' + e.distanceMiles.toFixed(1) + ' mi' : ''}</p>
         <p style="color:var(--text-dim)">⏰ \${esc(fmtTime(e.start))}</p>

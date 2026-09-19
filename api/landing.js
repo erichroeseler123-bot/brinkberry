@@ -420,7 +420,9 @@ module.exports = async (req, res) => {
             return `
               <article class="card">
                 <a href="/event/${encodeURIComponent(e.id)}" style="text-decoration:none; color:inherit">
-                  <div class="card-img" style="${e.canonical_image_url ? `background-image:url(${JSON.stringify(e.canonical_image_url)})` : ''}"></div>
+                  <div class="card-img" style="${e.canonical_image_url ? `background-image:url('${encodeURI(e.canonical_image_url).replace(/'/g, '%27')}')` : ''}">
+                    ${e.canonical_image_url ? `<img src="${esc(e.canonical_image_url)}" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;" loading="lazy" onerror="this.style.display='none'">` : ''}
+                  </div>
                   <div class="card-body">
                     <div class="card-meta">${esc(e.category_tags?.[0] || e.category || 'event')}${e.neighborhood ? ` · ${esc(e.neighborhood)}` : ''}</div>
                     <div class="card-title">${esc(e.title)}</div>
