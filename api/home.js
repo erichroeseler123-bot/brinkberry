@@ -1,5 +1,21 @@
 module.exports = (req, res) => {
   res.setHeader('content-type', 'text/html; charset=utf-8');
+
+  // Extract Vercel Edge IP Geolocation Headers
+  const ipCity = req?.headers?.['x-vercel-ip-city'] ? decodeURIComponent(req.headers['x-vercel-ip-city']) : null;
+  const ipRegion = req?.headers?.['x-vercel-ip-country-region'] || '';
+  const rawLat = parseFloat(req?.headers?.['x-vercel-ip-latitude']);
+  const rawLon = parseFloat(req?.headers?.['x-vercel-ip-longitude']);
+  const ipLat = Number.isFinite(rawLat) ? rawLat : null;
+  const ipLon = Number.isFinite(rawLon) ? rawLon : null;
+
+  const serverGeo = (ipCity && ipLat !== null && ipLon !== null) ? {
+    city: ipCity,
+    locationName: ipRegion ? `${ipCity}, ${ipRegion}` : ipCity,
+    lat: ipLat,
+    lon: ipLon
+  } : null;
+
   res.end(`<!doctype html>
 <html lang="en">
 <head>
@@ -121,12 +137,21 @@ module.exports = (req, res) => {
     <!-- Filters Panel -->
     <div class="panel">
       <!-- Location row -->
-      <div class="row" style="margin-bottom: 12px;">
+      <div class="row" style="margin-bottom: 12px;" id="locationRow">
         <span class="section-label">Location</span>
-        <button id="presetDenver" class="active">Denver, CO</button>
+        <span id="customLocWrap"></span>
+        <button id="presetDenver">Denver, CO</button>
         <button id="presetBoulder">Boulder</button>
         <button id="presetGolden">Golden</button>
         <button id="presetAurora">Aurora</button>
+        <div id="citySearchContainer" style="display:inline-flex; align-items:center; gap:6px;">
+          <button id="citySearchToggle" style="background:#191424; border:1px dashed var(--card-border); color:var(--text-dim); font-size:13px; font-weight:600; padding:6px 12px;">🔍 Other City</button>
+          <div id="citySearchForm" style="display:none; align-items:center; gap:6px;">
+            <input type="text" id="citySearchInput" placeholder="City or zip code..." style="background:#191424; border:1px solid #403458; color:#fff; padding:6px 12px; border-radius:999px; font-size:13px; outline:none; width:150px;">
+            <button id="citySearchGo" style="background:var(--accent); color:#fff; border:0; padding:6px 12px; font-size:13px; font-weight:700;">Go</button>
+            <button id="citySearchClose" style="background:transparent; border:0; color:var(--text-dim); cursor:pointer; font-size:16px; padding:2px 6px;">✕</button>
+          </div>
+        </div>
       </div>
 
       <!-- Radius row -->
@@ -219,11 +244,35 @@ module.exports = (req, res) => {
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script>
-    const S = {
-      lat: 39.7392,
-      lon: -104.9903,
+    const SERVER_GEO = ${JSON.stringify(serverGeo)};
+    const DEFAULT_DENVER = {
       city: 'Denver',
       locationName: 'Denver, CO',
+      lat: 39.7392,
+      lon: -104.9903
+    };
+
+    function getInitialLocation() {
+      try {
+        const saved = localStorage.getItem('bb_saved_loc');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.city && Number.isFinite(parsed.lat) && Number.isFinite(parsed.lon)) {
+            return parsed;
+          }
+        }
+      } catch (_) {}
+      if (SERVER_GEO) return SERVER_GEO;
+      return DEFAULT_DENVER;
+    }
+
+    const initLoc = getInitialLocation();
+
+    const S = {
+      lat: initLoc.lat,
+      lon: initLoc.lon,
+      city: initLoc.city,
+      locationName: initLoc.locationName || initLoc.city,
       radius: 25,
       window: 'tonight',
       mode: '',
@@ -373,6 +422,11 @@ module.exports = (req, res) => {
         S.coverage = data.meta?.coverage || { isSupported: true };
         if (data.meta?.coverage?.locationName) {
           S.locationName = data.meta.coverage.locationName;
+          if (S.city === 'Your Location') {
+            S.city = data.meta.coverage.locationName;
+            const chip = $('customLocChip');
+            if (chip) chip.textContent = '📍 ' + S.locationName;
+          }
         }
 
         if (S.coverage && S.coverage.isSupported === false) {
@@ -464,29 +518,141 @@ module.exports = (req, res) => {
     $('viewFeed').onclick = () => { $('viewFeed').classList.add('active'); $('viewRadar').classList.remove('active'); $('feed').style.display = 'block'; $('radar').style.display = 'none'; };
     $('viewRadar').onclick = () => { $('viewRadar').classList.add('active'); $('viewFeed').classList.remove('active'); $('feed').style.display = 'none'; $('radar').style.display = 'block'; renderRadar(); };
 
-    // Preset handlers
+    function applyLocation(loc, shouldSave = true) {
+      S.lat = loc.lat;
+      S.lon = loc.lon;
+      S.city = loc.city;
+      S.locationName = loc.locationName || loc.city;
+
+      // Unselect standard preset buttons
+      ['presetDenver', 'presetBoulder', 'presetGolden', 'presetAurora'].forEach(id => {
+        const b = $(id);
+        if (b) b.classList.remove('active');
+      });
+
+      const wrap = $('customLocWrap');
+      const standardMap = {
+        'Denver': 'presetDenver',
+        'Boulder': 'presetBoulder',
+        'Golden': 'presetGolden',
+        'Aurora': 'presetAurora'
+      };
+
+      if (standardMap[loc.city]) {
+        if (wrap) wrap.innerHTML = '';
+        const standardBtn = $(standardMap[loc.city]);
+        if (standardBtn) standardBtn.classList.add('active');
+      } else {
+        if (wrap) {
+          wrap.innerHTML = '<button id="customLocChip" class="active">📍 ' + esc(S.locationName) + '</button>';
+          $('customLocChip').onclick = () => applyLocation(loc, false);
+        }
+      }
+
+      if (shouldSave) {
+        try {
+          localStorage.setItem('bb_saved_loc', JSON.stringify({
+            city: S.city,
+            locationName: S.locationName,
+            lat: S.lat,
+            lon: S.lon
+          }));
+        } catch (_) {}
+      }
+
+      loadFeed();
+    }
+
     const setPreset = (name, lat, lon) => {
-      ['presetDenver', 'presetBoulder', 'presetGolden', 'presetAurora'].forEach(id => $(id)?.classList.remove('active'));
-      S.city = name; S.locationName = name; S.lat = lat; S.lon = lon; loadFeed();
+      applyLocation({ city: name, locationName: name, lat, lon }, true);
     };
-    $('presetDenver').onclick = e => { setPreset('Denver', 39.7392, -104.9903); e.target.classList.add('active'); };
-    $('presetBoulder').onclick = e => { setPreset('Boulder', 40.0150, -105.2705); e.target.classList.add('active'); };
-    $('presetGolden').onclick = e => { setPreset('Golden', 39.7555, -105.2211); e.target.classList.add('active'); };
-    $('presetAurora').onclick = e => { setPreset('Aurora', 39.7294, -104.8319); e.target.classList.add('active'); };
+
+    $('presetDenver').onclick = () => applyLocation(DEFAULT_DENVER, true);
+    $('presetBoulder').onclick = () => applyLocation({ city: 'Boulder', locationName: 'Boulder, CO', lat: 40.0150, lon: -105.2705 }, true);
+    $('presetGolden').onclick = () => applyLocation({ city: 'Golden', locationName: 'Golden, CO', lat: 39.7555, lon: -105.2211 }, true);
+    $('presetAurora').onclick = () => applyLocation({ city: 'Aurora', locationName: 'Aurora, CO', lat: 39.7294, lon: -104.8319 }, true);
 
     $('locBtn').onclick = () => {
       $('status').textContent = 'Detecting your location…';
-      ['presetDenver', 'presetBoulder', 'presetGolden', 'presetAurora'].forEach(id => $(id)?.classList.remove('active'));
       if (!navigator.geolocation) {
         $('status').innerHTML = '⚠️ Geolocation is not supported by your browser. Please choose a supported market below:';
         return;
       }
-      navigator.geolocation.getCurrentPosition(p => {
-        setPreset('Your Location', p.coords.latitude, p.coords.longitude);
+      $('locBtn').textContent = '⏳ Locating…';
+      navigator.geolocation.getCurrentPosition(async p => {
+        $('locBtn').textContent = '📍 Use my location';
+        const lat = p.coords.latitude;
+        const lon = p.coords.longitude;
+        let locName = 'Your Location';
+
+        try {
+          const r = await fetch('https://api.weather.gov/points/' + lat.toFixed(4) + ',' + lon.toFixed(4), {
+            headers: { 'Accept': 'application/geo+json' }
+          });
+          if (r.ok) {
+            const data = await r.json();
+            const city = data.properties?.relativeLocation?.properties?.city;
+            const state = data.properties?.relativeLocation?.properties?.state;
+            if (city && state) locName = city + ', ' + state;
+            else if (city) locName = city;
+          }
+        } catch (_) {}
+
+        applyLocation({
+          city: locName,
+          locationName: locName,
+          lat,
+          lon
+        }, true);
       }, () => {
+        $('locBtn').textContent = '📍 Use my location';
         $('status').innerHTML = '⚠️ Location access was not granted. Please select one of our supported Colorado markets below:';
       }, { timeout: 8000 });
     };
+
+    // Other City Search
+    $('citySearchToggle').onclick = () => {
+      $('citySearchToggle').style.display = 'none';
+      $('citySearchForm').style.display = 'inline-flex';
+      $('citySearchInput').focus();
+    };
+    $('citySearchClose').onclick = () => {
+      $('citySearchForm').style.display = 'none';
+      $('citySearchToggle').style.display = 'inline-flex';
+    };
+    async function executeCitySearch() {
+      const q = $('citySearchInput').value.trim();
+      if (!q) return;
+      $('status').textContent = 'Looking up "' + q + '"…';
+      try {
+        const res = await fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=1&addressdetails=1');
+        if (!res.ok) throw new Error('Search service unavailable');
+        const list = await res.json();
+        if (!list || !list.length) throw new Error('Location not found');
+        const item = list[0];
+        const lat = parseFloat(item.lat);
+        const lon = parseFloat(item.lon);
+        const addr = item.address || {};
+        const cityName = addr.city || addr.town || addr.village || addr.municipality || item.name;
+        const stateName = addr.state_code || addr.state || '';
+        const displayName = stateName ? (cityName + ', ' + stateName) : (cityName || item.display_name.split(',')[0]);
+
+        $('citySearchForm').style.display = 'none';
+        $('citySearchToggle').style.display = 'inline-flex';
+        $('citySearchInput').value = '';
+
+        applyLocation({
+          city: cityName || displayName,
+          locationName: displayName,
+          lat,
+          lon
+        }, true);
+      } catch (err) {
+        $('status').textContent = 'Could not find "' + q + '". Please try a city name or 5-digit zip code.';
+      }
+    }
+    $('citySearchGo').onclick = executeCitySearch;
+    $('citySearchInput').onkeydown = e => { if (e.key === 'Enter') executeCitySearch(); };
 
     $('shareModalBtn').onclick = async () => {
       const e = S.currentDetailEvent;
@@ -503,7 +669,7 @@ module.exports = (req, res) => {
     $('closeDetail').onclick = () => $('detailDlg').close();
 
     initControls();
-    loadFeed();
+    applyLocation(initLoc, false);
   </script>
 </body>
 </html>`);
