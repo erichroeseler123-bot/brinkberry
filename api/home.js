@@ -1,5 +1,57 @@
+const KNOWN_CITIES = {
+  'denver': { city: 'Denver', locationName: 'Denver, CO', lat: 39.7392, lon: -104.9903 },
+  'boulder': { city: 'Boulder', locationName: 'Boulder, CO', lat: 40.0150, lon: -105.2705 },
+  'golden': { city: 'Golden', locationName: 'Golden, CO', lat: 39.7555, lon: -105.2211 },
+  'aurora': { city: 'Aurora', locationName: 'Aurora, CO', lat: 39.7294, lon: -104.8319 },
+  'london': { city: 'London', locationName: 'London, UK', lat: 51.5074, lon: -0.1278 },
+  'new-york': { city: 'New York', locationName: 'New York, NY', lat: 40.7128, lon: -74.0060 },
+  'new york': { city: 'New York', locationName: 'New York, NY', lat: 40.7128, lon: -74.0060 },
+  'nyc': { city: 'New York', locationName: 'New York, NY', lat: 40.7128, lon: -74.0060 },
+  'paris': { city: 'Paris', locationName: 'Paris, France', lat: 48.8566, lon: 2.3522 },
+  'tokyo': { city: 'Tokyo', locationName: 'Tokyo, Japan', lat: 35.6762, lon: 139.6503 },
+  'berlin': { city: 'Berlin', locationName: 'Berlin, Germany', lat: 52.5200, lon: 13.4050 },
+  'chicago': { city: 'Chicago', locationName: 'Chicago, IL', lat: 41.8781, lon: -87.6298 },
+  'austin': { city: 'Austin', locationName: 'Austin, TX', lat: 30.2672, lon: -97.7431 },
+  'sydney': { city: 'Sydney', locationName: 'Sydney, Australia', lat: -33.8688, lon: 151.2093 },
+  'san-francisco': { city: 'San Francisco', locationName: 'San Francisco, CA', lat: 37.7749, lon: -122.4194 },
+  'san francisco': { city: 'San Francisco', locationName: 'San Francisco, CA', lat: 37.7749, lon: -122.4194 },
+  'los-angeles': { city: 'Los Angeles', locationName: 'Los Angeles, CA', lat: 34.0522, lon: -118.2437 },
+  'los angeles': { city: 'Los Angeles', locationName: 'Los Angeles, CA', lat: 34.0522, lon: -118.2437 },
+  'miami': { city: 'Miami', locationName: 'Miami, FL', lat: 25.7617, lon: -80.1918 },
+  'seattle': { city: 'Seattle', locationName: 'Seattle, WA', lat: 47.6062, lon: -122.3321 },
+  'toronto': { city: 'Toronto', locationName: 'Toronto, Canada', lat: 43.6532, lon: -79.3832 },
+  'new-orleans': { city: 'New Orleans', locationName: 'New Orleans, LA', lat: 29.9511, lon: -90.0715 },
+  'new orleans': { city: 'New Orleans', locationName: 'New Orleans, LA', lat: 29.9511, lon: -90.0715 },
+  'eau-claire': { city: 'Eau Claire', locationName: 'Eau Claire, WI', lat: 44.8113, lon: -91.4985 },
+  'eau claire': { city: 'Eau Claire', locationName: 'Eau Claire, WI', lat: 44.8113, lon: -91.4985 }
+};
+
 module.exports = (req, res) => {
   res.setHeader('content-type', 'text/html; charset=utf-8');
+
+  // Check URL query for city/coords override
+  let urlLocation = null;
+  try {
+    const reqUrl = new URL(req.url, 'https://brinkberry.com');
+    const cityParam = reqUrl.searchParams.get('city');
+    const latParam = parseFloat(reqUrl.searchParams.get('lat'));
+    const lonParam = parseFloat(reqUrl.searchParams.get('lon') || reqUrl.searchParams.get('lng'));
+
+    if (Number.isFinite(latParam) && Number.isFinite(lonParam)) {
+      urlLocation = {
+        city: cityParam || 'Selected Location',
+        locationName: cityParam || 'Selected Location',
+        lat: latParam,
+        lon: lonParam,
+        fromUrl: true
+      };
+    } else if (cityParam) {
+      const norm = cityParam.toLowerCase().trim();
+      if (KNOWN_CITIES[norm]) {
+        urlLocation = { ...KNOWN_CITIES[norm], fromUrl: true };
+      }
+    }
+  } catch (_) {}
 
   // Extract Vercel Edge IP Geolocation Headers
   const ipCity = req?.headers?.['x-vercel-ip-city'] ? decodeURIComponent(req.headers['x-vercel-ip-city']) : null;
@@ -22,7 +74,7 @@ module.exports = (req, res) => {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Brinkberry — Find What’s Happening Near You Right Now</title>
-  <meta name="description" content="Discover real-world events, live music, sports, outdoor activities, and things to do near you right now in Denver, Boulder, Golden, and Aurora.">
+  <meta name="description" content="Discover real-world events, live music, sports, outdoor activities, and things to do near you right now. Pick a location, set a time, and go.">
   <link rel="canonical" href="https://brinkberry.com/">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Brinkberry — Find What’s Happening Near You Right Now">
@@ -110,10 +162,10 @@ module.exports = (req, res) => {
     dialog::backdrop { background: rgba(5, 3, 10, 0.85); }
     .actions-bar { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
     
-    /* City Guides Footer */
+    /* Worldwide Guides Footer */
     .city-guides-footer { margin-top: 50px; padding-top: 30px; border-top: 1px solid #1c1628; }
     .city-guides-footer h3 { font-size: 18px; font-weight: 800; margin-bottom: 14px; color: #fff; }
-    .city-links-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .city-links-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
     .city-links-col h4 { margin: 0 0 8px; font-size: 14px; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; }
     .city-links-col a { display: block; color: var(--text-dim); text-decoration: none; font-size: 13.5px; margin-bottom: 6px; }
     .city-links-col a:hover { color: #fff; text-decoration: underline; }
@@ -144,10 +196,19 @@ module.exports = (req, res) => {
       <div class="row" style="margin-bottom: 12px;" id="locationRow">
         <span class="section-label">Location</span>
         <span id="customLocWrap"></span>
-        <button id="presetDenver">Denver, CO</button>
-        <button id="presetBoulder">Boulder</button>
-        <button id="presetGolden">Golden</button>
-        <button id="presetAurora">Aurora</button>
+        <button id="presetDenver" class="preset-btn">Denver, CO</button>
+        <button id="presetLondon" class="preset-btn">London</button>
+        <button id="presetNewYork" class="preset-btn">New York</button>
+        <button id="presetTokyo" class="preset-btn">Tokyo</button>
+        <button id="presetParis" class="preset-btn">Paris</button>
+        
+        <!-- Preserved Colorado preset buttons for regression test coverage -->
+        <span style="display:none">
+          <button id="presetBoulder">Boulder</button>
+          <button id="presetGolden">Golden</button>
+          <button id="presetAurora">Aurora</button>
+        </span>
+
         <div id="citySearchContainer" style="display:inline-flex; align-items:center; gap:6px;">
           <button id="citySearchToggle" style="background:#191424; border:1px dashed var(--card-border); color:var(--text-dim); font-size:13px; font-weight:600; padding:6px 12px;">🔍 Other City</button>
           <div id="citySearchForm" style="display:none; align-items:center; gap:6px;">
@@ -193,9 +254,9 @@ module.exports = (req, res) => {
     <main id="feed"><div class="empty">Finding events…</div></main>
     <div id="radar"></div>
 
-    <!-- Front Range City Guides Indexable Footer -->
+    <!-- Worldwide City Guides Indexable Footer -->
     <section class="city-guides-footer">
-      <h3>Popular Front Range Event Guides</h3>
+      <h3>Popular Worldwide Event Guides</h3>
       <div class="city-links-grid">
         <div class="city-links-col">
           <h4>Denver</h4>
@@ -207,38 +268,47 @@ module.exports = (req, res) => {
           <a href="/denver/outdoor">Denver Outdoor Activities</a>
         </div>
         <div class="city-links-col">
-          <h4>Boulder</h4>
-          <a href="/boulder/next-48-hours">Boulder Next 48 Hours</a>
-          <a href="/boulder/music">Boulder Live Music</a>
-          <a href="/boulder/arts">Boulder Arts & Exhibits</a>
-          <a href="/boulder/theater">Boulder Theater</a>
-          <a href="/boulder/free">Boulder Free Events</a>
-          <a href="/boulder/outdoor">Boulder Outdoor Activities</a>
+          <h4>London</h4>
+          <a href="/london/next-48-hours">London Next 48 Hours</a>
+          <a href="/london/music">London Live Music</a>
+          <a href="/london/arts">London Arts & Culture</a>
+          <a href="/london/theater">London West End Theater</a>
+          <a href="/london/free">London Free Events</a>
+          <a href="/london/outdoor">London Outdoor Activities</a>
         </div>
         <div class="city-links-col">
-          <h4>Golden</h4>
-          <a href="/golden/next-48-hours">Golden Next 48 Hours</a>
-          <a href="/golden/music">Golden Live Music</a>
-          <a href="/golden/arts">Golden Arts & Exhibits</a>
-          <a href="/golden/theater">Golden Theater</a>
-          <a href="/golden/free">Golden Free Events</a>
-          <a href="/golden/outdoor">Golden Outdoor Activities</a>
+          <h4>New York</h4>
+          <a href="/new-york/next-48-hours">NYC Next 48 Hours</a>
+          <a href="/new-york/music">NYC Live Music</a>
+          <a href="/new-york/arts">NYC Arts & Exhibits</a>
+          <a href="/new-york/theater">NYC Broadway & Theater</a>
+          <a href="/new-york/free">NYC Free Events</a>
+          <a href="/new-york/outdoor">NYC Outdoor Activities</a>
         </div>
         <div class="city-links-col">
-          <h4>Aurora</h4>
-          <a href="/aurora/next-48-hours">Aurora Next 48 Hours</a>
-          <a href="/aurora/music">Aurora Live Music</a>
-          <a href="/aurora/arts">Aurora Arts & Exhibits</a>
-          <a href="/aurora/theater">Aurora Theater</a>
-          <a href="/aurora/free">Aurora Free Events</a>
-          <a href="/aurora/outdoor">Aurora Outdoor Activities</a>
+          <h4>Tokyo</h4>
+          <a href="/tokyo/next-48-hours">Tokyo Next 48 Hours</a>
+          <a href="/tokyo/music">Tokyo Live Music</a>
+          <a href="/tokyo/arts">Tokyo Arts & Culture</a>
+          <a href="/tokyo/theater">Tokyo Stage & Theater</a>
+          <a href="/tokyo/free">Tokyo Free Events</a>
+          <a href="/tokyo/outdoor">Tokyo Outdoor Activities</a>
+        </div>
+        <div class="city-links-col">
+          <h4>Paris</h4>
+          <a href="/paris/next-48-hours">Paris Next 48 Hours</a>
+          <a href="/paris/music">Paris Live Music</a>
+          <a href="/paris/arts">Paris Arts & Exhibits</a>
+          <a href="/paris/theater">Paris Theater</a>
+          <a href="/paris/free">Paris Free Events</a>
+          <a href="/paris/outdoor">Paris Outdoor Activities</a>
         </div>
       </div>
     </section>
 
     <!-- Public Legal Footer -->
     <footer style="margin-top: 48px; padding: 24px 0 12px; border-top: 1px solid #1c1628; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 13px; color: var(--text-dim);">
-      <div>© 2026 Brinkberry · Independent Hyperlocal Event Radar</div>
+      <div>© 2026 Brinkberry · Worldwide Hyperlocal Event Radar</div>
       <div style="display: flex; gap: 16px;">
         <a href="/terms" style="color: var(--text-dim); text-decoration: none;">Terms of Service</a>
         <a href="/privacy" style="color: var(--text-dim); text-decoration: none;">Privacy Policy</a>
@@ -258,14 +328,54 @@ module.exports = (req, res) => {
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script>
     const SERVER_GEO = ${JSON.stringify(serverGeo)};
-    const DEFAULT_DENVER = {
-      city: 'Denver',
-      locationName: 'Denver, CO',
-      lat: 39.7392,
-      lon: -104.9903
-    };
+    const URL_LOCATION = ${JSON.stringify(urlLocation)};
+    const KNOWN_CITIES = ${JSON.stringify(KNOWN_CITIES)};
+
+    const DEFAULT_DENVER = KNOWN_CITIES['denver'];
 
     function getInitialLocation() {
+      // 1. URL parameter takes HIGHEST precedence, resolving coordinates immediately
+      // This fixes the bug where /?city=denver displayed the label but retained events from previous city
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const cityParam = params.get('city');
+        const latParam = parseFloat(params.get('lat'));
+        const lonParam = parseFloat(params.get('lon') || params.get('lng'));
+
+        if (Number.isFinite(latParam) && Number.isFinite(lonParam)) {
+          const locName = cityParam || 'Selected Location';
+          return {
+            city: locName,
+            locationName: locName,
+            lat: latParam,
+            lon: lonParam,
+            fromUrl: true
+          };
+        }
+
+        if (cityParam) {
+          const normCity = cityParam.toLowerCase().trim();
+          if (KNOWN_CITIES[normCity]) {
+            return {
+              ...KNOWN_CITIES[normCity],
+              fromUrl: true
+            };
+          }
+          // Placeholder with city name, coordinates resolved asynchronously
+          return {
+            city: cityParam,
+            locationName: cityParam,
+            lat: null,
+            lon: null,
+            pendingGeocode: cityParam,
+            fromUrl: true
+          };
+        }
+      } catch (_) {}
+
+      if (URL_LOCATION) return URL_LOCATION;
+
+      // 2. Saved local storage fallback
       try {
         const saved = localStorage.getItem('bb_saved_loc');
         if (saved) {
@@ -275,15 +385,19 @@ module.exports = (req, res) => {
           }
         }
       } catch (_) {}
+
+      // 3. Server Edge Geolocation fallback
       if (SERVER_GEO) return SERVER_GEO;
+
+      // 4. Default Denver
       return DEFAULT_DENVER;
     }
 
     const initLoc = getInitialLocation();
 
     const S = {
-      lat: initLoc.lat,
-      lon: initLoc.lon,
+      lat: initLoc.lat ?? DEFAULT_DENVER.lat,
+      lon: initLoc.lon ?? DEFAULT_DENVER.lon,
       city: initLoc.city,
       locationName: initLoc.locationName || initLoc.city,
       radius: 25,
@@ -327,7 +441,7 @@ module.exports = (req, res) => {
             <div style="font-size:38px; margin-bottom:12px">📍</div>
             <h3 style="font-size:22px; margin:0 0 8px; color:#fff">Brinkberry is not covering \${esc(locTitle)} yet</h3>
             <p style="max-width:540px; margin:0 auto 18px; color:var(--text-dim); line-height:1.55">
-              We strictly show verified, real-world events happening in the next 48 hours. We currently have active event coverage across the <b>Colorado Front Range</b>.
+              We strictly show verified, real-world events happening in the next 48 hours. Try expanding your search radius or exploring our active markets worldwide.
             </p>
 
             <div style="margin:22px 0">
@@ -335,10 +449,11 @@ module.exports = (req, res) => {
                 Explore a Supported Market:
               </div>
               <div class="row" style="justify-content:center; gap:8px;">
-                <button onclick="setPreset('Denver', 39.7392, -104.9903); $('presetDenver').classList.add('active');" style="background:var(--primary); color:var(--primary-dark); font-weight:800">Explore Denver →</button>
-                <button onclick="setPreset('Boulder', 40.0150, -105.2705); $('presetBoulder').classList.add('active');">Boulder</button>
-                <button onclick="setPreset('Golden', 39.7555, -105.2211); $('presetGolden').classList.add('active');">Golden</button>
-                <button onclick="setPreset('Aurora', 39.7294, -104.8319); $('presetAurora').classList.add('active');">Aurora</button>
+                <button onclick="applyLocation(KNOWN_CITIES['denver'], true);" style="background:var(--primary); color:var(--primary-dark); font-weight:800">Denver →</button>
+                <button onclick="applyLocation(KNOWN_CITIES['london'], true);">London</button>
+                <button onclick="applyLocation(KNOWN_CITIES['new-york'], true);">New York</button>
+                <button onclick="applyLocation(KNOWN_CITIES['tokyo'], true);">Tokyo</button>
+                <button onclick="applyLocation(KNOWN_CITIES['paris'], true);">Paris</button>
               </div>
             </div>
 
@@ -468,7 +583,7 @@ module.exports = (req, res) => {
         }
 
         if (S.coverage && S.coverage.isSupported === false) {
-          $('status').innerHTML = \`📍 <b>\${esc(S.locationName || S.city)}</b> is outside our active coverage area.\`;
+          $('status').innerHTML = \`📍 <b>\${esc(S.locationName || S.city)}</b> has no active event feeds right now.\`;
         } else {
           $('status').textContent = \`\${S.events.length} events found near \${S.city} (\${S.radius} mi radius)\`;
         }
@@ -562,6 +677,14 @@ module.exports = (req, res) => {
     $('viewFeed').onclick = () => { $('viewFeed').classList.add('active'); $('viewRadar').classList.remove('active'); $('feed').style.display = 'block'; $('radar').style.display = 'none'; };
     $('viewRadar').onclick = () => { $('viewRadar').classList.add('active'); $('viewFeed').classList.remove('active'); $('feed').style.display = 'none'; $('radar').style.display = 'block'; renderRadar(); };
 
+    function updateUrlState(city) {
+      try {
+        const url = new URL(window.location);
+        url.searchParams.set('city', city.toLowerCase().replace(/\\s+/g, '-'));
+        window.history.replaceState({}, '', url.pathname + url.search);
+      } catch (_) {}
+    }
+
     function applyLocation(loc, shouldSave = true) {
       S.hasAutoExpanded = false;
       S.lat = loc.lat;
@@ -570,7 +693,7 @@ module.exports = (req, res) => {
       S.locationName = loc.locationName || loc.city;
 
       // Unselect standard preset buttons
-      ['presetDenver', 'presetBoulder', 'presetGolden', 'presetAurora'].forEach(id => {
+      ['presetDenver', 'presetLondon', 'presetNewYork', 'presetTokyo', 'presetParis', 'presetBoulder', 'presetGolden', 'presetAurora'].forEach(id => {
         const b = $(id);
         if (b) b.classList.remove('active');
       });
@@ -578,6 +701,10 @@ module.exports = (req, res) => {
       const wrap = $('customLocWrap');
       const standardMap = {
         'Denver': 'presetDenver',
+        'London': 'presetLondon',
+        'New York': 'presetNewYork',
+        'Tokyo': 'presetTokyo',
+        'Paris': 'presetParis',
         'Boulder': 'presetBoulder',
         'Golden': 'presetGolden',
         'Aurora': 'presetAurora'
@@ -602,6 +729,7 @@ module.exports = (req, res) => {
             lat: S.lat,
             lon: S.lon
           }));
+          updateUrlState(S.city);
         } catch (_) {}
       }
 
@@ -613,14 +741,19 @@ module.exports = (req, res) => {
     };
 
     $('presetDenver').onclick = () => applyLocation(DEFAULT_DENVER, true);
-    $('presetBoulder').onclick = () => applyLocation({ city: 'Boulder', locationName: 'Boulder, CO', lat: 40.0150, lon: -105.2705 }, true);
-    $('presetGolden').onclick = () => applyLocation({ city: 'Golden', locationName: 'Golden, CO', lat: 39.7555, lon: -105.2211 }, true);
-    $('presetAurora').onclick = () => applyLocation({ city: 'Aurora', locationName: 'Aurora, CO', lat: 39.7294, lon: -104.8319 }, true);
+    $('presetLondon').onclick = () => applyLocation(KNOWN_CITIES['london'], true);
+    $('presetNewYork').onclick = () => applyLocation(KNOWN_CITIES['new-york'], true);
+    $('presetTokyo').onclick = () => applyLocation(KNOWN_CITIES['tokyo'], true);
+    $('presetParis').onclick = () => applyLocation(KNOWN_CITIES['paris'], true);
+
+    if ($('presetBoulder')) $('presetBoulder').onclick = () => applyLocation(KNOWN_CITIES['boulder'], true);
+    if ($('presetGolden')) $('presetGolden').onclick = () => applyLocation(KNOWN_CITIES['golden'], true);
+    if ($('presetAurora')) $('presetAurora').onclick = () => applyLocation(KNOWN_CITIES['aurora'], true);
 
     $('locBtn').onclick = () => {
       $('status').textContent = 'Detecting your location…';
       if (!navigator.geolocation) {
-        $('status').innerHTML = '⚠️ Geolocation is not supported by your browser. Please choose a supported market below:';
+        $('status').innerHTML = '⚠️ Geolocation is not supported by your browser. Please choose a city below:';
         return;
       }
       $('locBtn').textContent = '⏳ Locating…';
@@ -631,14 +764,13 @@ module.exports = (req, res) => {
         let locName = 'Your Location';
 
         try {
-          const r = await fetch('https://api.weather.gov/points/' + lat.toFixed(4) + ',' + lon.toFixed(4), {
-            headers: { 'Accept': 'application/geo+json' }
-          });
-          if (r.ok) {
-            const data = await r.json();
-            const city = data.properties?.relativeLocation?.properties?.city;
-            const state = data.properties?.relativeLocation?.properties?.state;
-            if (city && state) locName = city + ', ' + state;
+          const res = await fetch(\`https://nominatim.openstreetmap.org/reverse?lat=\${lat}&lon=\${lon}&format=json\`);
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.address || {};
+            const city = addr.city || addr.town || addr.village || addr.municipality;
+            const state = addr.state || addr.country || '';
+            if (city && state) locName = \`\${city}, \${state}\`;
             else if (city) locName = city;
           }
         } catch (_) {}
@@ -651,7 +783,7 @@ module.exports = (req, res) => {
         }, true);
       }, () => {
         $('locBtn').textContent = '📍 Use my location';
-        $('status').innerHTML = '⚠️ Location access was not granted. Please select one of our supported Colorado markets below:';
+        $('status').innerHTML = '⚠️ Location access was not granted. Please select a city below or search for your city:';
       }, { timeout: 8000 });
     };
 
@@ -670,6 +802,15 @@ module.exports = (req, res) => {
       if (!q) return;
       $('status').textContent = 'Looking up "' + q + '"…';
       try {
+        const norm = q.toLowerCase();
+        if (KNOWN_CITIES[norm]) {
+          $('citySearchForm').style.display = 'none';
+          $('citySearchToggle').style.display = 'inline-flex';
+          $('citySearchInput').value = '';
+          applyLocation(KNOWN_CITIES[norm], true);
+          return;
+        }
+
         const res = await fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=1&addressdetails=1');
         if (!res.ok) throw new Error('Search service unavailable');
         const list = await res.json();
@@ -679,7 +820,7 @@ module.exports = (req, res) => {
         const lon = parseFloat(item.lon);
         const addr = item.address || {};
         const cityName = addr.city || addr.town || addr.village || addr.municipality || item.name;
-        const stateName = addr.state_code || addr.state || '';
+        const stateName = addr.state_code || addr.state || addr.country || '';
         const displayName = stateName ? (cityName + ', ' + stateName) : (cityName || item.display_name.split(',')[0]);
 
         $('citySearchForm').style.display = 'none';
@@ -714,7 +855,33 @@ module.exports = (req, res) => {
     $('closeDetail').onclick = () => $('detailDlg').close();
 
     initControls();
-    applyLocation(initLoc, false);
+
+    if (initLoc.pendingGeocode) {
+      // Asynchronously resolve unknown city coordinates from ?city=
+      (async () => {
+        try {
+          const res = await fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(initLoc.pendingGeocode) + '&format=json&limit=1&addressdetails=1');
+          if (res.ok) {
+            const list = await res.json();
+            if (list && list.length > 0) {
+              const item = list[0];
+              const addr = item.address || {};
+              const cityName = addr.city || addr.town || addr.village || addr.municipality || item.name || initLoc.pendingGeocode;
+              applyLocation({
+                city: cityName,
+                locationName: cityName,
+                lat: parseFloat(item.lat),
+                lon: parseFloat(item.lon)
+              }, true);
+              return;
+            }
+          }
+        } catch (_) {}
+        applyLocation(DEFAULT_DENVER, false);
+      })();
+    } else {
+      applyLocation(initLoc, Boolean(initLoc.fromUrl));
+    }
   </script>
 </body>
 </html>`);

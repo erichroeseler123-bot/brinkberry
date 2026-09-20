@@ -113,9 +113,10 @@ module.exports = async (req, res) => {
       return adminApiHandler(req, res);
     }
 
-    // City & category landing pages: /denver/this-weekend, /boulder/music, etc.
-    const cityMatch = p.match(/^\/(denver|boulder|golden|aurora)(\/([a-z0-9-]+))?$/i);
-    if (cityMatch) {
+    // City & category landing pages: /denver/this-weekend, /london/music, /paris/arts, etc.
+    const segments = p.split('/').filter(Boolean);
+    const systemPrefixes = ['api', 'event', 'admin', 'widget', 'terms', 'privacy', 'sitemap.xml', 'sitemap', 'robots.txt', 'og'];
+    if (segments.length >= 1 && segments.length <= 2 && !systemPrefixes.includes(segments[0].toLowerCase())) {
       return landingHandler(req, res);
     }
 

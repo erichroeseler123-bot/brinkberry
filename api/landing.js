@@ -1,4 +1,5 @@
 const { buildSafeAffiliateUrl } = require('../lib/affiliate');
+const { executeHybridFeed } = require('../lib/providers/engine');
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co').replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
 const KEY = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_2ygc158CkPm28E9j6zNdmA_Cvvj5kGr';
@@ -8,6 +9,7 @@ const CITIES = {
   denver: {
     name: 'Denver',
     state: 'CO',
+    country: 'US',
     slug: 'denver',
     lat: 39.7392,
     lon: -104.9903,
@@ -19,6 +21,7 @@ const CITIES = {
   boulder: {
     name: 'Boulder',
     state: 'CO',
+    country: 'US',
     slug: 'boulder',
     lat: 40.0150,
     lon: -105.2705,
@@ -30,6 +33,7 @@ const CITIES = {
   golden: {
     name: 'Golden',
     state: 'CO',
+    country: 'US',
     slug: 'golden',
     lat: 39.7555,
     lon: -105.2211,
@@ -41,15 +45,113 @@ const CITIES = {
   aurora: {
     name: 'Aurora',
     state: 'CO',
+    country: 'US',
     slug: 'aurora',
     lat: 39.7294,
     lon: -104.8319,
     radius: 25,
-    tagline: 'Diverse culture, arts & open-air events in the eastern metro.',
+    tagline: 'Diverse culture, arts & open-air events across the eastern metro.',
     desc: 'Discover food festivals, theater at Aurora Fox Arts Center, water recreation at Aurora Reservoir, and vibrant community arts across Aurora.',
     neighborhoods: ['Aurora Cultural Arts District', 'Stanley Marketplace', 'Aurora Reservoir', 'Nine Mile / Cherry Creek State Park']
+  },
+  'new-york': {
+    name: 'New York',
+    state: 'NY',
+    country: 'US',
+    slug: 'new-york',
+    lat: 40.7128,
+    lon: -74.0060,
+    radius: 25,
+    tagline: 'Live music, Broadway stages, and borough happenings.',
+    desc: 'From iconic Broadway theatres and indie Brooklyn clubs to Manhattan gallery walks and open-air park festivals, find what is happening right now in NYC.',
+    neighborhoods: ['Manhattan', 'Brooklyn', 'Williamsburg', 'Lower East Side', 'Greenwich Village', 'Midtown', 'DUMBO']
+  },
+  london: {
+    name: 'London',
+    state: '',
+    country: 'UK',
+    slug: 'london',
+    lat: 51.5074,
+    lon: -0.1278,
+    radius: 25,
+    tagline: 'West End theatre, historic venues, and live London culture.',
+    desc: 'Explore live concerts across Soho and Camden, West End theatre premieres, world-class exhibitions, and community happenings across London.',
+    neighborhoods: ['Soho', 'Camden', 'Shoreditch', 'West End', 'Southbank', 'Covent Garden', 'Brixton']
+  },
+  paris: {
+    name: 'Paris',
+    state: '',
+    country: 'FR',
+    slug: 'paris',
+    lat: 48.8566,
+    lon: 2.3522,
+    radius: 25,
+    tagline: 'Live arts, acoustic showcases, and Parisian nightlife.',
+    desc: 'Find jazz sessions in Saint-Germain, open-air culture along the Seine, gallery vernissages, and vibrant live stages across Paris.',
+    neighborhoods: ['Le Marais', 'Montmartre', 'Saint-Germain', 'Bastille', 'Canal Saint-Martin', 'Belleville']
+  },
+  tokyo: {
+    name: 'Tokyo',
+    state: '',
+    country: 'JP',
+    slug: 'tokyo',
+    lat: 35.6762,
+    lon: 139.6503,
+    radius: 25,
+    tagline: 'Live music, cutting-edge art, and dynamic Tokyo events.',
+    desc: 'Discover Shibuya and Shinjuku live houses, Roppongi art exhibitions, outdoor park gatherings, and cultural nightlife across Tokyo.',
+    neighborhoods: ['Shibuya', 'Shinjuku', 'Roppongi', 'Shimokitazawa', 'Ginza', 'Akihabara', 'Asakusa']
+  },
+  chicago: {
+    name: 'Chicago',
+    state: 'IL',
+    country: 'US',
+    slug: 'chicago',
+    lat: 41.8781,
+    lon: -87.6298,
+    radius: 25,
+    tagline: 'Legendary blues, comedy clubs, and lakefront gatherings.',
+    desc: 'From legendary North Side comedy clubs and historic blues joints to Loop theater and open-air lakefront events in Chicago.',
+    neighborhoods: ['The Loop', 'River North', 'Wicker Park', 'Lincoln Park', 'Logan Square', 'Hyde Park']
+  },
+  austin: {
+    name: 'Austin',
+    state: 'TX',
+    country: 'US',
+    slug: 'austin',
+    lat: 30.2672,
+    lon: -97.7431,
+    radius: 25,
+    tagline: 'Live Music Capital of the World.',
+    desc: 'Catch nightly roots and indie gigs along Red River, open-air sessions at Zilker, and comedy showcases across Austin.',
+    neighborhoods: ['Downtown / 6th St', 'Red River Cultural District', 'South Congress', 'East Austin', 'Zilker']
   }
 };
+
+function resolveCity(slug) {
+  const norm = String(slug || '').toLowerCase().trim();
+  if (CITIES[norm]) return CITIES[norm];
+  
+  // Format slug to proper city name (e.g. 'san-francisco' -> 'San Francisco')
+  const formattedName = norm
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ') || 'Local City';
+
+  return {
+    name: formattedName,
+    state: '',
+    country: '',
+    slug: norm,
+    lat: 39.7392,
+    lon: -104.9903,
+    radius: 25,
+    tagline: `Verified live event radar for ${formattedName}.`,
+    desc: `Discover live music, theater, arts exhibitions, free gatherings, and things to do right now across ${formattedName}.`,
+    neighborhoods: ['Downtown', 'Arts District', 'City Center', 'Cultural Hub']
+  };
+}
 
 const TOPICS = {
   'next-48-hours': {
@@ -57,8 +159,8 @@ const TOPICS = {
     aliases: ['this-weekend', 'weekend', 'events-this-weekend', '48h', 'next-48h'],
     title: 'Events in the Next 48 Hours',
     headingSuffix: 'Events in the Next 48 Hours',
-    metaDescTemplate: (city) => `Discover what's happening in the next 48 hours in ${city.name}, CO. Live concerts, gatherings, outdoor activities, and things to do right now.`,
-    intro: (city) => `Looking for immediate plans over the next 48 hours? Here is your curated radar of verified upcoming events, shows, and local gatherings happening across ${city.name} and the surrounding area.`,
+    metaDescTemplate: (city) => `Discover what's happening in the next 48 hours in ${city.name}${city.state ? ', ' + city.state : ''}. Live concerts, gatherings, outdoor activities, and things to do right now.`,
+    intro: (city) => `Looking for immediate plans over the next 48 hours? Here is your radar of verified upcoming events, shows, and local gatherings happening across ${city.name} and the surrounding area.`,
     window: '48h',
     filter: (e) => true
   },
@@ -67,8 +169,8 @@ const TOPICS = {
     aliases: ['weekend', 'events-this-weekend'],
     title: 'Events in the Next 48 Hours',
     headingSuffix: 'Events in the Next 48 Hours',
-    metaDescTemplate: (city) => `Discover what's happening in the next 48 hours in ${city.name}, CO. Live concerts, gatherings, outdoor activities, and things to do right now.`,
-    intro: (city) => `Looking for immediate plans over the next 48 hours? Here is your curated radar of verified upcoming events, shows, and local gatherings happening across ${city.name} and the surrounding area.`,
+    metaDescTemplate: (city) => `Discover what's happening in the next 48 hours in ${city.name}${city.state ? ', ' + city.state : ''}. Live concerts, gatherings, outdoor activities, and things to do right now.`,
+    intro: (city) => `Looking for immediate plans over the next 48 hours? Here is your radar of verified upcoming events, shows, and local gatherings happening across ${city.name} and the surrounding area.`,
     window: '48h',
     filter: (e) => true
   },
@@ -77,11 +179,11 @@ const TOPICS = {
     aliases: ['live-music', 'concerts', 'jazz'],
     title: 'Live Music & Concerts (Next 48 Hours)',
     headingSuffix: 'Live Music & Concerts (Next 48 Hours)',
-    metaDescTemplate: (city) => `Find live music, concerts, and jazz sessions in the next 48 hours in ${city.name}, CO. From indie rock stages to jazz clubs and acoustic showcases.`,
-    intro: (city) => `From jazz clubs and indie rock stages to underground electronic sets and acoustic open stages, explore genuine live music across ${city.name} tonight and over the next 48 hours.`,
+    metaDescTemplate: (city) => `Find live music, concerts, and jazz sessions in the next 48 hours in ${city.name}${city.state ? ', ' + city.state : ''}. From indie rock stages to jazz clubs and acoustic showcases.`,
+    intro: (city) => `From intimate jazz clubs and indie rock stages to electronic sets and acoustic open stages, explore genuine live music across ${city.name} tonight and over the next 48 hours.`,
     window: '48h',
     filter: (e) => {
-      const tags = e.category_tags || [];
+      const tags = e.category_tags || e.categories || [];
       const musicTags = ['music', 'jazz', 'rock', 'indie', 'bluegrass', 'roots', 'electronic', 'acoustic', 'concert'];
       return tags.some(t => musicTags.includes(t)) && !tags.includes('museum') && !tags.includes('gallery');
     }
@@ -91,11 +193,11 @@ const TOPICS = {
     aliases: ['art', 'museums', 'exhibits', 'galleries'],
     title: 'Arts & Museum Exhibits (Next 48 Hours)',
     headingSuffix: 'Arts & Museum Exhibits (Next 48 Hours)',
-    metaDescTemplate: (city) => `Explore art exhibitions, museum gallery tours, and cultural happenings in the next 48 hours in ${city.name}, CO.`,
-    intro: (city) => `Immerse yourself in world-class art collections, contemporary gallery walks, botanical demonstrations, and cultural exhibits across ${city.name} happening over the next 48 hours.`,
+    metaDescTemplate: (city) => `Explore art exhibitions, museum gallery tours, and cultural happenings in the next 48 hours in ${city.name}${city.state ? ', ' + city.state : ''}.`,
+    intro: (city) => `Immerse yourself in world-class art collections, contemporary gallery walks, demonstrations, and cultural exhibits across ${city.name} happening over the next 48 hours.`,
     window: '48h',
     filter: (e) => {
-      const tags = e.category_tags || [];
+      const tags = e.category_tags || e.categories || [];
       return tags.some(t => ['arts', 'museum', 'gallery', 'exhibit'].includes(t));
     }
   },
@@ -104,11 +206,11 @@ const TOPICS = {
     aliases: ['theatre', 'stage', 'plays', 'broadway', 'performing-arts'],
     title: 'Theater & Performing Arts (Next 48 Hours)',
     headingSuffix: 'Theater & Performing Arts (Next 48 Hours)',
-    metaDescTemplate: (city) => `Find live theater, stage plays, and performing arts in the next 48 hours in ${city.name}, CO.`,
-    intro: (city) => `Experience live stage productions, Broadway vocal showcases, and local playwright previews in ${city.name} happening within the next 48 hours.`,
+    metaDescTemplate: (city) => `Find live theater, stage plays, and performing arts in the next 48 hours in ${city.name}${city.state ? ', ' + city.state : ''}.`,
+    intro: (city) => `Experience live stage productions, vocal showcases, and local playwright previews in ${city.name} happening within the next 48 hours.`,
     window: '48h',
     filter: (e) => {
-      const tags = e.category_tags || [];
+      const tags = e.category_tags || e.categories || [];
       return tags.some(t => ['theater', 'theatre', 'stage', 'broadway', 'play'].includes(t));
     }
   },
@@ -117,30 +219,30 @@ const TOPICS = {
     aliases: ['free-events', 'cheap'],
     title: 'Free & Budget-Friendly Events (Next 48 Hours)',
     headingSuffix: 'Free & Budget-Friendly Events (Next 48 Hours)',
-    metaDescTemplate: (city) => `Free things to do in the next 48 hours in ${city.name}, CO. Free admission concerts, open galleries, community markets, and outdoor gatherings.`,
-    intro: (city) => `You don't need a huge budget to experience Colorado. Discover free admission events, community workouts, gallery walks, and open public gatherings across ${city.name} happening over the next 48 hours.`,
+    metaDescTemplate: (city) => `Free things to do in the next 48 hours in ${city.name}${city.state ? ', ' + city.state : ''}. Free admission concerts, open galleries, community markets, and outdoor gatherings.`,
+    intro: (city) => `You don't need a huge budget to find memorable events and gatherings. Discover free admission events, community workouts, gallery walks, and open public gatherings across ${city.name} happening over the next 48 hours.`,
     window: '48h',
-    filter: (e) => e.price_status === 'free' || (e.price_min != null && e.price_min === 0)
+    filter: (e) => e.price_status === 'free' || e.priceStatus === 'free' || (e.price_min != null && e.price_min === 0)
   },
   'outdoor': {
     slug: 'outdoor',
     aliases: ['outside', 'outdoor-events'],
     title: 'Outdoor Events & Activities (Next 48 Hours)',
     headingSuffix: 'Outdoor Events & Activities (Next 48 Hours)',
-    metaDescTemplate: (city) => `Outdoor events and open-air activities in the next 48 hours in ${city.name}, CO. Guided hikes, open-air yoga, outdoor amphitheater concerts, and park festivals.`,
-    intro: (city) => `Take advantage of 300+ days of Colorado sunshine. Find guided hikes, rooftop fitness sessions, open-air amphitheater shows, and park activities across ${city.name} occurring within the next 48 hours.`,
+    metaDescTemplate: (city) => `Outdoor events and open-air activities in the next 48 hours in ${city.name}${city.state ? ', ' + city.state : ''}. Guided walks, open-air yoga, outdoor amphitheater concerts, and park festivals.`,
+    intro: (city) => `Make the most of the open air. Find guided walks, rooftop fitness sessions, open-air amphitheater shows, and park activities across ${city.name} occurring within the next 48 hours.`,
     window: '48h',
-    filter: (e) => e.indoor_outdoor === 'outdoor' || (e.indoor_outdoor === 'mixed' && (e.category_tags || []).includes('outdoor'))
+    filter: (e) => e.indoor_outdoor === 'outdoor' || e.indoorOutdoor === 'outdoor' || ((e.indoor_outdoor === 'mixed' || e.indoorOutdoor === 'mixed') && (e.category_tags || e.categories || []).includes('outdoor'))
   },
   'comedy': {
     slug: 'comedy',
     aliases: ['standup', 'improv', 'comedy-shows'],
     title: 'Live Comedy Shows (Next 48 Hours)',
     headingSuffix: 'Live Comedy Shows (Next 48 Hours)',
-    metaDescTemplate: (city) => `Find live standup comedy and improv shows in the next 48 hours in ${city.name}, CO.`,
-    intro: (city) => `Catch top touring headliners, local showcase nights, and uncensored standup comedy sets across ${city.name} over the next 48 hours.`,
+    metaDescTemplate: (city) => `Find live standup comedy and improv shows in the next 48 hours in ${city.name}${city.state ? ', ' + city.state : ''}.`,
+    intro: (city) => `Catch touring headliners, local showcase nights, and uncensored standup comedy sets across ${city.name} over the next 48 hours.`,
     window: '48h',
-    filter: (e) => (e.category_tags || []).includes('comedy')
+    filter: (e) => (e.category_tags || e.categories || []).includes('comedy')
   }
 };
 
@@ -162,46 +264,68 @@ function getDateBounds(windowType) {
 
 async function fetchEvents(city, topic) {
   const [start, end] = getDateBounds(topic.window);
+  let rawCurated = [];
   
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/bb_get_feed_events_v2`, {
-    method: 'POST',
-    headers: {
-      apikey: KEY,
-      authorization: `Bearer ${KEY}`,
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify({
-      p_user_lat: city.lat,
-      p_user_lng: city.lon,
-      p_radius_miles: city.radius || 25,
-      p_window_start: start.toISOString(),
-      p_window_end: end.toISOString(),
-      p_mode: null
-    })
-  });
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/bb_get_feed_events_v2`, {
+      method: 'POST',
+      headers: {
+        apikey: KEY,
+        authorization: `Bearer ${KEY}`,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        p_user_lat: city.lat,
+        p_user_lng: city.lon,
+        p_radius_miles: city.radius || 25,
+        p_window_start: start.toISOString(),
+        p_window_end: end.toISOString(),
+        p_mode: null
+      })
+    });
 
-  if (!r.ok) {
-    console.error('Supabase query failed in city guide:', r.status);
-    return [];
+    if (r.ok) {
+      const data = await r.json();
+      if (Array.isArray(data)) rawCurated = data;
+    }
+  } catch (err) {
+    console.warn('[Landing] Curated query error:', err.message);
   }
 
-  let events = await r.json();
-  if (!Array.isArray(events)) return [];
+  // Execute hybrid dynamic engine so cities without database rows (London, NYC, Paris, etc.)
+  // seamlessly render verified live events
+  try {
+    const hybridResult = await executeHybridFeed({
+      lat: city.lat,
+      lon: city.lon,
+      radiusMiles: city.radius || 25,
+      window: '48h',
+      windowStart: start.toISOString(),
+      windowEnd: end.toISOString(),
+      mode: '',
+      curatedEvents: rawCurated,
+      enableDynamic: true
+    });
 
-  // Enforce strict 48-hour boundary in-memory
-  const nowMs = Date.now();
-  const max48Ms = nowMs + 48 * 3600e3;
-  events = events.filter(e => {
-    const t = new Date(e.start_time).getTime();
-    return t >= nowMs && t <= max48Ms;
-  });
-
-  // Apply topic filter
-  if (typeof topic.filter === 'function') {
-    events = events.filter(topic.filter);
+    let events = hybridResult.events || [];
+    if (typeof topic.filter === 'function') {
+      events = events.filter(topic.filter);
+    }
+    return events;
+  } catch (hybridErr) {
+    console.warn('[Landing] Hybrid feed fallback to curated:', hybridErr.message);
+    let events = rawCurated;
+    const nowMs = Date.now();
+    const max48Ms = nowMs + 48 * 3600e3;
+    events = events.filter(e => {
+      const t = new Date(e.start_time).getTime();
+      return t >= nowMs && t <= max48Ms;
+    });
+    if (typeof topic.filter === 'function') {
+      events = events.filter(topic.filter);
+    }
+    return events;
   }
-
-  return events;
 }
 
 module.exports = async (req, res) => {
@@ -210,7 +334,6 @@ module.exports = async (req, res) => {
     const parts = u.pathname.split('/').filter(Boolean);
     const citySlug = parts[0]?.toLowerCase();
     const topicSlug = parts[1]?.toLowerCase() || 'this-weekend';
-
     const city = CITIES[citySlug];
     if (!city) {
       res.setHeader('content-type', 'text/html; charset=utf-8');
@@ -241,29 +364,29 @@ module.exports = async (req, res) => {
         item: {
           '@type': 'Event',
           name: e.title,
-          description: e.description || `${e.title} at ${e.venue_name}`,
-          startDate: e.start_time,
-          endDate: e.end_time || undefined,
+          description: e.description || e.desc || `${e.title} at ${e.venue_name || e.venue}`,
+          startDate: e.start_time || e.start,
+          endDate: e.end_time || e.end || undefined,
           eventStatus: 'https://schema.org/EventScheduled',
           url: `${ORIGIN}/event/${e.id}`,
           location: {
             '@type': 'Place',
-            name: e.venue_name,
+            name: e.venue_name || e.venue,
             address: {
               '@type': 'PostalAddress',
               addressLocality: e.city || city.name,
-              addressRegion: 'CO',
-              addressCountry: 'US'
+              addressRegion: e.state || city.state || '',
+              addressCountry: city.country || 'US'
             }
           },
           offers: {
             '@type': 'Offer',
-            price: e.price_min ?? (e.price_status === 'free' ? '0' : undefined),
+            price: e.price_min ?? e.priceLow ?? (e.price_status === 'free' || e.priceStatus === 'free' ? '0' : undefined),
             priceCurrency: 'USD',
-            url: buildSafeAffiliateUrl(e.source || 'custom', e.canonical_url, e.id),
+            url: buildSafeAffiliateUrl(e.source || 'custom', e.canonical_url || e.ticketUrl, e.id),
             availability: 'https://schema.org/InStock'
           },
-          image: e.canonical_image_url ? [e.canonical_image_url] : undefined
+          image: (e.canonical_image_url || e.image) ? [e.canonical_image_url || e.image] : undefined
         }
       }))
     });
@@ -407,35 +530,36 @@ module.exports = async (req, res) => {
       ` : `
         <div class="grid">
           ${events.map(e => {
-            const startObj = new Date(e.start_time);
+            const startObj = new Date(e.start_time || e.start);
             const timeStr = startObj.toLocaleString('en-US', {
-              timeZone: 'America/Denver',
               weekday: 'short',
               month: 'short',
               day: 'numeric',
               hour: 'numeric',
               minute: '2-digit'
             });
-            const safeTarget = buildSafeAffiliateUrl(e.source || 'custom', e.canonical_url, e.id);
+            const safeTarget = buildSafeAffiliateUrl(e.source || 'custom', e.canonical_url || e.ticketUrl, e.id);
             const clickUrl = `/api/click?url=${encodeURIComponent(safeTarget)}&eventId=${encodeURIComponent(e.id)}&surface=city_guide_${topic.slug}`;
-            const price = e.price_status === 'free' ? 'Free' : (e.price_display || 'Details');
-            const dist = e.distance_miles != null ? Number(e.distance_miles).toFixed(1) + ' mi' : null;
+            const price = (e.price_status === 'free' || e.priceStatus === 'free') ? 'Free' : (e.price_display || e.priceDisplay || 'Details');
+            const distVal = e.distance_miles != null ? e.distance_miles : e.distanceMiles;
+            const dist = distVal != null ? Number(distVal).toFixed(1) + ' mi' : null;
+            const img = e.canonical_image_url || e.image;
 
             return `
               <article class="card">
                 <a href="/event/${encodeURIComponent(e.id)}" style="text-decoration:none; color:inherit">
-                  <div class="card-img" style="${e.canonical_image_url ? `background-image:url('${encodeURI(e.canonical_image_url).replace(/'/g, '%27')}')` : ''}">
-                    ${e.canonical_image_url ? `<img src="${esc(e.canonical_image_url)}" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;" loading="lazy" onerror="this.style.display='none'">` : ''}
+                  <div class="card-img" style="${img ? `background-image:url('${encodeURI(img).replace(/'/g, '%27')}')` : ''}">
+                    ${img ? `<img src="${esc(img)}" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;" loading="lazy" onerror="this.style.display='none'">` : ''}
                   </div>
                   <div class="card-body">
-                    <div class="card-meta">${esc(e.category_tags?.[0] || e.category || 'event')}${e.neighborhood ? ` · ${esc(e.neighborhood)}` : ''}</div>
+                    <div class="card-meta">${esc((e.category_tags || e.categories)?.[0] || e.category || 'event')}${e.neighborhood ? ` · ${esc(e.neighborhood)}` : ''}</div>
                     <div class="card-title">${esc(e.title)}</div>
-                    <div class="card-meta">📍 ${esc(e.venue_name)}${e.city ? `, ${esc(e.city)}` : ''}</div>
+                    <div class="card-meta">📍 ${esc(e.venue_name || e.venue)}${e.city ? `, ${esc(e.city)}` : ''}</div>
                     <div class="card-meta">⏰ ${esc(timeStr)}${dist ? ` · <b>${dist}</b>` : ''}</div>
                     <div class="why-tags">
-                      ${(e.category_tags || []).slice(0, 2).map(t => `<span class="why-tag">${esc(t)}</span>`).join('')}
-                      ${e.indoor_outdoor === 'outdoor' ? '<span class="why-tag">Outdoor</span>' : ''}
-                      ${e.price_status === 'free' ? '<span class="why-tag" style="color:var(--primary)">Free</span>' : ''}
+                      ${(e.category_tags || e.categories || []).slice(0, 2).map(t => `<span class="why-tag">${esc(t)}</span>`).join('')}
+                      ${(e.indoor_outdoor === 'outdoor' || e.indoorOutdoor === 'outdoor') ? '<span class="why-tag">Outdoor</span>' : ''}
+                      ${(e.price_status === 'free' || e.priceStatus === 'free') ? '<span class="why-tag" style="color:var(--primary)">Free</span>' : ''}
                     </div>
                   </div>
                 </a>
@@ -461,16 +585,16 @@ module.exports = async (req, res) => {
     <div class="cta-banner">
       <h3>Want to see what’s happening in ${esc(city.name)} right now?</h3>
       <p>Filter by real-time distance, time of day, and weather alerts on our live interactive feed.</p>
-      <a class="btn-cta" href="/?city=${city.slug}">Launch Live Interactive Radar →</a>
+      <a class="btn-cta" href="/?city=${encodeURIComponent(city.slug)}">Launch Live Interactive Radar →</a>
     </div>
 
     <!-- Editorial & Cross-City SEO Footer -->
     <section class="seo-section">
       <h2>About Live Events in ${esc(city.name)}</h2>
-      <p>${esc(city.desc)} Brinkberry actively tracks official cultural calendars, amphitheaters, live concert halls, and indie venues across the Colorado Front Range to help you make instant plans without endless scrolling.</p>
+      <p>${esc(city.desc)} Brinkberry actively tracks official cultural calendars, amphitheaters, live concert halls, and indie venues to help you make instant plans without endless scrolling.</p>
       
       <div style="margin-top:20px;">
-        <h3 style="font-size:16px; margin-bottom:8px; color:#fff">Explore Other Front Range Cities:</h3>
+        <h3 style="font-size:16px; margin-bottom:8px; color:#fff">${['denver', 'boulder', 'golden', 'aurora'].includes(city.slug) ? 'Explore Other Front Range Cities & World Hubs:' : 'Explore Other Popular Cities:'}</h3>
         <div class="cities-nav">
           ${Object.values(CITIES).filter(c => c.slug !== city.slug).map(c => `
             <a href="/${c.slug}/next-48-hours">${c.name} 48h</a>

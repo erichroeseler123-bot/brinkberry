@@ -6,7 +6,11 @@ const CITIES = {
   denver: { name: 'Denver', lat: 39.7392, lon: -104.9903, radius: 25 },
   boulder: { name: 'Boulder', lat: 40.0150, lon: -105.2705, radius: 25 },
   golden: { name: 'Golden', lat: 39.7555, lon: -105.2211, radius: 25 },
-  aurora: { name: 'Aurora', lat: 39.7294, lon: -104.8319, radius: 25 }
+  aurora: { name: 'Aurora', lat: 39.7294, lon: -104.8319, radius: 25 },
+  london: { name: 'London', lat: 51.5074, lon: -0.1278, radius: 25 },
+  'new-york': { name: 'New York', lat: 40.7128, lon: -74.0060, radius: 25 },
+  tokyo: { name: 'Tokyo', lat: 35.6762, lon: 139.6503, radius: 25 },
+  paris: { name: 'Paris', lat: 48.8566, lon: 2.3522, radius: 25 }
 };
 
 const TOPICS = {
@@ -103,18 +107,18 @@ module.exports = async (req, res) => {
       { loc: `${ORIGIN}/`, priority: '1.0', changefreq: 'hourly' }
     ];
 
-    // Only include city and topic pages if they have at least 1 verified active event
+    // Include city and topic pages for cities with verified events or core guides
     for (const [cSlug, city] of Object.entries(CITIES)) {
       const cityEvents = allEvents.filter(e => {
         if (e.venue_latitude == null || e.venue_longitude == null) return false;
         return distMiles(city.lat, city.lon, e.venue_latitude, e.venue_longitude) <= (city.radius || 25);
       });
 
-      if (cityEvents.length > 0) {
+      if (cityEvents.length > 0 || ['denver', 'boulder', 'golden', 'aurora'].includes(cSlug)) {
         staticUrls.push({ loc: `${ORIGIN}/${cSlug}`, priority: '0.9', changefreq: 'daily' });
         for (const [tSlug, topic] of Object.entries(TOPICS)) {
           const matching = cityEvents.filter(topic.filter);
-          if (matching.length > 0) {
+          if (matching.length > 0 || ['next-48-hours', 'music', 'outdoor', 'free', 'arts'].includes(tSlug)) {
             staticUrls.push({ loc: `${ORIGIN}/${cSlug}/${tSlug}`, priority: '0.8', changefreq: 'daily' });
           }
         }

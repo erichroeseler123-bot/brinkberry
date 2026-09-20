@@ -35,34 +35,34 @@ function addDays(s, n) {
   return d.toISOString().slice(0, 10);
 }
 
-function parts() {
-  return Object.fromEntries(
-    new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Denver',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      hourCycle: 'h23'
-    }).formatToParts(new Date()).map(x => [x.type, x.value])
-  );
+function localSolarHours(lng) {
+  if (!Number.isFinite(lng)) return -7;
+  return Math.max(-12, Math.min(14, Math.round(lng / 15)));
 }
 
-function zoned(s, h) {
-  const g = new Date(`${s}T${String(h).padStart(2, '0')}:00:00Z`);
-  const z = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Denver',
-    timeZoneName: 'longOffset',
-    hour: '2-digit'
-  }).formatToParts(g);
-  const o = (z.find(x => x.type === 'timeZoneName')?.value || 'GMT-06:00').replace('GMT', '');
-  return new Date(`${s}T${String(h).padStart(2, '0')}:00:00${o}`);
+function parts(lng) {
+  const offHours = localSolarHours(lng);
+  const offMs = offHours * 3600e3;
+  const d = new Date(Date.now() + offMs);
+  return {
+    year: d.getUTCFullYear(),
+    month: String(d.getUTCMonth() + 1).padStart(2, '0'),
+    day: String(d.getUTCDate()).padStart(2, '0'),
+    hour: d.getUTCHours(),
+    offHours
+  };
 }
 
-function bounds(w) {
+function zoned(s, h, offHours = -7) {
+  const dateParts = s.split('-').map(Number);
+  const utcMillis = Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2], h) - (offHours * 3600e3);
+  return new Date(utcMillis);
+}
+
+function bounds(w, lng) {
   const now = new Date();
   const max48 = new Date(now.getTime() + 48 * 3600e3);
-  const p = parts();
+  const p = parts(lng);
   const d = `${p.year}-${p.month}-${p.day}`;
   const h = Number(p.hour);
 
@@ -73,15 +73,15 @@ function bounds(w) {
     end = new Date(now.getTime() + 4 * 3600e3);
   } else if (w === 'tomorrow') {
     const x = addDays(d, 1);
-    start = zoned(x, 0);
-    end = zoned(addDays(x, 1), 0);
+    start = zoned(x, 0, p.offHours);
+    end = zoned(addDays(x, 1), 0, p.offHours);
   } else if (w === 'tonight') {
     if (h < 2) {
-      start = zoned(addDays(d, -1), 17);
-      end = zoned(d, 4);
+      start = zoned(addDays(d, -1), 17, p.offHours);
+      end = zoned(d, 4, p.offHours);
     } else {
-      start = zoned(d, 17);
-      end = zoned(addDays(d, 1), 4);
+      start = zoned(d, 17, p.offHours);
+      end = zoned(addDays(d, 1), 4, p.offHours);
     }
   } else if (w === 'weekend' || w === '48h' || w === 'next-48h') {
     start = now;
@@ -95,10 +95,14 @@ function bounds(w) {
 }
 
 const SUPPORTED_MARKETS = [
-  { name: 'Denver', slug: 'denver', state: 'CO', lat: 39.7392, lon: -104.9903, maxRadiusMiles: 60 },
-  { name: 'Boulder', slug: 'boulder', state: 'CO', lat: 40.0150, lon: -105.2705, maxRadiusMiles: 60 },
-  { name: 'Golden', slug: 'golden', state: 'CO', lat: 39.7555, lon: -105.2211, maxRadiusMiles: 60 },
-  { name: 'Aurora', slug: 'aurora', state: 'CO', lat: 39.7294, lon: -104.8319, maxRadiusMiles: 60 }
+  { name: 'Denver', slug: 'denver', state: 'CO', country: 'US', lat: 39.7392, lon: -104.9903, maxRadiusMiles: 60 },
+  { name: 'Boulder', slug: 'boulder', state: 'CO', country: 'US', lat: 40.0150, lon: -105.2705, maxRadiusMiles: 60 },
+  { name: 'Golden', slug: 'golden', state: 'CO', country: 'US', lat: 39.7555, lon: -105.2211, maxRadiusMiles: 60 },
+  { name: 'Aurora', slug: 'aurora', state: 'CO', country: 'US', lat: 39.7294, lon: -104.8319, maxRadiusMiles: 60 },
+  { name: 'London', slug: 'london', state: '', country: 'UK', lat: 51.5074, lon: -0.1278, maxRadiusMiles: 60 },
+  { name: 'New York', slug: 'new-york', state: 'NY', country: 'US', lat: 40.7128, lon: -74.0060, maxRadiusMiles: 60 },
+  { name: 'Tokyo', slug: 'tokyo', state: '', country: 'JP', lat: 35.6762, lon: 139.6503, maxRadiusMiles: 60 },
+  { name: 'Paris', slug: 'paris', state: '', country: 'FR', lat: 48.8566, lon: 2.3522, maxRadiusMiles: 60 }
 ];
 
 function checkCoverage(lat, lng, hybridResult) {
@@ -111,7 +115,7 @@ function checkCoverage(lat, lng, hybridResult) {
   }).sort((a, b) => a.distanceMiles - b.distanceMiles);
 
   const nearest = distances[0] || { market: { name: 'Denver' }, distanceMiles: 0 };
-  const isCuratedMarket = nearest.distanceMiles <= 60;
+  const isCuratedMarket = nearest.distanceMiles <= 60 && ['Denver', 'Boulder', 'Golden', 'Aurora'].includes(nearest.market.name);
   const isCommunityActive = Boolean(hybridResult?.providers?.community?.count > 0 || hybridResult?.providers?.community?.feedsConfigured > 0);
   const isDynamicActive = Boolean(hybridResult?.hybrid?.dynamicActive);
   const isDynamicConfigured = Boolean(hybridResult?.hybrid?.dynamicConfigured);
@@ -123,7 +127,7 @@ function checkCoverage(lat, lng, hybridResult) {
     geographicCoverage = 'community_connected';
   }
 
-  // A location is supported if it is within curated Front Range OR if dynamic providers or community feeds are active
+  // A location is supported if it is within curated market OR if dynamic providers or community feeds are active
   const isSupported = isCuratedMarket || isDynamicActive || isCommunityActive;
 
   return {
@@ -140,7 +144,7 @@ function checkCoverage(lat, lng, hybridResult) {
 }
 
 async function resolveLocationName(lat, lng, fallbackName) {
-  if (fallbackName && fallbackName !== 'Your Location' && fallbackName !== 'Nearby' && fallbackName !== 'Denver') {
+  if (fallbackName && fallbackName !== 'Your Location' && fallbackName !== 'Nearby') {
     return fallbackName;
   }
   try {
@@ -180,7 +184,7 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Location required' });
     }
 
-    const [a, b] = bounds(window);
+    const [a, b] = bounds(window, lng);
 
     // 1. Fetch curated database events from Supabase RPC
     let rawCurated = [];
