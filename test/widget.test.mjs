@@ -143,4 +143,27 @@ describe('Brinkberry Embeddable B2B Partner Widget Suite', () => {
     assert.equal(redirectHeaders.Location, 'https://seatgeek.com/new-orleans-events');
   });
 
+  test('router dispatches /terms and /privacy pages with required disclaimers', async () => {
+    let termsHtml = '';
+    const reqTerms = { url: '/terms' };
+    const resTerms = {
+      setHeader() {},
+      status() { return { send(b) { termsHtml = b; } }; }
+    };
+    await routerHandler(reqTerms, resTerms);
+    assert.match(termsHtml, /Terms of Service/);
+    assert.match(termsHtml, /Independent Discovery &amp; No Endorsement|Independent Discovery & No Endorsement/);
+    assert.match(termsHtml, /SeatGeek/);
+
+    let privacyHtml = '';
+    const reqPrivacy = { url: '/privacy' };
+    const resPrivacy = {
+      setHeader() {},
+      status() { return { send(b) { privacyHtml = b; } }; }
+    };
+    await routerHandler(reqPrivacy, resPrivacy);
+    assert.match(privacyHtml, /Privacy Policy/);
+    assert.match(privacyHtml, /Approximate Geolocation/);
+  });
+
 });

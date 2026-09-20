@@ -16,6 +16,8 @@ const sitemapHandler = require('./sitemap');
 const robotsHandler = require('./robots');
 const landingHandler = require('./landing');
 const widgetHandler = require('./widget');
+const termsHandler = require('./terms');
+const privacyHandler = require('./privacy');
 
 const marketRequestHandler = require('./market-request');
 
@@ -58,6 +60,12 @@ module.exports = async (req, res) => {
     }
     if (p === '/' || p === '/index.html') {
       return homeHandler(req, res);
+    }
+    if (p === '/terms') {
+      return termsHandler(req, res);
+    }
+    if (p === '/privacy') {
+      return privacyHandler(req, res);
     }
     if (p === '/sitemap.xml' || p === '/sitemap') {
       return sitemapHandler(req, res);

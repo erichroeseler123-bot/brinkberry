@@ -351,6 +351,13 @@ module.exports = async (req, res) => {
                   Get Tickets →
                 </a>
               </div>
+              ${(e.source === 'seatgeek' || e.provenance?.provider === 'seatgeek') ? `
+                <div style="font-size:10.5px; color:${textDim}; margin-top:6px; display:flex; justify-content:flex-end;">
+                  <a href="https://seatgeek.com" target="_blank" rel="noopener noreferrer" style="color:${textDim}; text-decoration:none;">
+                    Tickets via SeatGeek ↗
+                  </a>
+                </div>
+              ` : ''}
             </div>
           </article>
         `;
@@ -359,7 +366,7 @@ module.exports = async (req, res) => {
   `}
 
   <div class="widget-footer">
-    <span>Powered by <b>Brinkberry</b></span>
+    <span>Powered by <b>Brinkberry</b> · <a href="${ORIGIN}/terms" target="_blank" rel="noopener noreferrer" style="color:${textDim}; text-decoration:none; font-size:11px;">Terms</a></span>
     <a href="${esc(fullRadarUrl)}" target="_blank" rel="noopener noreferrer">
       Explore Full Live Radar →
     </a>

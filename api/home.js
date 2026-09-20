@@ -232,6 +232,15 @@ module.exports = (req, res) => {
         </div>
       </div>
     </section>
+
+    <!-- Public Legal Footer -->
+    <footer style="margin-top: 48px; padding: 24px 0 12px; border-top: 1px solid #1c1628; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 13px; color: var(--text-dim);">
+      <div>© 2026 Brinkberry · Independent Hyperlocal Event Radar</div>
+      <div style="display: flex; gap: 16px;">
+        <a href="/terms" style="color: var(--text-dim); text-decoration: none;">Terms of Service</a>
+        <a href="/privacy" style="color: var(--text-dim); text-decoration: none;">Privacy Policy</a>
+      </div>
+    </footer>
   </div>
 
   <!-- Event Detail Dialog -->
@@ -394,6 +403,13 @@ module.exports = (req, res) => {
                 Get Tickets →
               </a>
             </div>
+            \${(e.source === 'seatgeek' || e.provenance?.provider === 'seatgeek') ? \`
+              <div style="font-size:11px; color:var(--text-dim); margin-top:8px; display:flex; justify-content:flex-end;">
+                <a href="https://seatgeek.com" target="_blank" rel="noopener noreferrer" style="color:var(--text-dim); text-decoration:none; display:inline-flex; align-items:center; gap:2px;" onclick="event.stopPropagation()">
+                  Tickets via SeatGeek ↗
+                </a>
+              </div>
+            \` : ''}
           </div>
         </article>
       \`).join('') + '</div>';
@@ -500,6 +516,11 @@ module.exports = (req, res) => {
         <p style="color:var(--text-dim)">⏰ \${esc(fmtTime(e.start))}</p>
         <p><b>Admission:</b> \${esc(e.priceDisplay || 'Details on ticket page')}</p>
         \${e.desc ? \`<p style="line-height:1.5">\${esc(e.desc)}</p>\` : ''}
+        \${(e.source === 'seatgeek' || e.provenance?.provider === 'seatgeek') ? \`
+          <p style="font-size:12px; color:var(--text-dim); margin:12px 0 6px;">
+            Tickets and event data via <a href="https://seatgeek.com" target="_blank" rel="noopener noreferrer" style="color:var(--primary); font-weight:700; text-decoration:none;">SeatGeek ↗</a>.
+          </p>
+        \` : ''}
         <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap">
           <a class="btn" style="background:var(--primary); color:var(--primary-dark); font-weight:800" href="\${esc(clickUrl)}" target="_blank" rel="noopener noreferrer">Get Tickets & Details →</a>
           <a class="btn" href="/event/\${encodeURIComponent(e.id)}" target="_blank">Standalone Event Page</a>
