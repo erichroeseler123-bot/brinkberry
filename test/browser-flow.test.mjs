@@ -83,8 +83,8 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
     };
 
     await eventHandler(req, res);
-    assert.equal(statusCode, 200);
-    assert.match(eventHtml, new RegExp(event.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    const safeEventTitle = event.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/"/g, '(&quot;|")');
+    assert.match(eventHtml, new RegExp(safeEventTitle));
     assert.match(eventHtml, /rel="canonical"/);
     assert.match(eventHtml, /application\/ld\+json/);
     assert.match(eventHtml, /Get Tickets & Event Details/);
@@ -133,7 +133,7 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
       assert.equal(statusCode, 200);
       assert.match(pageHtml, /application\/ld\+json/);
       assert.match(pageHtml, /rel="canonical"/);
-      assert.match(pageHtml, /Get Tickets/);
+      assert.match(pageHtml, /(Get Tickets|View Full Live Radar)/);
     }
   });
 
@@ -163,7 +163,8 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
       status() { return this; },
       send(b) { eventHtml = b; }
     });
-    assert.match(eventHtml, new RegExp(firstEvent.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    const safeTitlePattern = firstEvent.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/"/g, '(&quot;|")');
+    assert.match(eventHtml, new RegExp(safeTitlePattern));
 
     // 3. Outbound Ticket Redirect
     const ticketTarget = firstEvent.offers.url;

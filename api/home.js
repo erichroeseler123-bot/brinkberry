@@ -288,6 +288,18 @@ module.exports = (req, res) => {
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
     const fmtTime = iso => new Date(iso).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
+    const CATEGORY_IMAGES = {
+      music: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop',
+      comedy: 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&auto=format&fit=crop',
+      theater: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800&auto=format&fit=crop',
+      arts: 'https://images.unsplash.com/photo-1565008447742-97f6f38c985c?w=800&auto=format&fit=crop',
+      sports: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&auto=format&fit=crop',
+      family: 'https://images.unsplash.com/photo-1472653431158-6364773b2a56?w=800&auto=format&fit=crop',
+      food: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop',
+      outdoor: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=800&auto=format&fit=crop',
+      other: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&auto=format&fit=crop'
+    };
+
     function initControls() {
       const radii = [5, 10, 25, 50];
       $('radiusFilters').innerHTML = radii.map(r => \`<button class="\${S.radius === r ? 'active' : ''}" data-r="\${r}">\${r} mi</button>\`).join('');
@@ -349,9 +361,11 @@ module.exports = (req, res) => {
       if (!S.events.length) {
         const modeLabels = { cheap: 'Cheap / Free', date: 'Date Night', outside: 'Outside', kids: 'Kids' };
         const modeText = S.mode && modeLabels[S.mode] ? ' for "' + modeLabels[S.mode] + '"' : '';
+        const windowLabels = { now: 'happening right now', tonight: 'tonight', tomorrow: 'tomorrow', '48h': 'in the next 48 hours', weekend: 'this weekend' };
+        const winText = windowLabels[S.window] || 'in the next 48 hours';
         $('feed').innerHTML = \`
           <div class="empty">
-            <h3>No qualifying events found within \${S.radius} miles in the next 48 hours\${modeText}</h3>
+            <h3>No qualifying events found within \${S.radius} miles \${winText}\${modeText}</h3>
             <p>We strictly show verified events happening in the next 48 hours. Try expanding your radius or checking a different vibe filter.</p>
             <div class="row" style="justify-content:center; margin-top:14px; gap:8px;">
               \${S.mode ? '<button onclick="S.mode=\\'\\'; initControls(); loadFeed();" style="background:#191424; color:#fff">Clear Vibe Filter</button>' : ''}
@@ -363,10 +377,12 @@ module.exports = (req, res) => {
         return;
       }
 
-      $('feed').innerHTML = '<div class="grid">' + S.events.map(e => \`
+      $('feed').innerHTML = '<div class="grid">' + S.events.map(e => {
+        const cardImg = e.image || CATEGORY_IMAGES[e.category] || CATEGORY_IMAGES.other;
+        return \`
         <article class="card \${e.onTheBrink ? 'brink' : ''}" data-id="\${e.id}">
           <div class="card-img">
-            \${e.image ? '<img src="' + esc(e.image) + '" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;" loading="lazy">' : ''}
+            <img src="\${esc(cardImg)}" alt="\${esc(e.title)}" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;" loading="lazy">
             <span class="card-badge" style="position:relative; z-index:1;">\${esc(e.category)}</span>
           </div>
           <div class="card-body">
@@ -376,7 +392,7 @@ module.exports = (req, res) => {
             <div class="card-meta">📍 \${esc(e.venue)}\${e.city ? ', ' + esc(e.city) : ''}</div>
             <div class="card-meta">⏰ \${esc(fmtTime(e.start))}\${e.distanceMiles != null ? ' · <b>' + e.distanceMiles.toFixed(1) + ' mi</b>' : ''}</div>
             <div class="why-tags">
-              \${(e.whyThis || []).map(t => \`<span class="why-tag">\${esc(t)}</span>\`).join('')}
+              \${(e.whyThis || []).map(t => '<span class="why-tag">' + esc(t) + '</span>').join('')}
             </div>
             <div class="card-footer">
               <div class="card-price">\${esc(e.priceDisplay || 'Details')}</div>
@@ -386,7 +402,7 @@ module.exports = (req, res) => {
             </div>
           </div>
         </article>
-      \`).join('') + '</div>';
+      \`; }).join('') + '</div>';
 
       document.querySelectorAll('.card').forEach(c => c.onclick = () => openDetail(c.dataset.id));
       renderRadar();
@@ -428,6 +444,14 @@ module.exports = (req, res) => {
             const chip = $('customLocChip');
             if (chip) chip.textContent = '📍 ' + S.locationName;
           }
+        }
+
+        // If 'tonight' has 0 events (e.g. late night), seamlessly expand to next 48 hours
+        if (S.events.length === 0 && S.window === 'tonight' && !S.hasAutoExpanded) {
+          S.hasAutoExpanded = true;
+          S.window = '48h';
+          initControls();
+          return loadFeed();
         }
 
         if (S.coverage && S.coverage.isSupported === false) {
@@ -474,9 +498,10 @@ module.exports = (req, res) => {
       const e = S.events.find(x => x.id === id);
       if (!e) return;
       S.currentDetailEvent = e;
+      const detailImg = e.image || CATEGORY_IMAGES[e.category] || CATEGORY_IMAGES.other;
       const clickUrl = \`/api/click?url=\${encodeURIComponent(e.ticketUrl)}&eventId=\${encodeURIComponent(e.id)}&surface=detail_modal\`;
       $('detailBody').innerHTML = \`
-        \${e.image ? '<img src="' + esc(e.image) + '" alt="" style="width:100%; max-height:220px; object-fit:cover; border-radius:12px; margin-bottom:14px;">' : ''}
+        <img src="\${esc(detailImg)}" alt="" style="width:100%; max-height:220px; object-fit:cover; border-radius:12px; margin-bottom:14px;">
         <h2 style="margin-top:0">\${esc(e.title)}</h2>
         <p style="color:var(--text-dim)">📍 \${esc(e.venue)}\${e.city ? ', ' + esc(e.city) : ''} \${e.distanceMiles != null ? ' · ' + e.distanceMiles.toFixed(1) + ' mi' : ''}</p>
         <p style="color:var(--text-dim)">⏰ \${esc(fmtTime(e.start))}</p>
@@ -521,6 +546,7 @@ module.exports = (req, res) => {
     $('viewRadar').onclick = () => { $('viewRadar').classList.add('active'); $('viewFeed').classList.remove('active'); $('feed').style.display = 'none'; $('radar').style.display = 'block'; renderRadar(); };
 
     function applyLocation(loc, shouldSave = true) {
+      S.hasAutoExpanded = false;
       S.lat = loc.lat;
       S.lon = loc.lon;
       S.city = loc.city;

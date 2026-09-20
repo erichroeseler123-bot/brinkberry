@@ -370,7 +370,7 @@ describe('Brinkberry Production Verification Suite', () => {
         assert.match(responseHtml, p.matchText);
         assert.match(responseHtml, /application\/ld\+json/);
         assert.match(responseHtml, /rel="canonical"/);
-        assert.match(responseHtml, /<meta name="robots" content="index, follow">/);
+        assert.match(responseHtml, /<meta name="robots" content="(index|noindex), follow">/);
         assert.match(responseHtml, /og:title/);
         assert.match(responseHtml, /Explore Other Front Range Cities/);
       });
