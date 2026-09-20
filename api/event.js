@@ -108,6 +108,10 @@ module.exports = async (req, res) => {
   <meta name="twitter:title" content="${esc(e.title)}">
   <meta name="twitter:description" content="${esc(desc)}">
   <script type="application/ld+json">${jsonLd}</script>
+  
+  <!-- Impact.com / Trackonomics Publisher Tag -->
+  <script type="text/javascript">(function(i,m,p,a,c,t){c.ire_o=p;c[p]=c[p]||function(){(c[p].a=c[p].a||[]).push(arguments)};t=a.createElement(m);var z=a.getElementsByTagName(m)[0];t.async=1;t.src=i;z.parentNode.insertBefore(t,z)})('https://utt.impactcdn.com/P-A7811847-56b2-4d75-8496-a98b675d87f81.js','script','impactStat',document,window);impactStat('transformLinks');impactStat('trackImpression');</script>
+
   <style>
     body { margin: 0; background: #080610; color: #f4eff8; font: 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.5; }
     .container { max-width: 760px; margin: auto; padding: 24px 20px 60px; }
