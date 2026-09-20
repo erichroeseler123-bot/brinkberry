@@ -30,6 +30,9 @@ module.exports = (req, res) => {
   <meta property="og:url" content="https://brinkberry.com/">
   <meta name="twitter:card" content="summary_large_image">
   
+  <!-- Impact.com Partner Verification & Tracking -->
+  <script type="text/javascript">(function(i,m,p,a,c,t){c.ire_o=p;c[p]=c[p]||function(){(c[p].a=c[p].a||[]).push(arguments)};t=a.createElement(m);var z=a.getElementsByTagName(m)[0];t.async=1;t.src=i;z.parentNode.insertBefore(t,z)})('https://utt.impactcdn.com/P-A7811847-56b2-4d75-8496-a98b675d87f81.js','script','impactStat',document,window);impactStat('transformLinks');impactStat('trackImpression');</script>
+
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQ3ynHBWqOU7MZVnKfXKjMZKnS4W9TQ=" crossorigin="">
   <style>
     :root {
