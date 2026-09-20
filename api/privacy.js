@@ -61,13 +61,15 @@ module.exports = async (req, res) => {
     </ul>
 
     <h2>2. Outbound Links to Third-Party Ticketing Services</h2>
-    <p>When you click “Get Tickets” or event links, you leave Brinkberry and are redirected to third-party services such as SeatGeek, Ticketmaster, or venue ticketing pages. Those third parties operate under their own independent privacy notices and terms. We encourage you to review their policies when purchasing tickets or submitting payment details.</p>
+    <p>When you click “Get Tickets” or event links, you leave Brinkberry and are redirected to third-party services such as SeatGeek, Ticketmaster, Viator, or venue ticketing pages. Those third parties operate under their own independent privacy notices and terms. We encourage you to review their policies when purchasing tickets or submitting payment details.</p>
 
     <h2>3. Data Sharing & Third-Party APIs</h2>
-    <p>We do not sell, rent, or monetize your personal information to third parties or data brokers. We query third-party event APIs (such as SeatGeek) server-side using geographic coordinates to fetch public event listings without transmitting personal user identifiers.</p>
+    <p>We do not sell, rent, or monetize your personal information to third parties or data brokers. We query third-party event APIs server-side using geographic coordinates to fetch public event listings without transmitting personal user identifiers.</p>
 
-    <h2>4. Cookies & Tracking</h2>
-    <p>Brinkberry does not use invasive third-party tracking cookies or cross-site tracking pixels. Local browser storage is used solely to remember your preferred city and radar settings.</p>
+    <h2>4. Affiliate Partner Networks & Tracking Technologies</h2>
+    <p>Brinkberry participates in performance marketing partnerships with third-party affiliate networks, including <b>Impact.com</b> and <b>Commission Junction LLC (CJ Affiliate)</b>, to earn referral commissions when visitors follow links from Brinkberry to purchase tickets or experiences.</p>
+    <p>When you click on an affiliate ticket link or browse event pages, these networks and participating advertisers may deploy cookies, web beacons, and device tracking technologies (such as the Impact Universal Tracking Tag and CJ tracking identifiers) to measure impressions, track referral clicks, and attribute qualifying ticket purchases. No directly identifiable personal information (such as your name or email) is shared with these networks by Brinkberry.</p>
+    <p>For details on how these affiliate networks process data or to exercise your privacy and opt-out rights, please review the <a href="https://www.cj.com/legal/privacy" target="_blank" rel="noopener">CJ Affiliate Privacy Policy</a> and <a href="https://impact.com/privacy-policy/" target="_blank" rel="noopener">Impact.com Privacy Policy</a>.</p>
 
     <h2>5. Updates to This Policy</h2>
     <p>We may update this Privacy Policy from time to time. Any changes will be posted on this page with an updated revision date.</p>
