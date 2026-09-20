@@ -101,6 +101,48 @@ describe('Hybrid Dynamic Event Engine Suite', () => {
       assert.equal(normalized.venue_longitude, -87.9712);
     });
 
+    test('normalizes SeatGeek OAS3 expected_experience_end, ImageWithMetadata, and promotion images', () => {
+      const rawSgOas = {
+        id: 998877,
+        title: 'Young The Giant with Grouplove',
+        datetime_utc: '2026-09-20T20:00:00',
+        expected_experience_end: '2026-09-20T23:00:00Z',
+        venue: {
+          name: 'Terminal 5',
+          city: 'New York',
+          state: 'NY',
+          location: { lat: 40.7697, lon: -73.9928 }
+        },
+        type: 'concert',
+        taxonomies: [{ name: 'concert' }, { name: 'indie-rock' }],
+        image: {
+          url: 'https://images.seatgeek.com/events/ytg_banner.jpg',
+          ada_dominant_color: '#1a1a1a',
+          attribution: 'SeatGeek Official'
+        },
+        performers: [
+          {
+            name: 'Grouplove',
+            primary: true,
+            image: {
+              url: 'https://chairnerd.global.ssl.fastly.net/images/performers/8741/performer_thumb.jpg'
+            },
+            images: {
+              huge: 'https://chairnerd.global.ssl.fastly.net/images/performers/8741/huge.jpg'
+            }
+          }
+        ],
+        url: 'https://seatgeek.com/young-the-giant-tickets'
+      };
+
+      const normalized = normalizeEvent(rawSgOas, 'seatgeek');
+      assert.ok(normalized);
+      assert.equal(normalized.id, 'sg_998877');
+      assert.equal(normalized.end_time, '2026-09-20T23:00:00.000Z');
+      assert.equal(normalized.canonical_image_url, 'https://images.seatgeek.com/events/ytg_banner.jpg');
+      assert.equal(normalized.category_tags[0], 'music');
+    });
+
     test('rejects malformed or un-locatable event records', () => {
       const malformed = { id: 'missing_coords', name: 'Ghost Show' };
       assert.equal(normalizeEvent(malformed, 'ticketmaster'), null);
