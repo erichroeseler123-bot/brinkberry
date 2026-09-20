@@ -85,7 +85,8 @@ module.exports = (req, res) => {
     .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.15s, border-color 0.15s; cursor: pointer; }
     .card:hover { transform: translateY(-2px); border-color: #4a3a66; }
     .card.brink { border-color: var(--accent); }
-    .card-img { height: 145px; background: linear-gradient(135deg, #24142d, #4a1832); position: relative; overflow: hidden; display: flex; align-items: flex-end; padding: 10px; }
+    .card-img { height: 155px; background: #181322; position: relative; overflow: hidden; display: flex; align-items: flex-end; padding: 10px; }
+    .card-no-img { padding: 14px 16px 0; display: flex; align-items: center; justify-content: space-between; }
     .card-badge { background: rgba(8, 6, 16, 0.85); backdrop-filter: blur(4px); border: 1px solid #362a4d; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; color: #fff; }
     .card-body { padding: 16px; flex: 1; display: flex; flex-direction: column; }
     .card-title { font-size: 18px; font-weight: 800; line-height: 1.25; margin: 4px 0 8px; color: #fff; }
@@ -288,18 +289,6 @@ module.exports = (req, res) => {
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
     const fmtTime = iso => new Date(iso).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
-    const CATEGORY_IMAGES = {
-      music: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop',
-      comedy: 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&auto=format&fit=crop',
-      theater: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800&auto=format&fit=crop',
-      arts: 'https://images.unsplash.com/photo-1565008447742-97f6f38c985c?w=800&auto=format&fit=crop',
-      sports: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&auto=format&fit=crop',
-      family: 'https://images.unsplash.com/photo-1472653431158-6364773b2a56?w=800&auto=format&fit=crop',
-      food: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop',
-      outdoor: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=800&auto=format&fit=crop',
-      other: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&auto=format&fit=crop'
-    };
-
     function initControls() {
       const radii = [5, 10, 25, 50];
       $('radiusFilters').innerHTML = radii.map(r => \`<button class="\${S.radius === r ? 'active' : ''}" data-r="\${r}">\${r} mi</button>\`).join('');
@@ -377,16 +366,21 @@ module.exports = (req, res) => {
         return;
       }
 
-      $('feed').innerHTML = '<div class="grid">' + S.events.map(e => {
-        const cardImg = e.image || CATEGORY_IMAGES[e.category] || CATEGORY_IMAGES.other;
-        return \`
+      $('feed').innerHTML = '<div class="grid">' + S.events.map(e => \`
         <article class="card \${e.onTheBrink ? 'brink' : ''}" data-id="\${e.id}">
-          <div class="card-img">
-            <img src="\${esc(cardImg)}" alt="\${esc(e.title)}" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;" loading="lazy">
-            <span class="card-badge" style="position:relative; z-index:1;">\${esc(e.category)}</span>
-          </div>
+          \${e.image ? \`
+            <div class="card-img">
+              <img src="\${esc(e.image)}" alt="\${esc(e.title)}" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;" loading="lazy">
+              <span class="card-badge" style="position:relative; z-index:1;">\${esc(e.category)}</span>
+            </div>
+          \` : \`
+            <div class="card-no-img">
+              <span class="card-badge">\${esc(e.category)}</span>
+              \${e.onTheBrink ? '<span class="brinktag" style="margin:0">Starts Soon</span>' : ''}
+            </div>
+          \`}
           <div class="card-body">
-            \${e.onTheBrink ? '<div class="brinktag">Starts Soon</div>' : ''}
+            \${(e.onTheBrink && e.image) ? '<div class="brinktag">Starts Soon</div>' : ''}
             <div class="card-meta">\${e.neighborhood ? esc(e.neighborhood) : esc(e.city || 'Nearby')}</div>
             <div class="card-title">\${esc(e.title)}</div>
             <div class="card-meta">📍 \${esc(e.venue)}\${e.city ? ', ' + esc(e.city) : ''}</div>
@@ -402,7 +396,7 @@ module.exports = (req, res) => {
             </div>
           </div>
         </article>
-      \`; }).join('') + '</div>';
+      \`).join('') + '</div>';
 
       document.querySelectorAll('.card').forEach(c => c.onclick = () => openDetail(c.dataset.id));
       renderRadar();
@@ -498,10 +492,9 @@ module.exports = (req, res) => {
       const e = S.events.find(x => x.id === id);
       if (!e) return;
       S.currentDetailEvent = e;
-      const detailImg = e.image || CATEGORY_IMAGES[e.category] || CATEGORY_IMAGES.other;
       const clickUrl = \`/api/click?url=\${encodeURIComponent(e.ticketUrl)}&eventId=\${encodeURIComponent(e.id)}&surface=detail_modal\`;
       $('detailBody').innerHTML = \`
-        <img src="\${esc(detailImg)}" alt="" style="width:100%; max-height:220px; object-fit:cover; border-radius:12px; margin-bottom:14px;">
+        \${e.image ? '<img src="' + esc(e.image) + '" alt="" style="width:100%; max-height:240px; object-fit:cover; border-radius:12px; margin-bottom:14px;">' : ''}
         <h2 style="margin-top:0">\${esc(e.title)}</h2>
         <p style="color:var(--text-dim)">📍 \${esc(e.venue)}\${e.city ? ', ' + esc(e.city) : ''} \${e.distanceMiles != null ? ' · ' + e.distanceMiles.toFixed(1) + ' mi' : ''}</p>
         <p style="color:var(--text-dim)">⏰ \${esc(fmtTime(e.start))}</p>
