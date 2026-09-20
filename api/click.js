@@ -36,7 +36,9 @@ module.exports = async (req, res) => {
     const u = new URL(req.url, 'https://brinkberry.local');
     const target = u.searchParams.get('url') || u.searchParams.get('dest');
     const eventId = u.searchParams.get('eventId');
-    const surface = u.searchParams.get('surface') || 'feed';
+    const partner = u.searchParams.get('partner');
+    const surfaceParam = u.searchParams.get('surface');
+    const surface = surfaceParam || (partner ? `widget_${partner}` : 'feed');
 
     if (!target) {
       return res.status(400).json({ error: 'Missing target url parameter' });

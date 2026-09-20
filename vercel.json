@@ -4,6 +4,7 @@
     { "source": "/", "destination": "/api/home" },
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/robots.txt", "destination": "/api/robots" },
+    { "source": "/widget", "destination": "/api/widget" },
     { "source": "/api/feed", "destination": "/api/feed" },
     { "source": "/api/click", "destination": "/api/click" },
     { "source": "/api/weather", "destination": "/api/weather" },
@@ -28,6 +29,7 @@
     "api/weather.js": { "maxDuration": 30 },
     "api/route.js": { "maxDuration": 30 },
     "api/event.js": { "maxDuration": 30 },
+    "api/widget.js": { "maxDuration": 30 },
     "api/admin-api.js": { "maxDuration": 30 },
     "api/admin.js": { "maxDuration": 30 },
     "api/og.js": { "maxDuration": 30 }

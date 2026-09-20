@@ -15,6 +15,7 @@ const ogHandler = require('./og');
 const sitemapHandler = require('./sitemap');
 const robotsHandler = require('./robots');
 const landingHandler = require('./landing');
+const widgetHandler = require('./widget');
 
 const marketRequestHandler = require('./market-request');
 
@@ -63,6 +64,9 @@ module.exports = async (req, res) => {
     }
     if (p === '/robots.txt') {
       return robotsHandler(req, res);
+    }
+    if (p === '/widget') {
+      return widgetHandler(req, res);
     }
     if (p === '/api/click') {
       return clickHandler(req, res);
