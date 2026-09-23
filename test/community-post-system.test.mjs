@@ -1,4 +1,4 @@
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach, afterEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
@@ -18,6 +18,14 @@ const { getAllScheduledRaces } = require('../lib/racing/registry.js');
 
 describe('Brinkberry Autonomous Community Post System', () => {
   beforeEach(() => {
+    _resetForTesting();
+  });
+
+  afterEach(() => {
+    _resetForTesting();
+  });
+
+  after(() => {
     _resetForTesting();
   });
 
