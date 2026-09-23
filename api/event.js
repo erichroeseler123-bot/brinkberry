@@ -26,8 +26,8 @@ async function getEvent(id) {
   }
   if (typeof id === 'string' && id.startsWith('comm_post_')) {
     try {
-      const { getCommunityPostById } = require('../lib/community-posts/community-posts');
-      const post = await getCommunityPostById(id);
+      const { fetchCommunityPostById, getCommunityPostById } = require('../lib/community-posts/community-posts');
+      const post = (await fetchCommunityPostById(id)) || (await getCommunityPostById(id));
       if (post) return post;
     } catch (_) {}
   }

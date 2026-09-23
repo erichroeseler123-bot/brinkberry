@@ -14,6 +14,7 @@
 const {
   createCommunityPost,
   getCommunityPostById,
+  fetchCommunityPostById,
   deleteCommunityPost,
   verifyPostLevel,
   reportCommunityPost,
@@ -1045,7 +1046,7 @@ module.exports = async (req, res) => {
       return res.status(400).send(`<!doctype html><html><body style="background:#090714;color:#fff;font-family:sans-serif;padding:40px;text-align:center"><h2>Event ID required to manage post.</h2><p><a href="/" style="color:#ffb86b">← Return to Brinkberry</a></p></body></html>`);
     }
 
-    const post = await getCommunityPostById(id);
+    const post = (await fetchCommunityPostById(id)) || (await getCommunityPostById(id));
     if (!post) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       return res.status(404).send(`<!doctype html><html><body style="background:#090714;color:#fff;font-family:sans-serif;padding:40px;text-align:center"><h2>Post not found or already deleted.</h2><p><a href="/" style="color:#ffb86b">← Explore live events</a></p></body></html>`);
