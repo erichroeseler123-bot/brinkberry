@@ -2,8 +2,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import homeHandler from '../api/home.js';
 
-describe('Homepage Hero Redesign & 3-Vertical Selection', () => {
-  test('renders the central "What are you looking for tonight?" headline', () => {
+describe('Homepage Hero Redesign & Streamlined Discovery', () => {
+  test('renders the streamlined "What’s happening near you?" headline and subtitle', () => {
     let output = '';
     const res = {
       setHeader: () => {},
@@ -11,13 +11,13 @@ describe('Homepage Hero Redesign & 3-Vertical Selection', () => {
     };
     homeHandler({ url: '/', headers: {} }, res);
 
-    // Primary headline and regression subtitle
-    assert.match(output, /<h1 class="hero-title">What are you looking for tonight\?<\/h1>/);
+    // Primary streamlined headline and regression subtitle
+    assert.match(output, /<h1 class="hero-title">What’s happening near you\?<\/h1>/);
     assert.match(output, /Wondering what should I do tonight\?/);
     assert.match(output, /Find what’s happening near you right now/);
   });
 
-  test('simplifies hero: removes 3 large category feature boxes and uses compact category filter bubbles', () => {
+  test('simplifies top navigation to Brinkberry, Post an Event, and Menu', () => {
     let output = '';
     const res = {
       setHeader: () => {},
@@ -25,21 +25,59 @@ describe('Homepage Hero Redesign & 3-Vertical Selection', () => {
     };
     homeHandler({ url: '/', headers: {} }, res);
 
-    // Verify 3 large entry path cards are removed
+    // Header has brand, post button, and menu button
+    assert.match(output, /class="brand"/);
+    assert.match(output, /id="postEventBtn"/);
+    assert.match(output, /\+ Post an Event/);
+    assert.match(output, /id="navMenuBtn"/);
+    assert.match(output, /id="navMenuDropdown"/);
+
+    // "Submit Show" and "Hyperlocal Radar" are inside menu dropdown
+    assert.match(output, /class="nav-menu-dropdown"[^>]*>[\s\S]*\/submit-comedy/);
+    assert.match(output, /class="nav-menu-dropdown"[^>]*>[\s\S]*Hyperlocal Radar/);
+  });
+
+  test('simplifies hero: one compact category row with primary categories and More button', () => {
+    let output = '';
+    const res = {
+      setHeader: () => {},
+      end: (content) => { output = content; }
+    };
+    homeHandler({ url: '/', headers: {} }, res);
+
+    // Verify 3 large entry path cards are absent
     assert.doesNotMatch(output, /class="hero-vertical-entry-paths"/);
     assert.doesNotMatch(output, /id="entryPathAll"/);
     assert.doesNotMatch(output, /id="entryPathComedy"/);
     assert.doesNotMatch(output, /id="entryPathRacing"/);
-    assert.doesNotMatch(output, /class="entry-path-card/);
 
-    // Verify compact category bubbles are present covering Everything, Comedy, and Motorsports
+    // Verify category row and primary pills
     assert.match(output, /id="categoryRow"/);
     assert.match(output, /All Events/);
     assert.match(output, /Comedy Radar/);
     assert.match(output, /Motorsports/);
+    assert.match(output, /Community/);
+    assert.match(output, /Music/);
+    assert.match(output, /id="moreCategoriesBtn"/);
+    assert.match(output, /id="moreCategoriesRow"/);
   });
 
-  test('renders radar-lock indicator and expandable location drawer', () => {
+  test('renders simple Tonight / Next 48 Hours choice and compact Filters button', () => {
+    let output = '';
+    const res = {
+      setHeader: () => {},
+      end: (content) => { output = content; }
+    };
+    homeHandler({ url: '/', headers: {} }, res);
+
+    assert.match(output, /id="quickTimeToggle"/);
+    assert.match(output, /data-time="tonight"/);
+    assert.match(output, /data-time="48h"/);
+    assert.match(output, /id="filtersToggleBtn"/);
+    assert.match(output, /id="filterCountBadge"/);
+  });
+
+  test('renders location indicator and expandable location drawer', () => {
     let output = '';
     const res = {
       setHeader: () => {},
@@ -61,7 +99,7 @@ describe('Homepage Hero Redesign & 3-Vertical Selection', () => {
     assert.match(output, /id="presetAurora"/);
   });
 
-  test('renders progressive disclosure containers for All, Comedy, and Racing sub-filters', () => {
+  test('houses advanced filters and sub-consoles within the filters drawer', () => {
     let output = '';
     const res = {
       setHeader: () => {},
@@ -69,14 +107,14 @@ describe('Homepage Hero Redesign & 3-Vertical Selection', () => {
     };
     homeHandler({ url: '/', headers: {} }, res);
 
-    assert.match(output, /id="contextualControls"/);
-    assert.match(output, /id="everythingSubRow"/);
-    assert.match(output, /id="categoryRow"/);
-    assert.match(output, /id="comedySubFilterConsole"/);
-    assert.match(output, /id="racingSubFilterConsole"/);
+    assert.match(output, /id="advancedFiltersDrawer"/);
     assert.match(output, /id="generalFilterBar"/);
     assert.match(output, /id="timeWindows"/);
     assert.match(output, /id="radiusFilters"/);
     assert.match(output, /id="modeFilters"/);
+    assert.match(output, /id="sourceFilters"/);
+    assert.match(output, /id="comedySubFilterConsole"/);
+    assert.match(output, /id="racingSubFilterConsole"/);
   });
 });
+

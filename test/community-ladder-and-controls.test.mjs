@@ -232,9 +232,9 @@ describe('Brinkberry Community Event Layer: Broadcast Ladder & User Controls', (
       assert.equal(ladder[3].status, 'pending_prerequisite');
     });
 
-    it('allows sequential step-up verification via verifyPostLevel with explicit admin approval', () => {
+    it('allows sequential step-up verification via verifyPostLevel with explicit admin approval', async () => {
       const now = Date.now();
-      const res = createCommunityPost({
+      const res = await createCommunityPost({
         title: 'Grassroots Acoustic Folk Circle ' + now,
         category: 'music',
         startTime: new Date(now + 6 * 3600 * 1000).toISOString(),
@@ -252,19 +252,19 @@ describe('Brinkberry Community Event Layer: Broadcast Ladder & User Controls', (
       assert.equal(res.event.approvedRadiusMiles, 2);
 
       // 1. Confirm email -> records evidence, enters admin review queue (does NOT auto-unlock Level 2)
-      const vEmail = verifyPostLevel(postId, key, { email: 'folk@example.com', emailConfirmed: true });
+      const vEmail = await verifyPostLevel(postId, key, { email: 'folk@example.com', emailConfirmed: true });
       assert.equal(vEmail.success, true);
       assert.equal(vEmail.currentLevel, 1, 'Email alone must NOT auto-unlock Level 2');
       assert.equal(vEmail.approvedRadiusMiles, 2);
 
       // 2. Add verified phone -> records evidence in review queue
-      const vPhone = verifyPostLevel(postId, key, { phone: '303-555-0144', phoneVerified: true });
+      const vPhone = await verifyPostLevel(postId, key, { phone: '303-555-0144', phoneVerified: true });
       assert.equal(vPhone.success, true);
       assert.equal(vPhone.currentLevel, 1, 'Phone alone must NOT auto-unlock Level 3');
       assert.equal(vPhone.approvedRadiusMiles, 2);
 
       // 3. Add public details URL -> records evidence in review queue
-      const vUrl = verifyPostLevel(postId, key, { detailsUrl: 'https://folkmusicdenver.org/meetup' });
+      const vUrl = await verifyPostLevel(postId, key, { detailsUrl: 'https://folkmusicdenver.org/meetup' });
       assert.equal(vUrl.success, true);
       assert.equal(vUrl.currentLevel, 1, 'URL alone must NOT auto-unlock Level 4');
       assert.equal(vUrl.approvedRadiusMiles, 2);
@@ -279,19 +279,19 @@ describe('Brinkberry Community Event Layer: Broadcast Ladder & User Controls', (
       assert.equal(item.targetLevel, 4);
 
       // 5. Admin explicitly approves Level 2 -> unlocks Hood (~6 mi)
-      const app2 = adminApprovePostLevel(postId, 2, 'Email verified');
+      const app2 = await adminApprovePostLevel(postId, 2, 'Email verified');
       assert.equal(app2.success, true);
       assert.equal(app2.currentLevel, 2);
       assert.equal(app2.approvedRadiusMiles, 6);
 
       // 6. Admin explicitly approves Level 3 -> unlocks Quadrant (~15 mi)
-      const app3 = adminApprovePostLevel(postId, 3, 'Phone verified');
+      const app3 = await adminApprovePostLevel(postId, 3, 'Phone verified');
       assert.equal(app3.success, true);
       assert.equal(app3.currentLevel, 3);
       assert.equal(app3.approvedRadiusMiles, 15);
 
       // 7. Admin explicitly approves Level 4 -> unlocks City (~30 mi)
-      const app4 = adminApprovePostLevel(postId, 4, 'Public link verified');
+      const app4 = await adminApprovePostLevel(postId, 4, 'Public link verified');
       assert.equal(app4.success, true);
       assert.equal(app4.currentLevel, 4);
       assert.equal(app4.approvedRadiusMiles, 30);

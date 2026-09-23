@@ -120,6 +120,7 @@ module.exports = (req, res) => {
       align-items: center;
       padding-bottom: 14px;
       border-bottom: 1px solid #1c152a;
+      position: relative;
     }
     .brand {
       font-size: 23px;
@@ -135,6 +136,92 @@ module.exports = (req, res) => {
       color: var(--accent);
       text-shadow: 0 0 10px var(--accent-glow);
     }
+    .top-nav-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-post-event {
+      color: #03291d;
+      font-size: 12.5px;
+      font-weight: 800;
+      text-decoration: none;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: var(--radar-cyan);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 0 10px rgba(0, 230, 153, 0.3);
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn-post-event:hover {
+      background: #33ffb5;
+      box-shadow: 0 0 14px rgba(0, 230, 153, 0.5);
+      color: #03291d;
+    }
+    .nav-menu-wrap {
+      position: relative;
+    }
+    .nav-menu-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #ded6ec;
+      padding: 6px 13px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .nav-menu-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .nav-menu-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 220px;
+      background: #140f22;
+      border: 1px solid rgba(255, 184, 107, 0.3);
+      border-radius: 14px;
+      padding: 8px 6px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65);
+      z-index: 1000;
+      animation: menuSlide 0.15s ease-out;
+    }
+    @keyframes menuSlide {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      color: #ded6ec;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .menu-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+    .menu-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.07);
+      margin: 5px 6px;
+    }
     .top-radar-indicator {
       display: flex;
       align-items: center;
@@ -142,10 +229,6 @@ module.exports = (req, res) => {
       font-size: 12px;
       font-weight: 700;
       color: var(--text-dim);
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      padding: 4px 10px;
-      border-radius: 999px;
     }
     .pulse-dot {
       width: 7px;
@@ -155,69 +238,27 @@ module.exports = (req, res) => {
       box-shadow: 0 0 8px var(--radar-cyan);
       animation: radar-pulse 2s infinite;
     }
+    @keyframes radar-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(0, 230, 153, 0.7); }
+      70% { box-shadow: 0 0 0 7px rgba(0, 230, 153, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 230, 153, 0); }
+    }
 
-    /* Live Worldwide Radar Hero */
+    /* Streamlined Calm Hero */
     .hero {
       position: relative;
-      padding: 24px 0 14px;
+      padding: 20px 0 10px;
     }
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(255, 46, 99, 0.12);
-      border: 1px solid rgba(255, 46, 99, 0.32);
-      color: #ff809d;
-      font-size: 11px;
-      font-weight: 850;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: 4px 11px;
-      border-radius: 999px;
-      margin-bottom: 10px;
-    }
-    .radar-ping {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 0 rgba(255, 46, 99, 0.7);
-      animation: radar-pulse 2s infinite;
-    }
-    @keyframes radar-pulse {
-      0% { box-shadow: 0 0 0 0 rgba(255, 46, 99, 0.7); }
-      70% { box-shadow: 0 0 0 7px rgba(255, 46, 99, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(255, 46, 99, 0); }
-    }
-    .hero h1 {
-      font-size: clamp(22px, 3.8vw, 32px);
-      line-height: 1.15;
-      margin: 0 0 6px;
-      font-weight: 850;
-      letter-spacing: -0.025em;
-      color: #fff;
-    }
-    .hero-sub {
-      color: var(--text-dim);
-      margin: 0 0 16px;
-      font-size: 14.5px;
-      line-height: 1.45;
-      max-width: 640px;
-    }
-
-    /* Hero Header Bar & Radar Lock Indicator */
-    .hero-header-bar {
+    .location-bar {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
       margin-bottom: 12px;
     }
     .radar-lock-bar {
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
     }
     .radar-status-label {
       font-size: 12px;
@@ -237,6 +278,7 @@ module.exports = (req, res) => {
       align-items: center;
       gap: 6px;
       transition: all 0.15s ease;
+      font-family: inherit;
     }
     .loc-indicator-btn:hover {
       background: rgba(255, 255, 255, 0.12);
@@ -260,11 +302,27 @@ module.exports = (req, res) => {
       gap: 4px;
       transition: all 0.15s;
       white-space: nowrap;
+      font-family: inherit;
     }
     .btn-loc-sm:hover {
       background: rgba(255, 46, 99, 0.2);
       border-color: var(--accent);
       color: #fff;
+    }
+    .hero h1.hero-title {
+      font-size: clamp(24px, 4vw, 36px);
+      line-height: 1.15;
+      margin: 4px 0 8px;
+      font-weight: 850;
+      letter-spacing: -0.025em;
+      color: #fff;
+    }
+    .hero-sub {
+      color: var(--text-dim);
+      margin: 0 0 16px;
+      font-size: 14.5px;
+      line-height: 1.45;
+      max-width: 680px;
     }
 
     /* Expandable Location Drawer */
@@ -402,16 +460,25 @@ module.exports = (req, res) => {
     /* Category Discovery Bar */
     .category-pills-row {
       display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 10px 0 8px;
+    }
+    .primary-categories-row, .more-categories-row {
+      display: flex;
       gap: 8px;
       align-items: center;
       flex-wrap: wrap;
-      margin: 16px 0 10px;
+    }
+    .more-categories-row {
+      padding-top: 2px;
+      animation: drawerSlide 0.15s ease-out;
     }
     .cat-btn {
       border: 1px solid rgba(255, 255, 255, 0.1);
       background: rgba(26, 20, 38, 0.7);
       color: #e4ddf2;
-      padding: 7px 15px;
+      padding: 6px 14px;
       border-radius: 999px;
       font-size: 13.5px;
       font-weight: 700;
@@ -420,6 +487,7 @@ module.exports = (req, res) => {
       align-items: center;
       gap: 6px;
       transition: all 0.15s ease;
+      font-family: inherit;
     }
     .cat-btn:hover {
       background: #2e2246;
@@ -431,6 +499,22 @@ module.exports = (req, res) => {
       border-color: var(--accent);
       color: #fff;
       box-shadow: 0 0 14px rgba(255, 46, 99, 0.4);
+    }
+    .cat-btn.more-cat-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-dim);
+    }
+    .cat-btn.more-cat-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--primary);
+    }
+    .cat-btn.more-cat-btn.active {
+      background: rgba(255, 184, 107, 0.18);
+      border-color: var(--primary);
+      color: var(--primary);
+      box-shadow: none;
     }
     .cat-btn.comedy-btn.active {
       background: linear-gradient(135deg, #ff2e63 0%, #ffb86b 100%);
@@ -455,6 +539,104 @@ module.exports = (req, res) => {
       border-color: #38ef7d;
       color: #062b16;
       box-shadow: 0 0 16px rgba(56, 239, 125, 0.45);
+    }
+
+    /* Primary Hero Action Strip: Quick Time Selection & Filter Drawer Button */
+    .hero-actions-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 10px 0 6px;
+    }
+    .quick-time-toggle {
+      background: rgba(22, 17, 32, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      padding: 3px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .quick-time-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .quick-time-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .quick-time-btn.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 0 10px rgba(255, 46, 99, 0.35);
+    }
+    .filters-toggle-btn {
+      background: rgba(25, 20, 36, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #ded6ec;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .filters-toggle-btn:hover {
+      background: #2a203c;
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .filters-toggle-btn.open {
+      background: rgba(255, 184, 107, 0.15);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .filter-count-badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 10.5px;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 999px;
+      min-width: 16px;
+      text-align: center;
+    }
+    .filters-arrow {
+      font-size: 10px;
+      opacity: 0.8;
+      transition: transform 0.15s ease;
+    }
+    .filters-toggle-btn.open .filters-arrow {
+      transform: rotate(180deg);
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    .advanced-filters-drawer {
+      margin-top: 10px;
+      animation: drawerSlide 0.2s ease-out;
     }
 
     /* Comedy Deep Sub-Filter Console */
@@ -689,14 +871,15 @@ module.exports = (req, res) => {
     .city-links-col a:hover { color: #fff; text-decoration: underline; }
 
     @media (max-width: 768px) {
-      .hero-header-bar { flex-direction: column; align-items: flex-start; }
       .radar-lock-bar { width: 100%; justify-content: space-between; }
     }
     @media (max-width: 640px) {
       .grid { grid-template-columns: 1fr; }
       #radar { height: 400px; }
       .app { padding: 14px 14px 50px; }
-      .hero h1 { font-size: 22px; }
+      .hero h1.hero-title { font-size: 23px; }
+      .hero-actions-bar { flex-direction: row; justify-content: space-between; width: 100%; }
+      .quick-time-toggle { flex: 1; justify-content: center; }
       .search-action-row { flex-direction: column; align-items: stretch; }
       .btn-loc { justify-content: center; width: 100%; }
       .filter-divider { display: none; }
@@ -709,23 +892,31 @@ module.exports = (req, res) => {
   <div class="app">
     <header class="top">
       <a class="brand" href="/"><b>●</b> Brinkberry</a>
-      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <a href="/post" id="postEventBtn" style="color:#03291d; font-size:12.5px; font-weight:800; text-decoration:none; padding:5px 13px; border-radius:999px; background:var(--radar-cyan); display:inline-flex; align-items:center; gap:4px; box-shadow:0 0 10px rgba(0,230,153,0.3);">+ Post an Event</a>
-        <a href="/submit-comedy" style="color:var(--primary); font-size:12.5px; font-weight:700; text-decoration:none; padding:5px 12px; border-radius:999px; border:1px solid rgba(255,184,107,0.3); background:rgba(255,184,107,0.08); display:inline-flex; align-items:center; gap:4px;">🎤 Submit Show</a>
-        <div class="top-radar-indicator">
-          <span class="pulse-dot"></span>
-          <span>Hyperlocal Radar</span>
+      <div class="top-nav-right">
+        <a href="/post" id="postEventBtn" class="btn-post-event">+ Post an Event</a>
+        <div class="nav-menu-wrap">
+          <button id="navMenuBtn" class="nav-menu-btn" type="button" aria-expanded="false" aria-label="Open navigation menu">
+            <span>☰ Menu</span>
+          </button>
+          <div id="navMenuDropdown" class="nav-menu-dropdown" style="display:none;" role="menu">
+            <a href="/submit-comedy" class="menu-item" role="menuitem">🎤 Submit Show</a>
+            <div class="menu-divider"></div>
+            <div class="menu-item top-radar-indicator" style="border:none; background:transparent; padding:6px 10px;">
+              <span class="pulse-dot"></span>
+              <span>Hyperlocal Radar Active</span>
+            </div>
+            <div class="menu-divider"></div>
+            <a href="/denver/comedy" class="menu-item" role="menuitem">Denver Comedy Guide</a>
+            <a href="/denver/racing" class="menu-item" role="menuitem">Denver Track Guide</a>
+            <a href="/admin/pilot-racing" class="menu-item" role="menuitem">Track Promoter Portal</a>
+          </div>
         </div>
       </div>
     </header>
 
     <section class="hero">
-      <!-- Top Radar & Location Indicator Bar -->
-      <div class="hero-header-bar">
-        <div class="hero-badge">
-          <span class="radar-ping"></span>
-          <span>Worldwide Hyperlocal Event Radar</span>
-        </div>
+      <!-- Location Selector Bar -->
+      <div class="location-bar">
         <div class="radar-lock-bar">
           <span class="radar-status-label">Radar locked:</span>
           <button id="locIndicatorBtn" class="loc-indicator-btn" type="button" aria-expanded="false" title="Click to change city or search">
@@ -770,104 +961,125 @@ module.exports = (req, res) => {
         </div>
       </div>
 
-      <!-- Core Question Headline -->
-      <h1 class="hero-title">What are you looking for tonight?</h1>
+      <!-- Streamlined Core Headline & Subtitle -->
+      <h1 class="hero-title">What’s happening near you?</h1>
       <p class="hero-sub">Wondering what should I do tonight? Find what’s happening near you right now. Real events within 48 hours worldwide — direct to official box offices, clubs, and tracks.</p>
 
-      <!-- Contextual Controls & Category Filter Bubbles -->
+      <!-- Contextual Controls & Category Row -->
       <div id="contextualControls" class="contextual-controls-panel">
-        <!-- Compact Category Filter Bubbles -->
+        <!-- Compact Category Row (Primary 5 + More button) -->
         <div id="everythingSubRow">
           <div class="category-pills-row" id="categoryRow" role="tablist" aria-label="Event Categories">
-            <button class="cat-btn active" data-cat="">All Events</button>
-            <button class="cat-btn comedy-btn" data-cat="comedy">🎤 Comedy Radar</button>
-            <button class="cat-btn racing-btn" data-cat="racing">🏁 Motorsports</button>
-            <button class="cat-btn civic-btn" data-cat="civic">🏛️ Civic &amp; Politics</button>
-            <button class="cat-btn community-btn" data-cat="community">📚 Community &amp; Libraries</button>
-            <button class="cat-btn" data-cat="music">🎵 Live Music</button>
-            <button class="cat-btn" data-cat="arts">🎭 Arts &amp; Culture</button>
-            <button class="cat-btn" data-cat="festival">🎡 Seasonal &amp; Fairs</button>
-            <button class="cat-btn" data-cat="outdoor">🏃 Outdoors</button>
-            <button class="cat-btn" data-cat="free">🎟️ Free Tonight</button>
+            <div class="primary-categories-row">
+              <button class="cat-btn active" data-cat="">All Events</button>
+              <button class="cat-btn comedy-btn" data-cat="comedy" data-label="Comedy Radar">🎤 Comedy</button>
+              <button class="cat-btn racing-btn" data-cat="racing">🏁 Motorsports</button>
+              <button class="cat-btn community-btn" data-cat="community" data-label="Community & Libraries">📚 Community</button>
+              <button class="cat-btn" data-cat="music">🎵 Music</button>
+              <button id="moreCategoriesBtn" class="cat-btn more-cat-btn" type="button" aria-expanded="false">More ▾</button>
+            </div>
+            <div id="moreCategoriesRow" class="more-categories-row" style="display:none;">
+              <button class="cat-btn civic-btn" data-cat="civic">🏛️ Civic &amp; Politics</button>
+              <button class="cat-btn" data-cat="arts">🎭 Arts &amp; Culture</button>
+              <button class="cat-btn" data-cat="festival">🎡 Seasonal &amp; Fairs</button>
+              <button class="cat-btn" data-cat="outdoor">🏃 Outdoors</button>
+              <button class="cat-btn" data-cat="free">🎟️ Free Tonight</button>
+            </div>
           </div>
         </div>
 
-      <!-- Panel B: Stand-Up Comedy Deep Filter Console -->
-      <div id="comedySubFilterConsole" class="comedy-sub-console" style="display:none;">
-        <div class="sub-filter-row">
-          <span class="sub-filter-label">Format:</span>
-          <div id="comedyTypeFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
+        <!-- Primary Action Strip: Quick Time Selection & Filters Button -->
+        <div class="hero-actions-bar">
+          <div class="quick-time-toggle" id="quickTimeToggle" role="group" aria-label="Quick time selection">
+            <button type="button" class="quick-time-btn active" data-time="tonight">Tonight</button>
+            <button type="button" class="quick-time-btn" data-time="48h">Next 48 Hours</button>
+          </div>
+          <button id="filtersToggleBtn" class="filters-toggle-btn" type="button" aria-expanded="false" aria-controls="advancedFiltersDrawer">
+            <span>⚙️ Filters</span>
+            <span id="filterCountBadge" class="filter-count-badge" style="display:none;">0</span>
+            <span class="filters-arrow">▾</span>
+          </button>
         </div>
-        <div class="sub-filter-row">
-          <span class="sub-filter-label">Age & Price:</span>
-          <div id="comedyAgeFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
-          <div id="comedyPriceFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
-        </div>
-        <div class="sub-filter-row" style="margin-bottom:0;">
-          <span class="sub-filter-label">Urgency:</span>
-          <div id="comedyUrgencyFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
-        </div>
-        <div class="community-promo-banner">
-          <span>🎤 Are you a comedian, show host, or venue manager?</span>
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <a id="comedyGuideLink" href="/denver/comedy" style="color:var(--accent); font-weight:700; text-decoration:none;">Denver Comedy Guide ↗</a>
-            <a href="/submit-comedy" style="color:var(--primary); font-weight:700; text-decoration:none;">Submit or edit show without logging in →</a>
+
+        <!-- Advanced Filters Drawer (Hidden by default until tapped) -->
+        <div id="advancedFiltersDrawer" class="advanced-filters-drawer" style="display:none;">
+          <!-- Panel B: Stand-Up Comedy Deep Filter Console -->
+          <div id="comedySubFilterConsole" class="comedy-sub-console" style="display:none;">
+            <div class="sub-filter-row">
+              <span class="sub-filter-label">Format:</span>
+              <div id="comedyTypeFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
+            </div>
+            <div class="sub-filter-row">
+              <span class="sub-filter-label">Age & Price:</span>
+              <div id="comedyAgeFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
+              <div id="comedyPriceFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
+            </div>
+            <div class="sub-filter-row" style="margin-bottom:0;">
+              <span class="sub-filter-label">Urgency:</span>
+              <div id="comedyUrgencyFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
+            </div>
+            <div class="community-promo-banner">
+              <span>🎤 Are you a comedian, show host, or venue manager?</span>
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <a id="comedyGuideLink" href="/denver/comedy" style="color:var(--accent); font-weight:700; text-decoration:none;">Denver Comedy Guide ↗</a>
+                <a href="/submit-comedy" style="color:var(--primary); font-weight:700; text-decoration:none;">Submit or edit show without logging in →</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel C: Grassroots Motorsports Deep Filter Console -->
+          <div id="racingSubFilterConsole" class="racing-sub-console" style="display:none;">
+            <div class="sub-filter-row">
+              <span class="sub-filter-label">Discipline:</span>
+              <div id="racingDisciplineFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
+            </div>
+            <div class="sub-filter-row">
+              <span class="sub-filter-label">Planning:</span>
+              <div id="racingPlanningFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
+            </div>
+            <div class="community-promo-banner racing-promo-banner">
+              <span>🏁 Grassroots car racing radar with real-time rainout &amp; weather tracking</span>
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <a id="racingGuideLink" href="/denver/racing" style="color:var(--radar-cyan); font-weight:700; text-decoration:none;">Denver Track Guide ↗</a>
+                <a href="/admin/pilot-racing" style="color:var(--primary); font-weight:700; text-decoration:none;">Track Promoter Portal →</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Secondary Refinement Bar: When, Radius, Vibe, Source -->
+          <div id="generalFilterBar" class="filter-bar">
+            <!-- When Group -->
+            <div class="filter-group">
+              <span class="filter-label">When</span>
+              <div id="timeWindows" class="pills-wrap"></div>
+            </div>
+
+            <div class="filter-divider"></div>
+
+            <!-- Radius Group -->
+            <div class="filter-group">
+              <span class="filter-label">Radius</span>
+              <div id="radiusFilters" class="pills-wrap"></div>
+            </div>
+
+            <div class="filter-divider" id="vibeDivider"></div>
+
+            <!-- Vibe Group -->
+            <div class="filter-group" id="vibeGroup">
+              <span class="filter-label">Vibe</span>
+              <div id="modeFilters" class="pills-wrap"></div>
+            </div>
+
+            <div class="filter-divider" id="sourceDivider"></div>
+
+            <!-- Source Group -->
+            <div class="filter-group" id="sourceGroup">
+              <span class="filter-label">Source</span>
+              <div id="sourceFilters" class="pills-wrap"></div>
+            </div>
           </div>
         </div>
       </div>
-
-      <!-- Panel C: Grassroots Motorsports Deep Filter Console -->
-      <div id="racingSubFilterConsole" class="racing-sub-console" style="display:none;">
-        <div class="sub-filter-row">
-          <span class="sub-filter-label">Discipline:</span>
-          <div id="racingDisciplineFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
-        </div>
-        <div class="sub-filter-row">
-          <span class="sub-filter-label">Planning:</span>
-          <div id="racingPlanningFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
-        </div>
-        <div class="community-promo-banner racing-promo-banner">
-          <span>🏁 Grassroots car racing radar with real-time rainout &amp; weather tracking</span>
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <a id="racingGuideLink" href="/denver/racing" style="color:var(--radar-cyan); font-weight:700; text-decoration:none;">Denver Track Guide ↗</a>
-            <a href="/admin/pilot-racing" style="color:var(--primary); font-weight:700; text-decoration:none;">Track Promoter Portal →</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Secondary Refinement Bar: When, Radius, Vibe -->
-      <div id="generalFilterBar" class="filter-bar">
-        <!-- When Group -->
-        <div class="filter-group">
-          <span class="filter-label">When</span>
-          <div id="timeWindows" class="pills-wrap"></div>
-        </div>
-
-        <div class="filter-divider"></div>
-
-        <!-- Radius Group -->
-        <div class="filter-group">
-          <span class="filter-label">Radius</span>
-          <div id="radiusFilters" class="pills-wrap"></div>
-        </div>
-
-        <div class="filter-divider" id="vibeDivider"></div>
-
-        <!-- Vibe Group -->
-        <div class="filter-group" id="vibeGroup">
-          <span class="filter-label">Vibe</span>
-          <div id="modeFilters" class="pills-wrap"></div>
-        </div>
-
-        <div class="filter-divider" id="sourceDivider"></div>
-
-        <!-- Source Group -->
-        <div class="filter-group" id="sourceGroup">
-          <span class="filter-label">Source</span>
-          <div id="sourceFilters" class="pills-wrap"></div>
-        </div>
-      </div>
-    </div>
     </section>
 
     <!-- Trust & Platform Transparency Notice -->
@@ -1077,7 +1289,26 @@ module.exports = (req, res) => {
     const fmtTime = iso => new Date(iso).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
     function initControls() {
-      // 0. Location Drawer Toggle
+      // 0. Top Navigation Menu Toggle
+      const navBtn = $('navMenuBtn');
+      const navDropdown = $('navMenuDropdown');
+      if (navBtn && navDropdown && !navBtn._bound) {
+        navBtn._bound = true;
+        navBtn.onclick = (e) => {
+          e.stopPropagation();
+          const isOpen = navDropdown.style.display !== 'none';
+          navDropdown.style.display = isOpen ? 'none' : 'block';
+          navBtn.setAttribute('aria-expanded', String(!isOpen));
+        };
+        document.addEventListener('click', (e) => {
+          if (!navBtn.contains(e.target) && !navDropdown.contains(e.target)) {
+            navDropdown.style.display = 'none';
+            navBtn.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+
+      // 1. Location Drawer Toggle
       const locInd = $('locIndicatorBtn');
       if (locInd && !locInd._bound) {
         locInd._bound = true;
@@ -1116,24 +1347,54 @@ module.exports = (req, res) => {
       if (vibeGrp) vibeGrp.style.display = (!S.category) ? 'inline-flex' : 'none';
       if (vibeDiv) vibeDiv.style.display = (!S.category) ? 'inline-block' : 'none';
 
-      // 3. Category Discovery Pills (Everything Mode)
-      const categories = [
+      // 2. Compact Category Row (Primary 5 + More button + Expandable secondary row)
+      const primaryCategories = [
         ['', 'All Events'],
-        ['comedy', '🎤 Comedy Radar'],
+        ['comedy', '🎤 Comedy', 'Comedy Radar'],
         ['racing', '🏁 Motorsports'],
+        ['community', '📚 Community', 'Community & Libraries'],
+        ['music', '🎵 Music']
+      ];
+      const secondaryCategories = [
         ['civic', '🏛️ Civic & Politics'],
-        ['community', '📚 Community & Libraries'],
-        ['music', '🎵 Live Music'],
         ['arts', '🎭 Arts & Culture'],
         ['festival', '🎡 Seasonal & Fairs'],
         ['outdoor', '🏃 Outdoors'],
         ['free', '🎟️ Free Tonight']
       ];
+      const isSecondaryActive = secondaryCategories.some(([k]) => S.category === k);
+      const showSecondary = Boolean(S.moreCategoriesExpanded || isSecondaryActive);
+
       const catRow = $('categoryRow');
       if (catRow) {
-        catRow.innerHTML = categories.map(([k, l]) =>
-          \`<button class="cat-btn \${k === 'comedy' ? 'comedy-btn' : (k === 'racing' ? 'racing-btn' : (k === 'civic' ? 'civic-btn' : (k === 'community' ? 'community-btn' : '')))} \${S.category === k ? 'active' : ''}" data-cat="\${k}">\${l}</button>\`
-        ).join('');
+        const primHtml = primaryCategories.map(function(item) {
+          var k = item[0], l = item[1], extra = item[2] ? ' data-label="' + item[2] + '"' : '';
+          var cls = k === 'comedy' ? 'comedy-btn' : (k === 'racing' ? 'racing-btn' : (k === 'community' ? 'community-btn' : ''));
+          var act = S.category === k ? 'active' : '';
+          return '<button class="cat-btn ' + cls + ' ' + act + '" data-cat="' + k + '"' + extra + '>' + l + '</button>';
+        }).join('');
+
+        const moreBtnHtml = '<button id="moreCategoriesBtn" class="cat-btn more-cat-btn ' + (isSecondaryActive ? 'active' : '') + '" type="button" aria-expanded="' + showSecondary + '">More ' + (showSecondary ? '▴' : '▾') + '</button>';
+
+        const secHtml = secondaryCategories.map(function(item) {
+          var k = item[0], l = item[1];
+          var cls = k === 'civic' ? 'civic-btn' : '';
+          var act = S.category === k ? 'active' : '';
+          return '<button class="cat-btn ' + cls + ' ' + act + '" data-cat="' + k + '">' + l + '</button>';
+        }).join('');
+
+        catRow.innerHTML = '<div class="primary-categories-row">' + primHtml + moreBtnHtml + '</div>' +
+          '<div id="moreCategoriesRow" class="more-categories-row" style="display:' + (showSecondary ? 'flex' : 'none') + ';">' + secHtml + '</div>';
+
+        const moreBtn = $('moreCategoriesBtn');
+        if (moreBtn) {
+          moreBtn.onclick = (e) => {
+            e.stopPropagation();
+            S.moreCategoriesExpanded = !S.moreCategoriesExpanded;
+            initControls();
+          };
+        }
+
         document.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => {
           S.category = b.dataset.cat;
           if (S.category !== 'comedy') {
@@ -1149,6 +1410,56 @@ module.exports = (req, res) => {
           initControls();
           loadFeed();
         });
+      }
+
+      // 3. Quick Time Choice: Tonight vs Next 48 Hours
+      const quickTimeEl = $('quickTimeToggle');
+      if (quickTimeEl) {
+        quickTimeEl.querySelectorAll('[data-time]').forEach(b => {
+          const isTonight = b.dataset.time === 'tonight' && S.window === 'tonight';
+          const is48h = b.dataset.time === '48h' && (S.window === '48h' || S.window === 'weekend');
+          b.className = 'quick-time-btn ' + ((isTonight || is48h) ? 'active' : '');
+          b.onclick = () => {
+            S.window = b.dataset.time;
+            initControls();
+            loadFeed();
+          };
+        });
+      }
+
+      // 4. Advanced Filters Button & Drawer Toggle
+      const filtersBtn = $('filtersToggleBtn');
+      const filtersDrawer = $('advancedFiltersDrawer');
+      if (filtersBtn && filtersDrawer && !filtersBtn._bound) {
+        filtersBtn._bound = true;
+        filtersBtn.onclick = () => {
+          const isOpen = filtersDrawer.style.display !== 'none';
+          filtersDrawer.style.display = isOpen ? 'none' : 'block';
+          filtersBtn.setAttribute('aria-expanded', String(!isOpen));
+          filtersBtn.classList.toggle('open', !isOpen);
+        };
+      }
+
+      // Calculate active filter count for badge
+      let activeFilterCount = 0;
+      if (S.radius && S.radius !== 25) activeFilterCount++;
+      if (S.mode) activeFilterCount++;
+      if (S.sourceFilter && S.sourceFilter !== 'all') activeFilterCount++;
+      if (S.window && S.window !== 'tonight' && S.window !== '48h' && S.window !== 'weekend') activeFilterCount++;
+      if (S.category === 'comedy') {
+        if (S.showType) activeFilterCount++;
+        if (S.ageLimit) activeFilterCount++;
+        if (S.priceFilter) activeFilterCount++;
+        if (S.startingSoon) activeFilterCount++;
+        if (S.recurring) activeFilterCount++;
+      }
+      if (S.category === 'racing') {
+        if (S.racingDiscipline) activeFilterCount++;
+      }
+      const badge = $('filterCountBadge');
+      if (badge) {
+        badge.textContent = String(activeFilterCount);
+        badge.style.display = activeFilterCount > 0 ? 'inline-block' : 'none';
       }
 
       // 4. Radius Filters

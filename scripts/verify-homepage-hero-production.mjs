@@ -5,15 +5,15 @@ async function main() {
 
   const checks = [
     ['HTTP 200 OK', res.status === 200],
-    ['New Hero Title', html.includes('What are you looking for tonight?')],
-    ['Card: Everything near me', html.includes('id="entryPathAll"')],
-    ['Card: Comedy near me', html.includes('id="entryPathComedy"')],
-    ['Card: Motorsports near me', html.includes('id="entryPathRacing"')],
+    ['Streamlined Hero Title', html.includes('What’s happening near you?')],
+    ['Top Nav Menu Button', html.includes('id="navMenuBtn"')],
+    ['Post an Event Button', html.includes('id="postEventBtn"')],
     ['Radar Lock Bar Indicator', html.includes('id="locIndicatorBtn"')],
     ['Location Drawer Expandable', html.includes('id="locationDrawer"')],
-    ['Category Sub-row Container', html.includes('id="everythingSubRow"')],
-    ['Comedy Sub-console Container', html.includes('id="comedySubFilterConsole"')],
-    ['Racing Sub-console Container', html.includes('id="racingSubFilterConsole"')],
+    ['Compact Category Row', html.includes('id="categoryRow"')],
+    ['Quick Time Selection Toggle', html.includes('id="quickTimeToggle"')],
+    ['Filters Toggle Button', html.includes('id="filtersToggleBtn"')],
+    ['Advanced Filters Drawer', html.includes('id="advancedFiltersDrawer"')],
     ['Preserved Denver preset', html.includes('id="presetDenver"')],
     ['Preserved Search Input', html.includes('id="citySearchInput"')]
   ];
