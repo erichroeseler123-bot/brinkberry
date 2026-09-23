@@ -26,11 +26,12 @@ async function getEvent(id) {
   }
   if (typeof id === 'string' && id.startsWith('comm_post_')) {
     try {
-      const { fetchCommunityPostById, getCommunityPostById } = require('../lib/community-posts/community-posts');
-      const post = (await fetchCommunityPostById(id)) || (await getCommunityPostById(id));
-      if (post) return post;
+      const { fetchCommunityPostById } = require('../lib/community-posts/community-posts');
+      const post = await fetchCommunityPostById(id);
+      return post || null;
     } catch (err) {
       console.error('[Event] getCommunityPostById error:', err);
+      return null;
     }
   }
   if (typeof id === 'string' && id.startsWith('comm_')) {
