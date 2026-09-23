@@ -2784,6 +2784,14 @@ module.exports = (req, res) => {
           return loadFeed();
         }
 
+        // If 25 miles has 0 events in fringe/suburban areas, seamlessly expand radius to 50 miles
+        if (S.events.length === 0 && S.radius === 25 && !S.hasAutoExpandedRadius && !S.showType && !S.priceFilter && !S.racingDiscipline) {
+          S.hasAutoExpandedRadius = true;
+          S.radius = 50;
+          initControls();
+          return loadFeed();
+        }
+
         if (S.coverage && S.coverage.isSupported === false) {
           $('status').innerHTML = \`📍 <b>\${esc(S.locationName || S.city)}</b> has no active event feeds right now.\`;
         } else {
@@ -2943,6 +2951,7 @@ module.exports = (req, res) => {
 
     function applyLocation(loc, shouldSave = true) {
       S.hasAutoExpanded = false;
+      S.hasAutoExpandedRadius = false;
       S.lat = loc.lat;
       S.lon = loc.lon;
       S.city = loc.city;
