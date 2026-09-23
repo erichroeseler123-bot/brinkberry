@@ -300,7 +300,7 @@ END:VCALENDAR`
       assert.match(html, /Brinkberry provides neutral public scheduling information and does not endorse any candidate/);
     });
 
-    test('preserves baseline hero vertical entry cards', () => {
+    test('preserves baseline hero discovery with compact category filter bubbles', () => {
       let html = '';
       const res = {
         setHeader() {},
@@ -308,9 +308,18 @@ END:VCALENDAR`
       };
       homeHandler({ url: '/', headers: {} }, res);
 
-      assert.match(html, /id="entryPathAll"[^>]*class="entry-path-card active"/);
-      assert.match(html, /id="entryPathComedy"[^>]*class="entry-path-card"/);
-      assert.match(html, /id="entryPathRacing"[^>]*class="entry-path-card"/);
+      // Verify oversized feature cards are removed
+      assert.doesNotMatch(html, /id="entryPathAll"/);
+      assert.doesNotMatch(html, /id="entryPathComedy"/);
+      assert.doesNotMatch(html, /id="entryPathRacing"/);
+
+      // Verify compact category bubbles and disclosure consoles are present
+      assert.match(html, /id="categoryRow"/);
+      assert.match(html, /All Events/);
+      assert.match(html, /Comedy Radar/);
+      assert.match(html, /Motorsports/);
+      assert.match(html, /id="comedySubFilterConsole"/);
+      assert.match(html, /id="racingSubFilterConsole"/);
     });
   });
 

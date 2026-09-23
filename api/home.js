@@ -281,136 +281,10 @@ module.exports = (req, res) => {
       from { opacity: 0; transform: translateY(-6px); }
       to { opacity: 1; transform: translateY(0); }
     }
-
-    /* Hero Vertical Entry Cards (3 Discovery Paths) */
-    .hero-vertical-entry-paths {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
-      margin: 20px 0 18px;
+    /* Hero Contextual Controls */
+    .contextual-controls-panel {
+      margin-top: 6px;
     }
-    .entry-path-card {
-      background: rgba(22, 17, 34, 0.75);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1.5px solid #2d2342;
-      border-radius: 18px;
-      padding: 18px 18px 16px;
-      text-align: left;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      color: var(--text);
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      position: relative;
-      overflow: hidden;
-      width: 100%;
-      box-sizing: border-box;
-      outline: none;
-    }
-    .entry-path-card:hover {
-      transform: translateY(-2px);
-      border-color: #554477;
-      background: rgba(30, 23, 46, 0.88);
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
-    }
-    .entry-path-card.active {
-      border-color: var(--primary);
-      background: linear-gradient(180deg, rgba(38, 28, 56, 0.95) 0%, rgba(20, 15, 30, 0.95) 100%);
-      box-shadow: 0 0 0 1px var(--primary), 0 12px 30px rgba(255, 184, 107, 0.2);
-    }
-    .entry-path-card#entryPathComedy.active {
-      border-color: var(--accent);
-      background: linear-gradient(180deg, rgba(46, 18, 40, 0.95) 0%, rgba(22, 12, 24, 0.95) 100%);
-      box-shadow: 0 0 0 1px var(--accent), 0 12px 30px rgba(255, 46, 99, 0.25);
-    }
-    .entry-path-card#entryPathRacing.active {
-      border-color: var(--radar-cyan);
-      background: linear-gradient(180deg, rgba(14, 38, 30, 0.95) 0%, rgba(10, 22, 18, 0.95) 100%);
-      box-shadow: 0 0 0 1px var(--radar-cyan), 0 12px 30px rgba(0, 230, 153, 0.25);
-    }
-    .card-top-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    .card-icon-tag {
-      font-size: 11px;
-      font-weight: 850;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--primary);
-    }
-    .card-icon-tag.comedy-tag { color: #ff809d; }
-    .card-icon-tag.racing-tag { color: var(--radar-cyan); }
-    .card-status-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.2);
-      transition: all 0.2s ease;
-    }
-    .entry-path-card.active .card-status-dot {
-      background: var(--primary);
-      box-shadow: 0 0 8px var(--primary);
-    }
-    .entry-path-card#entryPathComedy.active .card-status-dot {
-      background: var(--accent);
-      box-shadow: 0 0 8px var(--accent);
-    }
-    .entry-path-card#entryPathRacing.active .card-status-dot {
-      background: var(--radar-cyan);
-      box-shadow: 0 0 8px var(--radar-cyan);
-    }
-    .card-hero-title {
-      font-size: 19px;
-      font-weight: 850;
-      line-height: 1.2;
-      color: #fff;
-      margin: 0 0 6px;
-    }
-    .card-hero-desc {
-      font-size: 13px;
-      color: var(--text-dim);
-      line-height: 1.45;
-      margin: 0 0 16px;
-      flex-grow: 1;
-    }
-    .card-path-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-top: 10px;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-    }
-    .path-badge {
-      font-size: 11.5px;
-      font-weight: 700;
-      padding: 3px 9px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.06);
-      color: #ded6ec;
-    }
-    .path-badge.comedy-badge {
-      background: rgba(255, 46, 99, 0.12);
-      color: #ff94b0;
-    }
-    .path-badge.racing-badge {
-      background: rgba(0, 230, 153, 0.12);
-      color: #7affd4;
-    }
-    .path-action-cue {
-      font-size: 12px;
-      font-weight: 800;
-      color: var(--primary);
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-    }
-    .path-action-cue.comedy-cue { color: #ff809d; }
-    .path-action-cue.racing-cue { color: var(--radar-cyan); }
     .search-action-row {
       display: flex;
       gap: 10px;
@@ -815,7 +689,6 @@ module.exports = (req, res) => {
     .city-links-col a:hover { color: #fff; text-decoration: underline; }
 
     @media (max-width: 768px) {
-      .hero-vertical-entry-paths { grid-template-columns: 1fr; gap: 10px; }
       .hero-header-bar { flex-direction: column; align-items: flex-start; }
       .radar-lock-bar { width: 100%; justify-content: space-between; }
     }
@@ -901,58 +774,23 @@ module.exports = (req, res) => {
       <h1 class="hero-title">What are you looking for tonight?</h1>
       <p class="hero-sub">Wondering what should I do tonight? Find what’s happening near you right now. Real events within 48 hours worldwide — direct to official box offices, clubs, and tracks.</p>
 
-      <!-- Three Prominent Vertical Choice Cards -->
-      <div class="hero-vertical-entry-paths" role="tablist" aria-label="Discovery Paths">
-        <!-- 1. Everything near me -->
-        <button id="entryPathAll" class="entry-path-card active" type="button" role="tab" aria-selected="true" title="Explore all live music, arts, food, and neighborhood events">
-          <div class="card-top-row">
-            <span class="card-icon-tag">🌐 ALL HAPPENINGS</span>
-            <span class="card-status-dot"></span>
+      <!-- Contextual Controls & Category Filter Bubbles -->
+      <div id="contextualControls" class="contextual-controls-panel">
+        <!-- Compact Category Filter Bubbles -->
+        <div id="everythingSubRow">
+          <div class="category-pills-row" id="categoryRow" role="tablist" aria-label="Event Categories">
+            <button class="cat-btn active" data-cat="">All Events</button>
+            <button class="cat-btn comedy-btn" data-cat="comedy">🎤 Comedy Radar</button>
+            <button class="cat-btn racing-btn" data-cat="racing">🏁 Motorsports</button>
+            <button class="cat-btn civic-btn" data-cat="civic">🏛️ Civic &amp; Politics</button>
+            <button class="cat-btn community-btn" data-cat="community">📚 Community &amp; Libraries</button>
+            <button class="cat-btn" data-cat="music">🎵 Live Music</button>
+            <button class="cat-btn" data-cat="arts">🎭 Arts &amp; Culture</button>
+            <button class="cat-btn" data-cat="festival">🎡 Seasonal &amp; Fairs</button>
+            <button class="cat-btn" data-cat="outdoor">🏃 Outdoors</button>
+            <button class="cat-btn" data-cat="free">🎟️ Free Tonight</button>
           </div>
-          <div class="card-hero-title">Everything near me</div>
-          <p class="card-hero-desc">Live music, arts, outdoor events, food gatherings &amp; neighborhood happenings.</p>
-          <div class="card-path-footer">
-            <span class="path-badge">All Local Events</span>
-            <span class="path-action-cue">Select Mode →</span>
-          </div>
-        </button>
-
-        <!-- 2. Comedy near me -->
-        <button id="entryPathComedy" class="entry-path-card" type="button" role="tab" aria-selected="false" title="Explore stand-up comedy, showcases, open mics, and headliners">
-          <div class="card-top-row">
-            <span class="card-icon-tag comedy-tag">🎤 STAND-UP COMEDY</span>
-            <span class="card-status-dot comedy-dot"></span>
-          </div>
-          <div class="card-hero-title">Comedy near me</div>
-          <p class="card-hero-desc">Stand-up clubs, underground showcases, open mics &amp; national tour headliners.</p>
-          <div class="card-path-footer">
-            <span class="path-badge comedy-badge">Clubs &amp; Open Mics</span>
-            <span class="path-action-cue comedy-cue">Select Mode →</span>
-          </div>
-        </button>
-
-        <!-- 3. Motorsports near me -->
-        <button id="entryPathRacing" class="entry-path-card" type="button" role="tab" aria-selected="false" title="Explore short tracks, dirt ovals, drag strips, and racing schedules">
-          <div class="card-top-row">
-            <span class="card-icon-tag racing-tag">🏁 MOTORSPORTS</span>
-            <span class="card-status-dot racing-dot"></span>
-          </div>
-          <div class="card-hero-title">Motorsports near me</div>
-          <p class="card-hero-desc">Dirt ovals, paved short tracks, drag strips &amp; race weekend schedules with weather radar.</p>
-          <div class="card-path-footer">
-            <span class="path-badge racing-badge">Dirt Ovals &amp; Tracks</span>
-            <span class="path-action-cue racing-cue">Select Mode →</span>
-          </div>
-        </button>
-      </div>
-    </section>
-
-    <!-- Contextual Controls Container (Progressive Disclosure) -->
-    <div id="contextualControls" class="contextual-controls-panel">
-      <!-- Panel A: Everything Sub-Filters (Category Pills) -->
-      <div id="everythingSubRow">
-        <div class="category-pills-row" id="categoryRow"></div>
-      </div>
+        </div>
 
       <!-- Panel B: Stand-Up Comedy Deep Filter Console -->
       <div id="comedySubFilterConsole" class="comedy-sub-console" style="display:none;">
@@ -1030,6 +868,7 @@ module.exports = (req, res) => {
         </div>
       </div>
     </div>
+    </section>
 
     <!-- Trust & Platform Transparency Notice -->
     <div class="trust-notice-bar">
@@ -1256,49 +1095,9 @@ module.exports = (req, res) => {
         };
       }
 
-      // 1. Hero Vertical Entry Path State & Listeners
-      const bAll = $('entryPathAll');
-      const bCom = $('entryPathComedy');
-      const bRac = $('entryPathRacing');
-      if (bAll) {
-        bAll.classList.toggle('active', !S.category);
-        bAll.setAttribute('aria-selected', String(!S.category));
-        bAll.onclick = () => {
-          S.category = '';
-          S.mode = '';
-          S.racingDiscipline = '';
-          initControls();
-          loadFeed();
-        };
-      }
-      if (bCom) {
-        bCom.classList.toggle('active', S.category === 'comedy');
-        bCom.setAttribute('aria-selected', String(S.category === 'comedy'));
-        bCom.onclick = () => {
-          S.category = 'comedy';
-          S.racingDiscipline = '';
-          initControls();
-          loadFeed();
-        };
-      }
-      if (bRac) {
-        bRac.classList.toggle('active', S.category === 'racing');
-        bRac.setAttribute('aria-selected', String(S.category === 'racing'));
-        bRac.onclick = () => {
-          S.category = 'racing';
-          S.showType = '';
-          S.ageLimit = '';
-          S.priceFilter = '';
-          S.startingSoon = false;
-          S.recurring = false;
-          initControls();
-          loadFeed();
-        };
-      }
-
-      // 2. Progressive Disclosure of Contextual Sub-Panels
+      // 1. Progressive Disclosure of Contextual Sub-Panels
       const everyRow = $('everythingSubRow');
-      if (everyRow) everyRow.style.display = (!S.category) ? 'block' : 'none';
+      if (everyRow) everyRow.style.display = 'block';
 
       const comedyConsole = $('comedySubFilterConsole');
       if (comedyConsole) {
@@ -1343,6 +1142,9 @@ module.exports = (req, res) => {
             S.priceFilter = '';
             S.startingSoon = false;
             S.recurring = false;
+          }
+          if (S.category !== 'racing') {
+            S.racingDiscipline = '';
           }
           initControls();
           loadFeed();

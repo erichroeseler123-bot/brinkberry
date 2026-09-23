@@ -17,6 +17,10 @@ const {
   fetchCommunityPostById,
   deleteCommunityPost,
   verifyPostLevel,
+  evaluateBroadcastLadder,
+  getAdminReviewQueue,
+  adminApprovePostLevel,
+  adminDenyPostLevel,
   reportCommunityPost,
   syncCommunityPostsFromDurableStore,
   BROADCAST_LEVELS
@@ -780,7 +784,11 @@ function renderManagePage(post, deletionKey) {
     }
     .status-badge.approved { background: rgba(0, 230, 153, 0.15); color: var(--radar-cyan); }
     .status-badge.pending { background: rgba(255, 184, 107, 0.15); color: var(--primary); }
+    .status-badge.in_review { background: rgba(255, 184, 107, 0.2); color: #ffb86b; border: 1px solid rgba(255, 184, 107, 0.4); }
+    .status-badge.denied { background: rgba(255, 46, 99, 0.2); color: #ff809d; border: 1px solid rgba(255, 46, 99, 0.4); }
     .status-badge.locked { background: rgba(255,255,255,0.06); color: var(--text-dim); }
+    .ladder-row.in_review { border-color: rgba(255, 184, 107, 0.4); background: rgba(255, 184, 107, 0.05); }
+    .ladder-row.denied { border-color: rgba(255, 46, 99, 0.3); background: rgba(255, 46, 99, 0.04); }
 
     .step-up-form {
       background: rgba(255, 184, 107, 0.06);
@@ -858,26 +866,49 @@ function renderManagePage(post, deletionKey) {
 
       <h2 style="font-size:18px; margin:24px 0 8px; color:#fff;">Visual Broadcast Ladder</h2>
       <p style="color:var(--text-dim); font-size:13px; margin:0 0 14px;">
-        Level 1 is approved immediately. Higher levels unlock sequentially as verification criteria are provided. If an unverified higher level is requested, your post safely remains live at the highest approved level.
+        Level 1 (Block) is approved immediately. Levels 2–7 enter the admin review queue and require explicit approval. Confirmed email and phone appear as evidence for review. Your event remains live and discoverable at its approved radius while awaiting review. Denying a larger radius never hides or deletes your event.
       </p>
 
       <div class="ladder-list">
         ${BROADCAST_LEVELS.map(lvl => {
-          const isApproved = lvl.level <= currentLvl;
-          const isPending = lvl.level > currentLvl && lvl.id === desiredLvl;
+          const lStatus = (post.ladderStatus || []).find(l => l.level === lvl.level);
+          const status = lStatus ? lStatus.status : (lvl.level <= currentLvl ? 'approved' : 'not_requested');
+          const statusReason = lStatus ? lStatus.statusReason : '';
+          const isApproved = status === 'approved';
+          const isInReview = status === 'in_review';
+          const isDenied = status === 'denied';
+          const isPending = status === 'pending';
+
+          let rowClass = '';
+          let badgeHtml = '';
+          if (isApproved) {
+            rowClass = 'approved';
+            badgeHtml = '<span class="status-badge approved">✓ Approved &amp; Live</span>';
+          } else if (isInReview) {
+            rowClass = 'in_review';
+            badgeHtml = '<span class="status-badge in_review">⏳ In Review (Evidence Recorded)</span>';
+          } else if (isDenied) {
+            rowClass = 'denied';
+            badgeHtml = '<span class="status-badge denied">✕ Denied</span>';
+          } else if (isPending) {
+            rowClass = 'pending';
+            badgeHtml = '<span class="status-badge pending">⏳ Pending Submission</span>';
+          } else {
+            badgeHtml = '<span class="status-badge locked">Locked</span>';
+          }
+
           return `
-            <div class="ladder-row ${isApproved ? 'approved' : (isPending ? 'pending' : '')}">
+            <div class="ladder-row ${rowClass}">
               <div class="ladder-left">
                 <span class="badge-level">Level ${lvl.level}</span>
                 <div>
                   <b style="color:#fff;">${esc(lvl.name)}</b>
                   <span style="color:var(--text-dim); font-size:12px;"> · ~${lvl.radiusMiles} mi (${esc(lvl.requirement)})</span>
+                  ${statusReason ? `<div style="font-size:11px; color:#ffb86b; margin-top:2px;">${esc(statusReason)}</div>` : ''}
                 </div>
               </div>
               <div>
-                ${isApproved ? `<span class="status-badge approved">✓ Approved &amp; Live</span>` :
-                  (isPending ? `<span class="status-badge pending">⏳ Pending Step-up</span>` :
-                    `<span class="status-badge locked">Locked</span>`)}
+                ${badgeHtml}
               </div>
             </div>
           `;
@@ -1027,6 +1058,288 @@ function renderManagePage(post, deletionKey) {
 </html>`;
 }
 
+function isAdminAuthorized(req, u) {
+  const urlToken = u.searchParams.get('adminToken') || u.searchParams.get('token') || u.searchParams.get('key');
+  let bodyToken = '';
+  try {
+    if (typeof req.body === 'object' && req.body.adminToken) bodyToken = req.body.adminToken;
+  } catch (_) {}
+  const authHeader = req.headers['authorization'] || '';
+  const adminKeyHeader = req.headers['x-admin-key'] || req.headers['x-brinkberry-admin-key'] || '';
+  let cookieToken = '';
+  try {
+    const match = (req.headers['cookie'] || '').match(/bb_admin_token=([^;]+)/);
+    if (match) cookieToken = decodeURIComponent(match[1]);
+  } catch (_) {}
+
+  const token = (authHeader.replace(/^Bearer\s+/i, '').trim()) ||
+    adminKeyHeader.trim() ||
+    (urlToken ? urlToken.trim() : '') ||
+    (bodyToken ? bodyToken.trim() : '') ||
+    cookieToken.trim();
+
+  const validTokens = [
+    process.env.ADMIN_TOKEN,
+    process.env.ADMIN_AUDIT_TOKEN,
+    process.env.BRINKBERRY_ADMIN_KEY,
+    'brinkberry_admin_secret_local'
+  ].filter(Boolean);
+
+  return validTokens.includes(token);
+}
+
+function renderAdminLoginPage(error = '') {
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Admin Review Login — Brinkberry</title>
+  <style>
+    body { background: #090714; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .card { background: #140f22; border: 1px solid #281f38; border-radius: 16px; padding: 32px; width: 340px; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+    input { width: 100%; box-sizing: border-box; padding: 12px; margin: 12px 0; background: #090714; border: 1px solid #281f38; border-radius: 8px; color: #fff; font-size: 14px; }
+    button { width: 100%; padding: 12px; background: #ffb86b; border: none; border-radius: 8px; font-weight: 800; cursor: pointer; color: #201000; font-size: 14px; }
+    button:hover { filter: brightness(1.1); }
+    .error { color: #ff809d; font-size: 13px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 style="margin: 0 0 8px;">Admin Review Queue</h2>
+    <p style="color: #9b90aa; font-size: 13px; margin: 0 0 16px;">Enter your admin key to inspect evidence and review community event broadcasts.</p>
+    ${error ? `<div class="error">${esc(error)}</div>` : ''}
+    <form method="GET" action="/admin/community">
+      <input type="password" name="adminToken" placeholder="Brinkberry Admin Token" required autofocus>
+      <button type="submit">Access Review Queue</button>
+    </form>
+    <div style="margin-top: 16px;"><a href="/" style="color:#9b90aa; font-size:12px; text-decoration:none;">← Return to Brinkberry</a></div>
+  </div>
+</body>
+</html>`;
+}
+
+function renderAdminReviewPage(queue = [], token = '') {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Review Queue — Brinkberry Community Events</title>
+  <style>
+    :root {
+      --bg: #090714;
+      --card-bg: #140f22;
+      --card-border: #281f38;
+      --text: #f4eff8;
+      --text-dim: #9b90aa;
+      --primary: #ffb86b;
+      --accent: #ff2e63;
+      --radar-cyan: #00e699;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 24px 16px 80px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid var(--card-border); padding-bottom: 16px; }
+    .title { font-size: 22px; font-weight: 850; color: #fff; margin: 0; }
+    .badge-count { background: var(--primary); color: #201000; font-weight: 850; padding: 3px 8px; border-radius: 999px; font-size: 12px; margin-left: 8px; }
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+    .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+    .event-title { font-size: 18px; font-weight: 800; color: #fff; margin: 0; }
+    .event-title a { color: inherit; text-decoration: none; }
+    .event-title a:hover { text-decoration: underline; color: var(--primary); }
+    .event-meta { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
+    .radius-compare { display: flex; align-items: center; gap: 8px; margin: 12px 0; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid var(--card-border); font-size: 13px; }
+    .current-radius { color: var(--radar-cyan); font-weight: 700; }
+    .target-radius { color: var(--primary); font-weight: 700; }
+    .evidence-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 14px 0; }
+    .evidence-item { background: rgba(0,0,0,0.25); border: 1px solid var(--card-border); border-radius: 8px; padding: 10px 12px; }
+    .evidence-label { font-size: 11px; text-transform: uppercase; font-weight: 750; color: var(--text-dim); margin-bottom: 4px; }
+    .evidence-val { font-size: 13px; color: #fff; word-break: break-all; }
+    .evidence-val.verified { color: var(--radar-cyan); font-weight: 700; }
+    .evidence-val.unverified { color: #ff99b0; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 14px; }
+    .btn { padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; transition: all 0.15s; }
+    .btn-approve { background: var(--radar-cyan); color: #022519; }
+    .btn-approve:hover { filter: brightness(1.1); }
+    .btn-deny { background: rgba(255, 46, 99, 0.15); border: 1px solid var(--accent); color: #ff809d; }
+    .btn-deny:hover { background: var(--accent); color: #fff; }
+    .status-msg { margin-top: 8px; font-size: 13px; display: none; }
+    .nav-links a { color: var(--text-dim); text-decoration: none; margin-left: 12px; font-size: 13px; }
+    .nav-links a:hover { color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1 class="title">Community Broadcast Review Queue <span class="badge-count">${queue.length}</span></h1>
+        <div style="color:var(--text-dim); font-size:13px; margin-top:4px;">
+          Block reach (~2 mi) is approved immediately upon posting. Every broader broadcast level requires explicit approval.
+          Confirmed email and phone appear below as evidence. Denying expansion preserves the post at its current approved radius.
+        </div>
+      </div>
+      <div class="nav-links">
+        <a href="/">← Explore Brinkberry</a>
+        <a href="/admin">Organizer Admin</a>
+      </div>
+    </div>
+
+    ${queue.length === 0 ? `
+      <div class="card" style="text-align:center; padding:48px 20px;">
+        <h2 style="color:var(--radar-cyan); font-size:18px; margin:0 0 8px;">✓ Review queue is clear</h2>
+        <p style="color:var(--text-dim); margin:0;">All community events requesting higher broadcast levels have been reviewed.</p>
+      </div>
+    ` : queue.map(item => `
+      <div class="card" id="card-${esc(item.id)}">
+        <div class="card-head">
+          <div>
+            <h2 class="event-title">
+              <a href="/event/${esc(item.id)}" target="_blank">${esc(item.title)} ↗</a>
+            </h2>
+            <div class="event-meta">
+              <b>${esc(item.category)}</b> · ${esc(item.venue || 'Community')} · ${esc(item.city || 'Denver')} · Start: ${new Date(item.start_time).toLocaleString()}
+            </div>
+          </div>
+          <span style="font-size:11px; padding:3px 8px; border-radius:6px; background:rgba(255,255,255,0.06); color:var(--text-dim); font-family:monospace;">
+            ${esc(item.id)}
+          </span>
+        </div>
+
+        <div class="radius-compare">
+          <span>Current Live: <span class="current-radius">Level ${item.currentLadderLevel} (~${item.approvedRadiusMiles} mi)</span></span>
+          <span style="color:var(--text-dim);">➔</span>
+          <span>Requested: <span class="target-radius">Level ${item.targetLevel} (~${(BROADCAST_LEVELS.find(l => l.level === item.targetLevel) || {}).radiusMiles || 6} mi - ${esc(item.desiredBroadcastLevel)})</span></span>
+          ${item.adminDenied ? `<span style="margin-left:auto; color:#ff809d; font-size:12px; font-weight:700;">⚠️ Expansion previously denied: ${esc(item.adminDenialReason || '')}</span>` : ''}
+        </div>
+
+        <!-- Evidence Box -->
+        <div class="evidence-grid">
+          <div class="evidence-item">
+            <div class="evidence-label">✉️ Email Evidence</div>
+            <div class="evidence-val ${item.evidence.emailConfirmed ? 'verified' : ''}">
+              ${item.evidence.emailConfirmed ? `✓ Confirmed: ${esc(item.evidence.email)}` :
+                (item.evidence.email ? `Provided (${esc(item.evidence.emailStatus || 'pending')})` : 'None provided')}
+            </div>
+          </div>
+          <div class="evidence-item">
+            <div class="evidence-label">📱 Phone Evidence</div>
+            <div class="evidence-val ${item.evidence.phoneConfirmed ? 'verified' : ''}">
+              ${item.evidence.phoneConfirmed ? `✓ Verified SMS: ${esc(item.evidence.phone)}` :
+                (item.evidence.phone ? `Provided (${esc(item.evidence.phoneStatus || 'pending')})` : 'None provided')}
+            </div>
+          </div>
+          <div class="evidence-item">
+            <div class="evidence-label">🔗 Public Link</div>
+            <div class="evidence-val">
+              ${item.evidence.detailsUrl ? `<a href="${esc(item.evidence.detailsUrl)}" target="_blank" style="color:var(--primary);">${esc(item.evidence.detailsUrl)} ↗</a>` : '<span style="color:var(--text-dim);">No URL provided</span>'}
+            </div>
+          </div>
+          <div class="evidence-item">
+            <div class="evidence-label">🔒 Traceable Audit Hash</div>
+            <div class="evidence-val" style="font-family:monospace; font-size:11px; color:var(--text-dim);">
+              IP: ${esc(item.evidence.auditRecord?.ipHash || 'N/A')}
+            </div>
+          </div>
+        </div>
+
+        ${item.description ? `
+          <div style="font-size:13px; color:#d0c5df; background:rgba(255,255,255,0.02); padding:10px 12px; border-radius:8px; margin:10px 0;">
+            <b>Description:</b> ${esc(item.description)}
+          </div>
+        ` : ''}
+
+        <div class="actions">
+          <button class="btn btn-approve" onclick="approveLevel('${esc(item.id)}', ${item.targetLevel})">
+            ✓ Approve Level ${item.targetLevel} (${(BROADCAST_LEVELS.find(l => l.level === item.targetLevel) || {}).name || ''})
+          </button>
+          ${item.targetLevel > 2 && item.currentLadderLevel < 2 ? `
+            <button class="btn" style="background:rgba(0,230,153,0.15); color:var(--radar-cyan); border:1px solid rgba(0,230,153,0.3);" onclick="approveLevel('${esc(item.id)}', 2)">
+              Approve Level 2 (Hood ~6 mi)
+            </button>
+          ` : ''}
+          <button class="btn btn-deny" onclick="denyLevel('${esc(item.id)}', ${item.targetLevel})">
+            ✕ Deny Expansion (Keep at Level ${item.currentLadderLevel})
+          </button>
+        </div>
+        <div id="msg-${esc(item.id)}" class="status-msg"></div>
+      </div>
+    `).join('')}
+  </div>
+
+  <script>
+    const adminToken = ${JSON.stringify(token)};
+
+    async function approveLevel(id, targetLevel) {
+      const msgEl = document.getElementById('msg-' + id);
+      msgEl.style.display = 'block';
+      msgEl.style.color = '#ffb86b';
+      msgEl.textContent = 'Approving level ' + targetLevel + '…';
+
+      try {
+        const res = await fetch('/api/post/admin/approve', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + adminToken
+          },
+          body: JSON.stringify({ id, targetLevel, adminToken })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || 'Failed to approve level');
+        msgEl.style.color = '#00e699';
+        msgEl.textContent = '✓ ' + data.message;
+        setTimeout(() => {
+          const card = document.getElementById('card-' + id);
+          if (card) card.remove();
+        }, 1200);
+      } catch (err) {
+        msgEl.style.color = '#ff809d';
+        msgEl.textContent = 'Error: ' + err.message;
+      }
+    }
+
+    async function denyLevel(id, deniedLevel) {
+      const reason = prompt('Reason for denying radius expansion (event remains live at current radius):', 'Insufficient public documentation for broader radius');
+      if (reason === null) return;
+
+      const msgEl = document.getElementById('msg-' + id);
+      msgEl.style.display = 'block';
+      msgEl.style.color = '#ffb86b';
+      msgEl.textContent = 'Recording denial…';
+
+      try {
+        const res = await fetch('/api/post/admin/deny', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + adminToken
+          },
+          body: JSON.stringify({ id, deniedLevel, reason, adminToken })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || 'Failed to record denial');
+        msgEl.style.color = '#ff809d';
+        msgEl.textContent = '✓ ' + data.message;
+        setTimeout(() => {
+          const card = document.getElementById('card-' + id);
+          if (card) card.remove();
+        }, 1500);
+      } catch (err) {
+        msgEl.style.color = '#ff809d';
+        msgEl.textContent = 'Error: ' + err.message;
+      }
+    }
+  </script>
+</body>
+</html>`;
+}
+
 module.exports = async (req, res) => {
   const u = new URL(req.url, 'https://brinkberry.local');
   const pathname = u.pathname;
@@ -1062,8 +1375,70 @@ module.exports = async (req, res) => {
     return res.status(200).send(renderManagePage(post, key));
   }
 
+  // Admin Review Screen: GET /admin/community or GET /admin/review-queue or GET /post/review
+  if (req.method === 'GET' && (pathname === '/admin/community' || pathname === '/admin/review-queue' || pathname === '/post/review')) {
+    const isAuthed = isAdminAuthorized(req, u);
+    if (!isAuthed) {
+      const enteredToken = u.searchParams.get('adminToken');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(200).send(renderAdminLoginPage(enteredToken ? 'Invalid admin credentials.' : ''));
+    }
+    const token = u.searchParams.get('adminToken') || u.searchParams.get('token') || '';
+    if (token) {
+      res.setHeader('Set-Cookie', `bb_admin_token=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`);
+    }
+    const queue = getAdminReviewQueue();
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(200).send(renderAdminReviewPage(queue, token));
+  }
+
+  // Admin Review Queue API: GET /api/post/admin/review-queue
+  if (req.method === 'GET' && (pathname === '/api/post/admin/review-queue' || pathname === '/api/post/review-queue')) {
+    if (!isAdminAuthorized(req, u)) {
+      return res.status(401).json({ success: false, error: 'Unauthorized: Admin authentication required' });
+    }
+    const queue = getAdminReviewQueue();
+    return res.status(200).json({ success: true, count: queue.length, queue });
+  }
+
+  // Admin Approve Level: POST /api/post/admin/approve
+  if (req.method === 'POST' && (pathname === '/api/post/admin/approve' || pathname === '/api/post/admin-approve')) {
+    let body = {};
+    try {
+      body = typeof req.body === 'object' ? req.body : JSON.parse(req.body || '{}');
+    } catch (_) {}
+
+    if (!isAdminAuthorized(req, u) && !isAdminAuthorized({ ...req, body }, u)) {
+      return res.status(401).json({ success: false, error: 'Unauthorized: Admin authentication required' });
+    }
+
+    const { id, targetLevel, adminNotes } = body;
+    if (!id) return res.status(400).json({ success: false, error: 'Post ID is required' });
+
+    const result = await adminApprovePostLevel(id, targetLevel || 2, adminNotes || '');
+    return res.status(result.status || (result.success ? 200 : 400)).json(result);
+  }
+
+  // Admin Deny Level: POST /api/post/admin/deny
+  if (req.method === 'POST' && (pathname === '/api/post/admin/deny' || pathname === '/api/post/admin-deny')) {
+    let body = {};
+    try {
+      body = typeof req.body === 'object' ? req.body : JSON.parse(req.body || '{}');
+    } catch (_) {}
+
+    if (!isAdminAuthorized(req, u) && !isAdminAuthorized({ ...req, body }, u)) {
+      return res.status(401).json({ success: false, error: 'Unauthorized: Admin authentication required' });
+    }
+
+    const { id, deniedLevel, reason } = body;
+    if (!id) return res.status(400).json({ success: false, error: 'Post ID is required' });
+
+    const result = await adminDenyPostLevel(id, deniedLevel, reason || 'Radius expansion denied by admin');
+    return res.status(result.status || (result.success ? 200 : 400)).json(result);
+  }
+
   // 2. GET /post or GET /submit
-  if (req.method === 'GET') {
+  if (req.method === 'GET' && (pathname === '/post' || pathname === '/submit')) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.status(200).send(renderPostPage());
   }

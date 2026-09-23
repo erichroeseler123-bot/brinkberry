@@ -17,7 +17,7 @@ describe('Homepage Hero Redesign & 3-Vertical Selection', () => {
     assert.match(output, /Find what’s happening near you right now/);
   });
 
-  test('renders 3 prominent vertical entry cards with tablist semantics', () => {
+  test('simplifies hero: removes 3 large category feature boxes and uses compact category filter bubbles', () => {
     let output = '';
     const res = {
       setHeader: () => {},
@@ -25,16 +25,18 @@ describe('Homepage Hero Redesign & 3-Vertical Selection', () => {
     };
     homeHandler({ url: '/', headers: {} }, res);
 
-    // Check entry path container & cards
-    assert.match(output, /class="hero-vertical-entry-paths"/);
-    assert.match(output, /id="entryPathAll"[^>]*class="entry-path-card active"/);
-    assert.match(output, /id="entryPathComedy"[^>]*class="entry-path-card"/);
-    assert.match(output, /id="entryPathRacing"[^>]*class="entry-path-card"/);
+    // Verify 3 large entry path cards are removed
+    assert.doesNotMatch(output, /class="hero-vertical-entry-paths"/);
+    assert.doesNotMatch(output, /id="entryPathAll"/);
+    assert.doesNotMatch(output, /id="entryPathComedy"/);
+    assert.doesNotMatch(output, /id="entryPathRacing"/);
+    assert.doesNotMatch(output, /class="entry-path-card/);
 
-    // Card text and cues
-    assert.match(output, /Everything near me/);
-    assert.match(output, /Comedy near me/);
-    assert.match(output, /Motorsports near me/);
+    // Verify compact category bubbles are present covering Everything, Comedy, and Motorsports
+    assert.match(output, /id="categoryRow"/);
+    assert.match(output, /All Events/);
+    assert.match(output, /Comedy Radar/);
+    assert.match(output, /Motorsports/);
   });
 
   test('renders radar-lock indicator and expandable location drawer', () => {

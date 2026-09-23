@@ -160,7 +160,7 @@ module.exports = async (req, res) => {
       if (match) req.query.id = match[1];
       return adminApiHandler(req, res);
     }
-    if (p === '/post' || p === '/submit' || p === '/manage' || p.startsWith('/post/') || p === '/api/post' || p.startsWith('/api/post/')) {
+    if (p === '/post' || p === '/submit' || p === '/manage' || p.startsWith('/post/') || p === '/api/post' || p.startsWith('/api/post/') || p === '/admin/community' || p === '/admin/review-queue' || p === '/admin/community-review') {
       return postHandler(req, res);
     }
     if (p === '/for-venues' || p.startsWith('/api/submit')) {

@@ -9,6 +9,9 @@ import {
   deleteCommunityPost,
   verifyPostLevel,
   evaluateBroadcastLadder,
+  getAdminReviewQueue,
+  adminApprovePostLevel,
+  adminDenyPostLevel,
   _resetForTesting
 } from '../lib/community-posts/community-posts.js';
 import {
@@ -20,7 +23,11 @@ describe('Brinkberry Community Post Production-Hardening Pass', () => {
     _resetForTesting();
   });
 
-  describe('1. Honest Email Confirmation (email_provided)', () => {
+  describe('1. Honest Email Confirmation & Admin Approval Requirement', () => {
+    beforeEach(() => {
+      _resetForTesting();
+    });
+
     it('does not unlock Hood reach (~6 mi) merely because an email was typed', () => {
       const now = Date.now();
       const res = createCommunityPost({
@@ -52,7 +59,7 @@ describe('Brinkberry Community Post Production-Hardening Pass', () => {
       assert.match(level2Status.statusReason, /confirmation code/i);
     });
 
-    it('unlocks Hood reach (~6 mi) only when real confirmation code is provided', () => {
+    it('proves confirmed email alone does NOT unlock Hood reach (~6 mi) without explicit admin approval', () => {
       const now = Date.now();
       const res = createCommunityPost({
         title: 'Block Gathering - Plant Swap ' + now,
@@ -70,23 +77,50 @@ describe('Brinkberry Community Post Production-Hardening Pass', () => {
       const code = res.emailVerificationCode;
       assert.ok(code);
 
-      // Submit incorrect code -> does not unlock
+      // Submit incorrect code -> does not advance status
       const badAttempt = verifyPostLevel(postId, key, { emailCode: '000000' });
       assert.equal(badAttempt.currentLevel, 1);
 
-      // Submit valid confirmation code -> unlocks Level 2 (Hood ~6 mi)
+      // Submit valid confirmation code -> records email confirmation as evidence, enters review queue
       const goodAttempt = verifyPostLevel(postId, key, { emailCode: code });
       assert.equal(goodAttempt.success, true);
-      assert.equal(goodAttempt.currentLevel, 2);
-      assert.equal(goodAttempt.approvedRadiusMiles, 6);
+
+      // MUST NOT automatically turn green / approved: remains at Level 1 (Block ~2 mi)
+      assert.equal(goodAttempt.currentLevel, 1, 'Current level must remain 1 while awaiting admin approval');
+      assert.equal(goodAttempt.approvedRadiusMiles, 2, 'Approved radius must remain 2 miles while awaiting admin approval');
 
       const updatedPost = getCommunityPostById(postId);
       assert.equal(updatedPost.emailConfirmed, true);
       assert.equal(updatedPost.emailStatus, 'confirmed');
+
+      const l2 = updatedPost.ladderStatus.find(l => l.level === 2);
+      assert.equal(l2.status, 'in_review');
+      assert.match(l2.statusReason, /admin review queue/i);
+
+      // Verify it appears in the admin review queue with evidence
+      const queue = getAdminReviewQueue();
+      const queueItem = queue.find(q => q.id === postId);
+      assert.ok(queueItem, 'Post must be in admin review queue');
+      assert.equal(queueItem.evidence.emailConfirmed, true);
+      assert.equal(queueItem.targetLevel, 2);
+
+      // Explicit Admin Approval is required to unlock Level 2
+      const approval = adminApprovePostLevel(postId, 2, 'Verified local organizer');
+      assert.equal(approval.success, true);
+      assert.equal(approval.currentLevel, 2);
+      assert.equal(approval.approvedRadiusMiles, 6);
+
+      const postAfterApproval = getCommunityPostById(postId);
+      assert.equal(postAfterApproval.currentLadderLevel, 2);
+      assert.equal(postAfterApproval.approvedRadiusMiles, 6);
     });
   });
 
-  describe('2. Honest Phone Verification (phone_provided)', () => {
+  describe('2. Phone Verification Evidence & Admin Approval Requirement', () => {
+    beforeEach(() => {
+      _resetForTesting();
+    });
+
     it('does not unlock Quadrant reach (~15 mi) merely because a 10-digit phone was typed', () => {
       const now = Date.now();
       const res = createCommunityPost({
@@ -104,22 +138,18 @@ describe('Brinkberry Community Post Production-Hardening Pass', () => {
       const postId = res.event.id;
       const key = res.deletionKey;
 
-      // 1. Confirm email first
+      // Confirm email first
       verifyPostLevel(postId, key, { emailCode: res.emailVerificationCode });
 
-      // After email is confirmed, level is 2 (Hood), NOT 3
+      // After email is confirmed, level remains 1 (Block) awaiting admin approval
       const postAfterEmail = getCommunityPostById(postId);
-      assert.equal(postAfterEmail.currentLadderLevel, 2);
-      assert.equal(postAfterEmail.approvedRadiusMiles, 6);
+      assert.equal(postAfterEmail.currentLadderLevel, 1);
+      assert.equal(postAfterEmail.approvedRadiusMiles, 2);
       assert.equal(postAfterEmail.phoneStatus, 'phone_provided');
       assert.equal(postAfterEmail.phoneConfirmed, false);
-
-      const level3Status = postAfterEmail.ladderStatus.find(l => l.level === 3);
-      assert.equal(level3Status.status, 'pending');
-      assert.match(level3Status.statusReason, /SMS verification code/i);
     });
 
-    it('unlocks Quadrant reach (~15 mi) when SMS verification code is verified', () => {
+    it('proves confirmed email and verified phone alone do NOT unlock broader reach without explicit admin approval', () => {
       const now = Date.now();
       const res = createCommunityPost({
         title: 'Quadrant Level Garage Sale ' + now,
@@ -142,12 +172,66 @@ describe('Brinkberry Community Post Production-Hardening Pass', () => {
       // Verify phone with SMS code
       const vPhone = verifyPostLevel(postId, key, { phoneCode: res.phoneVerificationCode });
       assert.equal(vPhone.success, true);
-      assert.equal(vPhone.currentLevel, 3);
-      assert.equal(vPhone.approvedRadiusMiles, 15);
+
+      // CRITICAL: Must NOT automatically advance broadcast radius
+      assert.equal(vPhone.currentLevel, 1, 'Current level must remain 1 despite verified phone');
+      assert.equal(vPhone.approvedRadiusMiles, 2, 'Approved radius must remain 2 miles');
 
       const updated = getCommunityPostById(postId);
+      assert.equal(updated.emailConfirmed, true);
       assert.equal(updated.phoneConfirmed, true);
       assert.equal(updated.phoneStatus, 'verified');
+
+      // Review queue inspection shows both evidence items
+      const queue = getAdminReviewQueue();
+      const queueItem = queue.find(q => q.id === postId);
+      assert.ok(queueItem, 'Post must appear in review queue');
+      assert.equal(queueItem.evidence.emailConfirmed, true);
+      assert.equal(queueItem.evidence.phoneConfirmed, true);
+
+      // Explicit Admin Approval unlocks Level 3 (Quadrant ~15 mi)
+      const approval = adminApprovePostLevel(postId, 3, 'Approved after phone check');
+      assert.equal(approval.success, true);
+      assert.equal(approval.currentLevel, 3);
+      assert.equal(approval.approvedRadiusMiles, 15);
+    });
+
+    it('denying a larger radius never deletes or hides the event and keeps it live at approved radius', () => {
+      const now = Date.now();
+      const res = createCommunityPost({
+        title: 'Neighborhood Board Game Night ' + now,
+        category: 'community',
+        startTime: new Date(now + 4 * 3600 * 1000).toISOString(),
+        city: 'Denver',
+        email: 'boardgames@example.com',
+        desiredBroadcastLevel: 'hood',
+        accountabilityAcknowledged: true,
+        termsAccepted: true
+      }, { ip: '10.50.2.3' });
+
+      const postId = res.event.id;
+      const key = res.deletionKey;
+
+      verifyPostLevel(postId, key, { emailCode: res.emailVerificationCode });
+
+      // Admin explicitly denies Hood expansion
+      const denial = adminDenyPostLevel(postId, 2, 'Appropriate for neighborhood block only');
+      assert.equal(denial.success, true);
+      assert.equal(denial.currentLevel, 1);
+      assert.equal(denial.approvedRadiusMiles, 2);
+      assert.equal(denial.isDeleted, false, 'Event must NEVER be deleted when radius is denied');
+      assert.equal(denial.isDisplayable, true, 'Event must NEVER be hidden when radius is denied');
+
+      const post = getCommunityPostById(postId);
+      assert.equal(post.isDeleted, false);
+      assert.equal(post.isDisplayable, true);
+      assert.equal(post.currentLadderLevel, 1);
+      assert.equal(post.approvedRadiusMiles, 2);
+
+      // Verify event is still actively returned in discovery feed
+      const activePosts = getActiveCommunityPosts({ city: 'Denver', lat: 39.7392, lon: -104.9903, radiusMiles: 5 });
+      const foundInFeed = activePosts.find(p => p.id === postId);
+      assert.ok(foundInFeed, 'Denied expansion event must remain live and discoverable in feed');
     });
   });
 

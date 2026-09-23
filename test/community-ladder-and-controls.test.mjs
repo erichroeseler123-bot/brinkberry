@@ -6,6 +6,9 @@ import {
   getCommunityPostById,
   deleteCommunityPost,
   verifyPostLevel,
+  getAdminReviewQueue,
+  adminApprovePostLevel,
+  adminDenyPostLevel,
   reportCommunityPost,
   getActiveCommunityPosts,
   BROADCAST_LEVELS,
@@ -229,7 +232,7 @@ describe('Brinkberry Community Event Layer: Broadcast Ladder & User Controls', (
       assert.equal(ladder[3].status, 'pending_prerequisite');
     });
 
-    it('allows sequential step-up verification via verifyPostLevel', () => {
+    it('allows sequential step-up verification via verifyPostLevel with explicit admin approval', () => {
       const now = Date.now();
       const res = createCommunityPost({
         title: 'Grassroots Acoustic Folk Circle ' + now,
@@ -244,23 +247,54 @@ describe('Brinkberry Community Event Layer: Broadcast Ladder & User Controls', (
       const postId = res.event.id;
       const key = res.deletionKey;
 
-      // 1. Confirm email -> unlocks Level 2 (Hood ~6 mi)
+      // Initial state: Level 1 Block (2 mi) is approved immediately
+      assert.equal(res.event.currentLevel, 1);
+      assert.equal(res.event.approvedRadiusMiles, 2);
+
+      // 1. Confirm email -> records evidence, enters admin review queue (does NOT auto-unlock Level 2)
       const vEmail = verifyPostLevel(postId, key, { email: 'folk@example.com', emailConfirmed: true });
       assert.equal(vEmail.success, true);
-      assert.equal(vEmail.currentLevel, 2);
-      assert.equal(vEmail.approvedRadiusMiles, 6);
+      assert.equal(vEmail.currentLevel, 1, 'Email alone must NOT auto-unlock Level 2');
+      assert.equal(vEmail.approvedRadiusMiles, 2);
 
-      // 2. Add verified phone -> unlocks Level 3 (Quadrant ~15 mi)
+      // 2. Add verified phone -> records evidence in review queue
       const vPhone = verifyPostLevel(postId, key, { phone: '303-555-0144', phoneVerified: true });
       assert.equal(vPhone.success, true);
-      assert.equal(vPhone.currentLevel, 3);
-      assert.equal(vPhone.approvedRadiusMiles, 15);
+      assert.equal(vPhone.currentLevel, 1, 'Phone alone must NOT auto-unlock Level 3');
+      assert.equal(vPhone.approvedRadiusMiles, 2);
 
-      // 3. Add public details URL -> unlocks Level 4 (City ~30 mi)
+      // 3. Add public details URL -> records evidence in review queue
       const vUrl = verifyPostLevel(postId, key, { detailsUrl: 'https://folkmusicdenver.org/meetup' });
       assert.equal(vUrl.success, true);
-      assert.equal(vUrl.currentLevel, 4);
-      assert.equal(vUrl.approvedRadiusMiles, 30);
+      assert.equal(vUrl.currentLevel, 1, 'URL alone must NOT auto-unlock Level 4');
+      assert.equal(vUrl.approvedRadiusMiles, 2);
+
+      // 4. Verify review queue contains all collected evidence
+      const queue = getAdminReviewQueue();
+      const item = queue.find(q => q.id === postId);
+      assert.ok(item, 'Event must appear in admin review queue');
+      assert.equal(item.evidence.emailConfirmed, true);
+      assert.equal(item.evidence.phoneConfirmed, true);
+      assert.equal(item.evidence.detailsUrl, 'https://folkmusicdenver.org/meetup');
+      assert.equal(item.targetLevel, 4);
+
+      // 5. Admin explicitly approves Level 2 -> unlocks Hood (~6 mi)
+      const app2 = adminApprovePostLevel(postId, 2, 'Email verified');
+      assert.equal(app2.success, true);
+      assert.equal(app2.currentLevel, 2);
+      assert.equal(app2.approvedRadiusMiles, 6);
+
+      // 6. Admin explicitly approves Level 3 -> unlocks Quadrant (~15 mi)
+      const app3 = adminApprovePostLevel(postId, 3, 'Phone verified');
+      assert.equal(app3.success, true);
+      assert.equal(app3.currentLevel, 3);
+      assert.equal(app3.approvedRadiusMiles, 15);
+
+      // 7. Admin explicitly approves Level 4 -> unlocks City (~30 mi)
+      const app4 = adminApprovePostLevel(postId, 4, 'Public link verified');
+      assert.equal(app4.success, true);
+      assert.equal(app4.currentLevel, 4);
+      assert.equal(app4.approvedRadiusMiles, 30);
     });
   });
 

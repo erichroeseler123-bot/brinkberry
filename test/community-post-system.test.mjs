@@ -7,6 +7,7 @@ const {
   createCommunityPost,
   getActiveCommunityPosts,
   getCommunityPostById,
+  adminApprovePostLevel,
   reportCommunityPost,
   _resetForTesting
 } = require('../lib/community-posts/community-posts.js');
@@ -148,6 +149,12 @@ describe('Brinkberry Autonomous Community Post System', () => {
       }, { ip: '1.2.3.5' });
       assert.equal(broadRes.success, true);
 
+      // Confirmed email & phone alone do not broadcast broadly until approved by admin
+      assert.equal(broadRes.event.approvedRadiusMiles, 2);
+
+      // Approve broad reach via explicit admin approval
+      adminApprovePostLevel(broadRes.event.id, 4, 'Approved broad local reach');
+
       // Query from Boulder (~24 miles away) with 30 mile search radius
       const metroPosts = getActiveCommunityPosts({
         lat: 40.0150,
@@ -156,7 +163,7 @@ describe('Brinkberry Autonomous Community Post System', () => {
         windowStart: new Date(now).toISOString(),
         windowEnd: new Date(now + 24 * 3600 * 1000).toISOString()
       });
-      assert.equal(metroPosts.some(p => p.id === broadRes.event.id), true, 'Expected broad post to be visible across metro');
+      assert.equal(metroPosts.some(p => p.id === broadRes.event.id), true, 'Expected broad post to be visible across metro after admin approval');
     });
   });
 
@@ -281,6 +288,7 @@ describe('Brinkberry Autonomous Community Post System', () => {
     });
 
     it('allows reporting an event and hides it upon reaching threshold', () => {
+      _resetForTesting();
       const now = Date.now();
       const res = createCommunityPost({
         title: 'Questionable Gathering',

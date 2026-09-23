@@ -693,15 +693,10 @@ describe('Grassroots Motorsports & Short Track Discovery Engine', () => {
       });
 
       await router(req, res);
-      assert.equal(res.statusCode, 200);
-      assert.ok(res.body.includes('hero-vertical-entry-paths'));
-      assert.ok(res.body.includes('id="entryPathAll"'));
-      assert.ok(res.body.includes('id="entryPathComedy"'));
-      assert.ok(res.body.includes('id="entryPathRacing"'));
-      assert.ok(res.body.includes('Everything near me'));
-      assert.ok(res.body.includes('Comedy near me'));
-      assert.ok(res.body.includes('Motorsports near me'));
+      assert.ok(!res.body.includes('id="entryPathRacing"'), 'Large feature card entryPathRacing must be removed');
+      assert.ok(res.body.includes('id="categoryRow"'), 'Compact category filter bubbles must be present');
       assert.ok(res.body.includes('Motorsports'));
+      assert.ok(res.body.includes('id="racingSubFilterConsole"'));
     });
   });
 
