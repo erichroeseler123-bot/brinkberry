@@ -1,5 +1,8 @@
 const { buildSafeAffiliateUrl } = require('../lib/affiliate');
 const { executeHybridFeed, distMiles } = require('../lib/providers/engine');
+const { defaultCanonicalStorage } = require('../lib/storage/canonical-event-storage');
+const { resolveIanaTimezone, calculateIanaBounds } = require('../lib/timezone');
+const { trackCitySearch, trackFilterChange } = require('../lib/telemetry');
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co').replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
 const KEY = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_2ygc158CkPm28E9j6zNdmA_Cvvj5kGr';
@@ -29,80 +32,34 @@ async function rpc(name, args) {
   return d;
 }
 
-function addDays(s, n) {
-  const d = new Date(s + 'T12:00:00Z');
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
-
-function localSolarHours(lng) {
-  if (!Number.isFinite(lng)) return -7;
-  return Math.max(-12, Math.min(14, Math.round(lng / 15)));
-}
-
-function parts(lng) {
-  const offHours = localSolarHours(lng);
-  const offMs = offHours * 3600e3;
-  const d = new Date(Date.now() + offMs);
-  return {
-    year: d.getUTCFullYear(),
-    month: String(d.getUTCMonth() + 1).padStart(2, '0'),
-    day: String(d.getUTCDate()).padStart(2, '0'),
-    hour: d.getUTCHours(),
-    offHours
-  };
-}
-
-function zoned(s, h, offHours = -7) {
-  const dateParts = s.split('-').map(Number);
-  const utcMillis = Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2], h) - (offHours * 3600e3);
-  return new Date(utcMillis);
-}
-
-function bounds(w, lng) {
-  const now = new Date();
-  const max48 = new Date(now.getTime() + 48 * 3600e3);
-  const p = parts(lng);
-  const d = `${p.year}-${p.month}-${p.day}`;
-  const h = Number(p.hour);
-
-  let start = now;
-  let end = max48;
-
-  if (w === 'now') {
-    end = new Date(now.getTime() + 4 * 3600e3);
-  } else if (w === 'tomorrow') {
-    const x = addDays(d, 1);
-    start = zoned(x, 0, p.offHours);
-    end = zoned(addDays(x, 1), 0, p.offHours);
-  } else if (w === 'tonight') {
-    if (h < 2) {
-      start = zoned(addDays(d, -1), 17, p.offHours);
-      end = zoned(d, 4, p.offHours);
-    } else {
-      start = zoned(d, 17, p.offHours);
-      end = zoned(addDays(d, 1), 4, p.offHours);
-    }
-  } else if (w === 'weekend' || w === '48h' || w === 'next-48h') {
-    start = now;
-    end = max48;
-  }
-
-  // Strict 48-hour rolling window clamping: never before now, never beyond now + 48 hours
-  const clampedStart = new Date(Math.max(start.getTime(), now.getTime()));
-  const clampedEnd = new Date(Math.min(end.getTime(), max48.getTime()));
-  return [clampedStart, clampedEnd];
-}
-
 const SUPPORTED_MARKETS = [
   { name: 'Denver', slug: 'denver', state: 'CO', country: 'US', lat: 39.7392, lon: -104.9903, maxRadiusMiles: 60 },
   { name: 'Boulder', slug: 'boulder', state: 'CO', country: 'US', lat: 40.0150, lon: -105.2705, maxRadiusMiles: 60 },
   { name: 'Golden', slug: 'golden', state: 'CO', country: 'US', lat: 39.7555, lon: -105.2211, maxRadiusMiles: 60 },
   { name: 'Aurora', slug: 'aurora', state: 'CO', country: 'US', lat: 39.7294, lon: -104.8319, maxRadiusMiles: 60 },
+  { name: 'Minneapolis', slug: 'minneapolis', state: 'MN', country: 'US', lat: 44.9877, lon: -93.2721, maxRadiusMiles: 60 },
+  { name: 'Austin', slug: 'austin', state: 'TX', country: 'US', lat: 30.3957, lon: -97.7289, maxRadiusMiles: 60 },
+  { name: 'Philadelphia', slug: 'philadelphia', state: 'PA', country: 'US', lat: 39.9515, lon: -75.1748, maxRadiusMiles: 60 },
+  { name: 'Cleveland', slug: 'cleveland', state: 'OH', country: 'US', lat: 41.4988, lon: -81.6888, maxRadiusMiles: 60 },
+  { name: 'Portland', slug: 'portland', state: 'OR', country: 'US', lat: 45.5134, lon: -122.6508, maxRadiusMiles: 60 },
+  { name: 'St. Louis', slug: 'st-louis', state: 'MO', country: 'US', lat: 38.6341, lon: -90.3152, maxRadiusMiles: 60 },
+  { name: 'Birmingham', slug: 'birmingham', state: 'AL', country: 'US', lat: 33.3752, lon: -86.8122, maxRadiusMiles: 60 },
+  { name: 'Charlotte', slug: 'charlotte', state: 'NC', country: 'US', lat: 35.2407, lon: -80.8491, maxRadiusMiles: 60 },
+  { name: 'Atlanta', slug: 'atlanta', state: 'GA', country: 'US', lat: 33.7490, lon: -84.3880, maxRadiusMiles: 60 },
+  { name: 'Indianapolis', slug: 'indianapolis', state: 'IN', country: 'US', lat: 39.7684, lon: -86.1581, maxRadiusMiles: 60 },
+  { name: 'Baltimore', slug: 'baltimore', state: 'MD', country: 'US', lat: 39.2904, lon: -76.6122, maxRadiusMiles: 60 },
+  { name: 'Kansas City', slug: 'kansas-city', state: 'MO', country: 'US', lat: 39.0997, lon: -94.5786, maxRadiusMiles: 60 },
+  { name: 'Phoenix', slug: 'phoenix', state: 'AZ', country: 'US', lat: 33.4484, lon: -112.0740, maxRadiusMiles: 60 },
+  { name: 'Tempe', slug: 'tempe', state: 'AZ', country: 'US', lat: 33.4255, lon: -111.9400, maxRadiusMiles: 60 },
   { name: 'London', slug: 'london', state: '', country: 'UK', lat: 51.5074, lon: -0.1278, maxRadiusMiles: 60 },
   { name: 'New York', slug: 'new-york', state: 'NY', country: 'US', lat: 40.7128, lon: -74.0060, maxRadiusMiles: 60 },
+  { name: 'Buffalo', slug: 'buffalo', state: 'NY', country: 'US', lat: 42.8864, lon: -78.8784, maxRadiusMiles: 60 },
+  { name: 'Raleigh', slug: 'raleigh', state: 'NC', country: 'US', lat: 35.7796, lon: -78.6382, maxRadiusMiles: 60 },
+  { name: 'Boston', slug: 'boston', state: 'MA', country: 'US', lat: 42.3601, lon: -71.0589, maxRadiusMiles: 60 },
+  { name: 'Bridgeport', slug: 'bridgeport', state: 'CT', country: 'US', lat: 41.1792, lon: -73.1894, maxRadiusMiles: 60 },
   { name: 'Tokyo', slug: 'tokyo', state: '', country: 'JP', lat: 35.6762, lon: 139.6503, maxRadiusMiles: 60 },
-  { name: 'Paris', slug: 'paris', state: '', country: 'FR', lat: 48.8566, lon: 2.3522, maxRadiusMiles: 60 }
+  { name: 'Paris', slug: 'paris', state: '', country: 'FR', lat: 48.8566, lon: 2.3522, maxRadiusMiles: 60 },
+  { name: 'Reykjavik', slug: 'reykjavik', state: '', country: 'IS', lat: 64.1466, lon: -21.9426, maxRadiusMiles: 60 }
 ];
 
 function checkCoverage(lat, lng, hybridResult) {
@@ -115,7 +72,16 @@ function checkCoverage(lat, lng, hybridResult) {
   }).sort((a, b) => a.distanceMiles - b.distanceMiles);
 
   const nearest = distances[0] || { market: { name: 'Denver' }, distanceMiles: 0 };
-  const isCuratedMarket = nearest.distanceMiles <= 60 && ['Denver', 'Boulder', 'Golden', 'Aurora'].includes(nearest.market.name);
+  const isMarketArea = nearest.distanceMiles <= 60;
+  const isCuratedMarket = nearest.distanceMiles <= 60 && [
+    'Denver', 'Boulder', 'Golden', 'Aurora',
+    'Minneapolis', 'Austin', 'Philadelphia', 'Cleveland', 'Portland', 'St. Louis',
+    'Birmingham', 'Charlotte', 'Atlanta',
+    'Indianapolis', 'Baltimore', 'Kansas City', 'Phoenix', 'Tempe',
+    'New York', 'Buffalo', 'Raleigh', 'Boston', 'Bridgeport'
+  ].includes(nearest.market.name);
+
+
   const isCommunityActive = Boolean(hybridResult?.providers?.community?.count > 0 || hybridResult?.providers?.community?.feedsConfigured > 0);
   const isDynamicActive = Boolean(hybridResult?.hybrid?.dynamicActive);
   const isDynamicConfigured = Boolean(hybridResult?.hybrid?.dynamicConfigured);
@@ -174,6 +140,13 @@ module.exports = async (req, res) => {
     const lng = Number(u.searchParams.get('lng') ?? u.searchParams.get('lon'));
     const window = u.searchParams.get('window') || 'tonight';
     const mode = u.searchParams.get('mode') || '';
+    const category = u.searchParams.get('category') || '';
+    const showType = u.searchParams.get('showType') || '';
+    const ageLimit = u.searchParams.get('ageLimit') || '';
+    const priceFilter = u.searchParams.get('priceFilter') || '';
+    const startingSoon = u.searchParams.get('startingSoon') === 'true';
+    const recurring = u.searchParams.get('recurring') === 'true';
+    const clean = u.searchParams.get('clean') === 'true';
     const radiusParam = Number(u.searchParams.get('radius')) || 25;
     const radiusMiles = Math.min(100, Math.max(1, radiusParam));
     const dynamicParam = u.searchParams.get('dynamic');
@@ -184,7 +157,8 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Location required' });
     }
 
-    const [a, b] = bounds(window, lng);
+    const timeZone = resolveIanaTimezone(lat, lng);
+    const [a, b] = calculateIanaBounds(window, timeZone);
 
     // 1. Fetch curated database events from Supabase RPC
     let rawCurated = [];
@@ -205,7 +179,122 @@ module.exports = async (req, res) => {
       curatedMs = Date.now() - curatedStart;
     }
 
-    // 2. Execute Hybrid Dynamic Engine (Curated + Ticketmaster + SeatGeek + Community Feeds)
+    // Security Guard: Ordinary public requests in production must NEVER be able to toggle includePreview.
+    // Preview records are ONLY accessible if:
+    // 1. In preview environment (VERCEL_ENV === 'preview' or ENABLE_EXPANSION_PILOT === 'true')
+    // 2. Or explicit admin authentication is provided (Bearer token or x-admin-key)
+    const isPreviewEnv = process.env.VERCEL_ENV === 'preview' || process.env.ENABLE_EXPANSION_PILOT === 'true';
+    const authHeader = req.headers?.['authorization'] || '';
+    const adminKeyHeader = req.headers?.['x-admin-key'] || '';
+    const adminToken = (authHeader.match(/^Bearer\s+(.+)$/i)?.[1] || adminKeyHeader || '').trim();
+    const validAdminSecrets = [
+      process.env.ADMIN_TOKEN,
+      process.env.ADMIN_AUDIT_TOKEN,
+      process.env.BRINKBERRY_ADMIN_KEY
+    ].filter(Boolean);
+    const isAdmin = Boolean(adminToken && validAdminSecrets.includes(adminToken));
+    const requestedPreview = u.searchParams.get('includePreview') === 'true' || u.searchParams.get('preview') === 'true';
+    const allowPreview = isPreviewEnv || (isAdmin && requestedPreview);
+
+    // Query verified canonical submissions from storage
+    try {
+      const storedSubmissions = await defaultCanonicalStorage.queryEvents({
+        lat,
+        lon: lng,
+        radiusMiles,
+        category: (category && category !== 'all') ? category : null,
+        windowStart: a.toISOString(),
+        windowEnd: b.toISOString(),
+        includePreview: allowPreview
+      });
+      if (Array.isArray(storedSubmissions)) {
+        for (const s of storedSubmissions) {
+          if ([
+            'admin_verified',
+            'verified_community',
+            'community_submitted',
+            'confirmed_by_official_calendar',
+            'confirmed_by_dual_official_sources'
+          ].includes(s.confirmationStatus)) {
+            rawCurated.push(s);
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Expansion & Preview Serverless SWR Hydration:
+    // If running on a fresh serverless instance where local storage has not
+    // been populated yet, hydrate expansion venues on-demand.
+    const isExpansionPilotActive = process.env.ENABLE_EXPANSION_PILOT === 'true' || allowPreview;
+    if (isExpansionPilotActive && (mode === 'comedy' || category === 'comedy' || !category || category === 'all')) {
+      const distBhm = distMiles(lat, lng, 33.3752, -86.8122);
+      const distClt = distMiles(lat, lng, 35.2407, -80.8491);
+      const hasBhmInFeed = rawCurated.some(e => (e.venue_name || e.venue) === 'Stardome Comedy Club');
+      const hasCltInFeed = rawCurated.some(e => (e.venue_name || e.venue) === 'The Comedy Zone Charlotte');
+
+      const targetEnv = (allowPreview && process.env.ENABLE_EXPANSION_PILOT !== 'true') ? 'preview' : 'production';
+      const targetNamespace = (allowPreview && process.env.ENABLE_EXPANSION_PILOT !== 'true') ? 'preview_expansion' : 'production';
+
+      if (distBhm != null && distBhm <= radiusMiles && !hasBhmInFeed) {
+        try {
+          const { ingestStardome } = require('../lib/comedy/expansion-ingestion');
+          const rep = await ingestStardome({ persist: true, environment: targetEnv, namespace: targetNamespace });
+          if (Array.isArray(rep.events)) rawCurated.push(...rep.events);
+        } catch (_) {}
+      }
+      if (distClt != null && distClt <= radiusMiles && !hasCltInFeed) {
+        try {
+          const { ingestComedyZone } = require('../lib/comedy/expansion-ingestion');
+          const rep = await ingestComedyZone({ persist: true, environment: targetEnv, namespace: targetNamespace });
+          if (Array.isArray(rep.events)) rawCurated.push(...rep.events);
+        } catch (_) {}
+      }
+      const distAcme = distMiles(lat, lng, 44.9877, -93.2721);
+      const hasAcmeInFeed = rawCurated.some(e => (e.venue_name || e.venue) === 'Acme Comedy Company');
+      if (distAcme != null && distAcme <= radiusMiles && !hasAcmeInFeed) {
+        try {
+          const { ingestAcme } = require('../lib/comedy/expansion-ingestion');
+          const rep = await ingestAcme({ persist: true, environment: targetEnv, namespace: targetNamespace });
+          if (Array.isArray(rep.events)) rawCurated.push(...rep.events);
+        } catch (_) {}
+      }
+
+      const distAtl = distMiles(lat, lng, 33.7490, -84.3880);
+      const hasAtlInFeed = rawCurated.some(e => (e.venue_name || e.venue)?.includes('Punchline') || (e.venue_name || e.venue)?.includes('Laughing Skull'));
+      if (distAtl != null && distAtl <= radiusMiles && !hasAtlInFeed) {
+        try {
+          const { ingestAtlantaComedy } = require('../lib/comedy/atlanta-ingestion');
+          const rep = await ingestAtlantaComedy({ persist: true, environment: targetEnv, namespace: targetNamespace });
+          if (Array.isArray(rep.events)) rawCurated.push(...rep.events);
+        } catch (_) {}
+      }
+
+      // Promoted SeatEngine Verified Venues Hydration
+      const { PROMOTED_SEATENGINE_VENUES, getPromotedComedyVenues } = require('../lib/comedy/national-registry');
+      const verifiedBatches = PROMOTED_SEATENGINE_VENUES || getPromotedComedyVenues().filter(v => v.ticketingEngine === 'seatengine');
+      for (const bv of verifiedBatches) {
+        const dist = distMiles(lat, lng, bv.lat, bv.lon);
+        const hasVenueInFeed = rawCurated.some(e =>
+          (e.venue_slug || e.venueSlug) === bv.slug ||
+          (e.venue_name || e.venue || '').toLowerCase().includes(bv.name.toLowerCase())
+        );
+        if (dist != null && dist <= radiusMiles && !hasVenueInFeed) {
+          try {
+            const { ingestSeatEngineVenue } = require('../lib/ingestion/adapters/seatengine');
+            const { evaluateAutoPromotionCriteria } = require('../lib/ingestion/discovery-pipeline');
+            const rep = await ingestSeatEngineVenue(bv, { persist: true, environment: targetEnv, namespace: targetNamespace });
+            if (Array.isArray(rep.events)) {
+              const promotable = rep.events.filter(e => evaluateAutoPromotionCriteria(e).isPromotable);
+              rawCurated.push(...promotable);
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
+
+
+    // 2. Execute Hybrid Dynamic Engine (Curated + Ticketmaster + SeatGeek + Paris Open Data + Community Feeds)
     const hybridResult = await executeHybridFeed({
       lat,
       lon: lng,
@@ -213,8 +302,33 @@ module.exports = async (req, res) => {
       window,
       windowStart: a.toISOString(),
       windowEnd: b.toISOString(),
+      timeZone,
       mode,
-      curatedEvents: rawCurated || [],
+      category,
+      showType,
+      ageLimit,
+      priceFilter,
+      startingSoon,
+      recurring,
+      clean,
+      curatedEvents: (rawCurated || []).map(e => ({
+        ...e,
+        source: e.source || 'curated',
+        confirmationStatus: e.confirmationStatus || 'confirmed_by_official_calendar',
+        sourceEvidence: {
+          ...(e.sourceEvidence || {
+            sourceId: 'curated_supabase',
+            sourceUrl: e.canonical_url,
+            fetchedAt: e.last_verified_at || e.lastVerifiedAt || new Date().toISOString()
+          }),
+          exactConfirmationFields: e.sourceEvidence?.exactConfirmationFields || {
+            title: true,
+            date: true,
+            venue: true
+          }
+        },
+        lastVerifiedAt: e.last_verified_at || e.lastVerifiedAt || new Date().toISOString()
+      })),
       enableDynamic,
       useTestMock
     });
@@ -223,6 +337,15 @@ module.exports = async (req, res) => {
     const coverage = checkCoverage(lat, lng, hybridResult);
     const resolvedLocationName = await resolveLocationName(lat, lng, locationParam);
     coverage.locationName = resolvedLocationName;
+    coverage.timezone = timeZone;
+
+    // Record Telemetry
+    trackCitySearch(resolvedLocationName || locationParam || 'Coordinates', lat, lng, hybridResult.events.length);
+    if (category) trackFilterChange('category', category);
+    if (mode) trackFilterChange('mode', mode);
+    if (showType) trackFilterChange('showType', showType);
+    if (ageLimit) trackFilterChange('ageLimit', ageLimit);
+    if (priceFilter) trackFilterChange('priceFilter', priceFilter);
 
     const totalMs = Date.now() - overallStart;
 
@@ -238,7 +361,12 @@ module.exports = async (req, res) => {
           total: hybridResult.events.length,
           curated: hybridResult.hybrid.curatedCount,
           commercial: hybridResult.hybrid.commercialCount || 0,
-          community: hybridResult.hybrid.communityCount || 0
+          international: hybridResult.hybrid.internationalCount || 0,
+          community: hybridResult.hybrid.communityCount || 0,
+          civic: hybridResult.hybrid.civicCount || 0,
+          official: hybridResult.hybrid.officialCount || 0,
+          comedy: hybridResult.hybrid.comedyCount || 0,
+          racing: hybridResult.hybrid.racingCount || 0
         },
         providerHealth: hybridResult.providers,
         providers: hybridResult.providers,

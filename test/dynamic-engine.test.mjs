@@ -268,21 +268,30 @@ describe('Hybrid Dynamic Event Engine Suite', () => {
           title: 'Past Event',
           venue_name: 'Ogden Theatre',
           start_time: new Date(now - 3600e3).toISOString(), // 1 hr in past
-          source: 'curated'
+          source: 'curated',
+          confirmationStatus: 'confirmed_by_official_calendar',
+          sourceEvidence: { exactConfirmationFields: { title: true, date: true } },
+          lastVerifiedAt: new Date(now).toISOString()
         },
         {
           id: 'valid_47h_event',
           title: 'Valid 47 Hour Event',
           venue_name: 'Bluebird Theater',
           start_time: new Date(now + 47 * 3600e3).toISOString(), // 47 hr in future
-          source: 'curated'
+          source: 'curated',
+          confirmationStatus: 'confirmed_by_official_calendar',
+          sourceEvidence: { exactConfirmationFields: { title: true, date: true } },
+          lastVerifiedAt: new Date(now).toISOString()
         },
         {
           id: 'out_of_bounds_49h_event',
           title: 'Invalid 49 Hour Event',
           venue_name: 'Mission Ballroom',
           start_time: new Date(now + 49 * 3600e3).toISOString(), // 49 hr in future
-          source: 'curated'
+          source: 'curated',
+          confirmationStatus: 'confirmed_by_official_calendar',
+          sourceEvidence: { exactConfirmationFields: { title: true, date: true } },
+          lastVerifiedAt: new Date(now).toISOString()
         }
       ];
 

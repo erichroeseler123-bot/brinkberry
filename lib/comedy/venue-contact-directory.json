@@ -1,0 +1,59 @@
+{
+  "updatedAt": "2026-09-22T17:33:30.000Z",
+  "purpose": "Public business, management, and booking contact records for iconic comedy venues for future awareness outreach",
+  "venues": {
+    "the_comedy_store": {
+      "name": "The Comedy Store",
+      "city": "West Hollywood",
+      "state": "CA",
+      "address": "8433 Sunset Blvd, West Hollywood, CA 90069",
+      "phone": "(323) 656-6225",
+      "website": "https://thecomedystore.com",
+      "ticketingPlatform": "Leap Events / ShowClix",
+      "contacts": [
+        { "email": "info@thecomedystore.com", "title": "General Inquiries & Box Office" },
+        { "email": "booking@thecomedystore.com", "title": "Talent & Booking Department" },
+        { "email": "events@thecomedystore.com", "title": "Special Events & Private Bookings" }
+      ]
+    },
+    "comedy_cellar": {
+      "name": "Comedy Cellar",
+      "city": "New York",
+      "state": "NY",
+      "address": "117 MacDougal St, New York, NY 10012",
+      "phone": "(212) 254-3480",
+      "website": "https://www.comedycellar.com",
+      "ticketingPlatform": "Custom Box Office Reservations",
+      "contacts": [
+        { "email": "cellar@comedycellar.com", "title": "Club Management & Table Reservations" },
+        { "email": "press@comedycellar.com", "title": "Press & Media Relations" }
+      ]
+    },
+    "laugh_factory": {
+      "name": "Laugh Factory (Hollywood & Long Beach)",
+      "city": "Los Angeles",
+      "state": "CA",
+      "address": "8001 Sunset Blvd, Los Angeles, CA 90046",
+      "phone": "(323) 656-1336",
+      "website": "https://www.laughfactory.com",
+      "ticketingPlatform": "Laugh Factory Box Office",
+      "contacts": [
+        { "email": "info@laughfactory.com", "title": "General Inquiries & Box Office" },
+        { "email": "booking@laughfactory.com", "title": "Talent & Production Booking" },
+        { "email": "press@laughfactory.com", "title": "Public Relations & Media" }
+      ]
+    },
+    "comedy_mothership": {
+      "name": "Comedy Mothership",
+      "city": "Austin",
+      "state": "TX",
+      "address": "320 E 6th St, Austin, TX 78701",
+      "website": "https://comedymothership.com",
+      "ticketingPlatform": "Tixr",
+      "contacts": [
+        { "email": "info@comedymothership.com", "title": "General Information & Guest Services" },
+        { "email": "boxoffice@comedymothership.com", "title": "Ticketing & Box Office Inquiries" }
+      ]
+    }
+  }
+}

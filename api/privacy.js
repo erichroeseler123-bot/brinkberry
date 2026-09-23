@@ -71,10 +71,17 @@ module.exports = async (req, res) => {
     <p>When you click on an affiliate ticket link or browse event pages, these networks and participating advertisers may deploy cookies, web beacons, and device tracking technologies (such as the Impact Universal Tracking Tag and CJ tracking identifiers) to measure impressions, track referral clicks, and attribute qualifying ticket purchases. No directly identifiable personal information (such as your name or email) is shared with these networks by Brinkberry.</p>
     <p>For details on how these affiliate networks process data or to exercise your privacy and opt-out rights, please review the <a href="https://www.cj.com/legal/privacy" target="_blank" rel="noopener">CJ Affiliate Privacy Policy</a> and <a href="https://impact.com/privacy-policy/" target="_blank" rel="noopener">Impact.com Privacy Policy</a>.</p>
 
-    <h2>5. Updates to This Policy</h2>
+    <h2>5. Fan Demand Signals & Anti-Abuse Protections</h2>
+    <p>Brinkberry operates a community demand signal feature ("Bring This Comic to My City") to help independent touring comedians identify geographic audience interest.</p>
+    <ul>
+      <li><b>Salted One-Way IP Hashing:</b> We do not store raw IP addresses. Incoming requests are passed through a cryptographic salted SHA-256 one-way hash solely to enforce rate limiting (maximum 5 requests per 10 minutes) and 30-day anti-astroturfing deduplication. Raw IP addresses are discarded immediately after hashing.</li>
+      <li><b>Consent-Based Email Retention:</b> Email addresses submitted on demand forms are strictly optional. We only retain an email address if you grant explicit, affirmative consent to receive tour announcements for that specific comedian. If you do not provide consent, your email address is not stored. We never sell, rent, or share your email with third-party advertisers or data brokers, and you may request removal at any time by contacting <a href="mailto:privacy@brinkberry.com">privacy@brinkberry.com</a>.</li>
+    </ul>
+
+    <h2>6. Updates to This Policy</h2>
     <p>We may update this Privacy Policy from time to time. Any changes will be posted on this page with an updated revision date.</p>
 
-    <h2>6. Contact Us</h2>
+    <h2>7. Contact Us</h2>
     <p>If you have any questions or concerns regarding our privacy practices, please contact us at <a href="mailto:privacy@brinkberry.com">privacy@brinkberry.com</a>.</p>
   </div>
 </body>

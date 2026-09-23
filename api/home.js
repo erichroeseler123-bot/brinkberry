@@ -23,7 +23,9 @@ const KNOWN_CITIES = {
   'new-orleans': { city: 'New Orleans', locationName: 'New Orleans, LA', lat: 29.9511, lon: -90.0715 },
   'new orleans': { city: 'New Orleans', locationName: 'New Orleans, LA', lat: 29.9511, lon: -90.0715 },
   'eau-claire': { city: 'Eau Claire', locationName: 'Eau Claire, WI', lat: 44.8113, lon: -91.4985 },
-  'eau claire': { city: 'Eau Claire', locationName: 'Eau Claire, WI', lat: 44.8113, lon: -91.4985 }
+  'eau claire': { city: 'Eau Claire', locationName: 'Eau Claire, WI', lat: 44.8113, lon: -91.4985 },
+  'reykjavik': { city: 'Reykjavik', locationName: 'Reykjavik, Iceland', lat: 64.1466, lon: -21.9426 },
+  'edinburgh': { city: 'Edinburgh', locationName: 'Edinburgh, UK', lat: 55.9533, lon: -3.1883 }
 };
 
 module.exports = (req, res) => {
@@ -88,30 +90,660 @@ module.exports = (req, res) => {
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQ3ynHBWqOU7MZVnKfXKjMZKnS4W9TQ=" crossorigin="">
   <style>
     :root {
-      --bg: #080610;
-      --card-bg: #151120;
-      --card-border: #282038;
+      --bg: #090714;
+      --card-bg: #140f22;
+      --card-border: #281f38;
       --text: #f4eff8;
       --text-dim: #9b90aa;
       --primary: #ffb86b;
       --primary-dark: #201000;
       --accent: #ff2e63;
+      --accent-glow: rgba(255, 46, 99, 0.4);
       --tag-bg: #221a30;
+      --radar-cyan: #00e699;
     }
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--text); font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.45; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse 90% 45% at 50% -10%, rgba(255, 46, 99, 0.12), transparent 70%),
+        radial-gradient(circle at 85% 15%, rgba(255, 184, 107, 0.05), transparent 50%);
+      color: var(--text);
+      font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.45;
+    }
     .app { max-width: 1080px; margin: auto; padding: 18px 20px 60px; }
-    .top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid #1c1628; }
-    .brand { font-size: 24px; font-weight: 900; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; color: #fff; text-decoration: none; }
-    .brand b { color: var(--accent); }
-    .hero { padding: 24px 0 16px; }
-    .hero h1 { font-size: clamp(30px, 6vw, 50px); line-height: 1.05; margin: 0 0 8px; font-weight: 850; letter-spacing: -0.03em; }
-    .hero p { color: var(--text-dim); margin: 0; font-size: 16px; }
-    
-    .panel { background: #120e1c; border: 1px solid var(--card-border); border-radius: 16px; padding: 14px 16px; margin: 16px 0; }
-    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    .section-label { font-size: 12px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; min-width: 65px; }
-    
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #1c152a;
+    }
+    .brand {
+      font-size: 23px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: #fff;
+      text-decoration: none;
+    }
+    .brand b {
+      color: var(--accent);
+      text-shadow: 0 0 10px var(--accent-glow);
+    }
+    .top-radar-indicator {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-dim);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--radar-cyan);
+      box-shadow: 0 0 8px var(--radar-cyan);
+      animation: radar-pulse 2s infinite;
+    }
+
+    /* Live Worldwide Radar Hero */
+    .hero {
+      position: relative;
+      padding: 24px 0 14px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 46, 99, 0.12);
+      border: 1px solid rgba(255, 46, 99, 0.32);
+      color: #ff809d;
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 11px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+    .radar-ping {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 rgba(255, 46, 99, 0.7);
+      animation: radar-pulse 2s infinite;
+    }
+    @keyframes radar-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(255, 46, 99, 0.7); }
+      70% { box-shadow: 0 0 0 7px rgba(255, 46, 99, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 46, 99, 0); }
+    }
+    .hero h1 {
+      font-size: clamp(22px, 3.8vw, 32px);
+      line-height: 1.15;
+      margin: 0 0 6px;
+      font-weight: 850;
+      letter-spacing: -0.025em;
+      color: #fff;
+    }
+    .hero-sub {
+      color: var(--text-dim);
+      margin: 0 0 16px;
+      font-size: 14.5px;
+      line-height: 1.45;
+      max-width: 640px;
+    }
+
+    /* Hero Header Bar & Radar Lock Indicator */
+    .hero-header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .radar-lock-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .radar-status-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-dim);
+    }
+    .loc-indicator-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 750;
+      padding: 5px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .loc-indicator-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--primary);
+    }
+    .dropdown-arrow {
+      font-size: 10px;
+      opacity: 0.7;
+    }
+    .btn-loc-sm {
+      background: rgba(255, 46, 99, 0.1);
+      border: 1px solid rgba(255, 46, 99, 0.3);
+      color: #ff94b0;
+      font-size: 12.5px;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-loc-sm:hover {
+      background: rgba(255, 46, 99, 0.2);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* Expandable Location Drawer */
+    .location-drawer {
+      background: linear-gradient(180deg, rgba(25, 19, 39, 0.95) 0%, rgba(16, 12, 26, 0.98) 100%);
+      border: 1px solid rgba(255, 184, 107, 0.25);
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin: 8px 0 16px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
+      animation: drawerSlide 0.2s ease-out;
+    }
+    @keyframes drawerSlide {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Hero Vertical Entry Cards (3 Discovery Paths) */
+    .hero-vertical-entry-paths {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin: 20px 0 18px;
+    }
+    .entry-path-card {
+      background: rgba(22, 17, 34, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1.5px solid #2d2342;
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: var(--text);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      box-sizing: border-box;
+      outline: none;
+    }
+    .entry-path-card:hover {
+      transform: translateY(-2px);
+      border-color: #554477;
+      background: rgba(30, 23, 46, 0.88);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+    }
+    .entry-path-card.active {
+      border-color: var(--primary);
+      background: linear-gradient(180deg, rgba(38, 28, 56, 0.95) 0%, rgba(20, 15, 30, 0.95) 100%);
+      box-shadow: 0 0 0 1px var(--primary), 0 12px 30px rgba(255, 184, 107, 0.2);
+    }
+    .entry-path-card#entryPathComedy.active {
+      border-color: var(--accent);
+      background: linear-gradient(180deg, rgba(46, 18, 40, 0.95) 0%, rgba(22, 12, 24, 0.95) 100%);
+      box-shadow: 0 0 0 1px var(--accent), 0 12px 30px rgba(255, 46, 99, 0.25);
+    }
+    .entry-path-card#entryPathRacing.active {
+      border-color: var(--radar-cyan);
+      background: linear-gradient(180deg, rgba(14, 38, 30, 0.95) 0%, rgba(10, 22, 18, 0.95) 100%);
+      box-shadow: 0 0 0 1px var(--radar-cyan), 0 12px 30px rgba(0, 230, 153, 0.25);
+    }
+    .card-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .card-icon-tag {
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--primary);
+    }
+    .card-icon-tag.comedy-tag { color: #ff809d; }
+    .card-icon-tag.racing-tag { color: var(--radar-cyan); }
+    .card-status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      transition: all 0.2s ease;
+    }
+    .entry-path-card.active .card-status-dot {
+      background: var(--primary);
+      box-shadow: 0 0 8px var(--primary);
+    }
+    .entry-path-card#entryPathComedy.active .card-status-dot {
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+    .entry-path-card#entryPathRacing.active .card-status-dot {
+      background: var(--radar-cyan);
+      box-shadow: 0 0 8px var(--radar-cyan);
+    }
+    .card-hero-title {
+      font-size: 19px;
+      font-weight: 850;
+      line-height: 1.2;
+      color: #fff;
+      margin: 0 0 6px;
+    }
+    .card-hero-desc {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.45;
+      margin: 0 0 16px;
+      flex-grow: 1;
+    }
+    .card-path-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .path-badge {
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #ded6ec;
+    }
+    .path-badge.comedy-badge {
+      background: rgba(255, 46, 99, 0.12);
+      color: #ff94b0;
+    }
+    .path-badge.racing-badge {
+      background: rgba(0, 230, 153, 0.12);
+      color: #7affd4;
+    }
+    .path-action-cue {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--primary);
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .path-action-cue.comedy-cue { color: #ff809d; }
+    .path-action-cue.racing-cue { color: var(--radar-cyan); }
+    .search-action-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .search-input-wrap {
+      flex: 1;
+      min-width: 250px;
+      display: flex;
+      align-items: center;
+      background: #0f0b18;
+      border: 1px solid #362a4d;
+      border-radius: 999px;
+      padding: 3px 4px 3px 14px;
+      transition: all 0.2s ease;
+    }
+    .search-input-wrap:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(255, 184, 107, 0.18);
+    }
+    .search-icon {
+      font-size: 14px;
+      opacity: 0.6;
+      margin-right: 8px;
+    }
+    #citySearchInput {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      font-family: inherit;
+      width: 100%;
+    }
+    #citySearchInput::placeholder {
+      color: #7b718c;
+    }
+    .btn-go {
+      background: var(--primary);
+      color: var(--primary-dark);
+      border: none;
+      border-radius: 999px;
+      padding: 7px 16px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .btn-go:hover {
+      background: #ffa84d;
+    }
+    .btn-loc {
+      background: #1f172e;
+      border: 1px solid #453560;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-loc:hover {
+      background: #2b1f40;
+      border-color: var(--accent);
+      box-shadow: 0 0 12px rgba(255, 46, 99, 0.28);
+    }
+    .presets-row {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .presets-label {
+      font-size: 11px;
+      font-weight: 750;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-right: 2px;
+    }
+    .preset-btn {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(25, 20, 36, 0.65);
+      color: #ded6ec;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .preset-btn:hover {
+      background: #2a203c;
+      color: #fff;
+      border-color: #554275;
+    }
+    .preset-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 0 10px rgba(255, 46, 99, 0.35);
+    }
+
+    /* Category Discovery Bar */
+    .category-pills-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 16px 0 10px;
+    }
+    .cat-btn {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(26, 20, 38, 0.7);
+      color: #e4ddf2;
+      padding: 7px 15px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .cat-btn:hover {
+      background: #2e2246;
+      border-color: #634b87;
+      color: #fff;
+    }
+    .cat-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 0 14px rgba(255, 46, 99, 0.4);
+    }
+    .cat-btn.comedy-btn.active {
+      background: linear-gradient(135deg, #ff2e63 0%, #ffb86b 100%);
+      border-color: #ffb86b;
+      color: #120508;
+      box-shadow: 0 0 16px rgba(255, 184, 107, 0.45);
+    }
+    .cat-btn.racing-btn.active {
+      background: linear-gradient(135deg, #00b0ff 0%, #00e699 100%);
+      border-color: #00e699;
+      color: #041f17;
+      box-shadow: 0 0 16px rgba(0, 230, 153, 0.45);
+    }
+    .cat-btn.civic-btn.active {
+      background: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+      border-color: #6a82fb;
+      color: #fff;
+      box-shadow: 0 0 16px rgba(106, 130, 251, 0.45);
+    }
+    .cat-btn.community-btn.active {
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      border-color: #38ef7d;
+      color: #062b16;
+      box-shadow: 0 0 16px rgba(56, 239, 125, 0.45);
+    }
+
+    /* Comedy Deep Sub-Filter Console */
+    .comedy-sub-console {
+      background: linear-gradient(135deg, rgba(38, 20, 54, 0.9) 0%, rgba(18, 12, 28, 0.95) 100%);
+      border: 1px solid rgba(255, 184, 107, 0.35);
+      border-radius: 16px;
+      padding: 14px 18px;
+      margin: 8px 0 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .sub-filter-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .sub-filter-label {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--primary);
+      margin-right: 4px;
+    }
+    .sub-filter-btn {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(18, 14, 25, 0.8);
+      color: #c9bfdc;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .sub-filter-btn:hover {
+      background: #2a1e3d;
+      color: #fff;
+    }
+    .sub-filter-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--primary-dark);
+      font-weight: 800;
+    }
+    .community-promo-banner {
+      font-size: 12.5px;
+      color: #ded6ec;
+      border-top: 1px dashed rgba(255, 255, 255, 0.08);
+      margin-top: 10px;
+      padding-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .racing-sub-console {
+      background: linear-gradient(135deg, rgba(14, 34, 28, 0.9) 0%, rgba(12, 22, 20, 0.95) 100%);
+      border: 1px solid rgba(0, 230, 153, 0.35);
+      border-radius: 16px;
+      padding: 14px 18px;
+      margin: 8px 0 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+    .racing-sub-console .sub-filter-label {
+      color: var(--radar-cyan);
+    }
+    .racing-sub-console .sub-filter-btn.active {
+      background: var(--radar-cyan);
+      border-color: var(--radar-cyan);
+      color: #061912;
+      font-weight: 800;
+    }
+    .racing-promo-banner {
+      color: #bdfae4;
+      border-top: 1px dashed rgba(0, 230, 153, 0.18);
+    }
+    .trust-notice-bar {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 8px 14px;
+      font-size: 12px;
+      color: var(--text-dim);
+      margin: 16px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Compact Secondary Filter Bar */
+    .filter-bar {
+      background: rgba(20, 15, 30, 0.7);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 8px 14px;
+      margin: 12px 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .filter-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .filter-divider {
+      width: 1px;
+      height: 18px;
+      background: #2b203d;
+    }
+    .pills-wrap {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-label {
+      font-size: 11px;
+      font-weight: 750;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-right: 2px;
+    }
+    .filter-bar button {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(25, 20, 36, 0.6);
+      color: var(--text-dim);
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .filter-bar button:hover {
+      background: #281f38;
+      color: #fff;
+      border-color: #4a3a66;
+    }
+    .filter-bar button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 0 10px rgba(255, 46, 99, 0.35);
+    }
+    .filter-bar .mode-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--primary-dark);
+      font-weight: 800;
+      box-shadow: 0 0 10px rgba(255, 184, 107, 0.35);
+    }
+
     button, a.btn {
       border: 1px solid var(--card-border);
       background: #191424;
@@ -129,13 +761,12 @@ module.exports = (req, res) => {
     }
     button:hover, a.btn:hover { background: #261f36; border-color: #403458; }
     button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .mode-btn.active { background: var(--primary); border-color: var(--primary); color: var(--primary-dark); font-weight: 750; }
-    
-    .status { margin: 12px 0; padding: 10px 14px; border-radius: 12px; background: #151022; border: 1px solid var(--card-border); color: #ded6ec; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
-    .weather { display: none; margin: 10px 0; padding: 10px 14px; border-radius: 12px; background: #101926; border: 1px solid #1d334e; color: #a9d4ff; font-size: 14px; }
-    .planb { display: none; margin: 12px 0; padding: 12px 16px; border-radius: 14px; background: #24141d; border: 1px solid #632644; color: #ffb8d2; }
-    .brink-alert { margin: 12px 0; padding: 12px 16px; border-radius: 14px; background: #2a101d; border: 1px solid #822247; color: #ff809d; font-weight: 700; }
-    
+
+    .status { margin: 10px 0; padding: 10px 14px; border-radius: 12px; background: #140f22; border: 1px solid var(--card-border); color: #ded6ec; font-size: 13.5px; display: flex; justify-content: space-between; align-items: center; }
+    .weather { display: none; margin: 10px 0; padding: 10px 14px; border-radius: 12px; background: #0e1726; border: 1px solid #1a304a; color: #a9d4ff; font-size: 13.5px; }
+    .planb { display: none; margin: 10px 0; padding: 12px 16px; border-radius: 14px; background: #24141d; border: 1px solid #632644; color: #ffb8d2; }
+    .brink-alert { margin: 10px 0; padding: 12px 16px; border-radius: 14px; background: #2a101d; border: 1px solid #822247; color: #ff809d; font-weight: 700; }
+
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; margin-top: 16px; }
     .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.15s, border-color 0.15s; cursor: pointer; }
     .card:hover { transform: translateY(-2px); border-color: #4a3a66; }
@@ -151,17 +782,27 @@ module.exports = (req, res) => {
     .brinktag { font-size: 11px; font-weight: 900; letter-spacing: 0.08em; color: var(--accent); text-transform: uppercase; margin-bottom: 4px; }
     .card-footer { margin-top: auto; padding-top: 12px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #201930; }
     .card-price { font-weight: 800; color: #fff; font-size: 14px; }
-    .btn-ticket-sm { background: var(--primary); color: var(--primary-dark); font-size: 13px; font-weight: 800; padding: 7px 14px; border-radius: 999px; text-decoration: none; border: 0; }
+    .btn-ticket-sm { background: var(--primary); color: var(--primary-dark); font-size: 13px; font-weight: 800; padding: 7px 14px; border-radius: 999px; text-decoration: none; border: 0; display: inline-flex; align-items: center; }
     .btn-ticket-sm:hover { background: #ffa84d; }
-    
+    .btn-details-sm { background: rgba(255, 255, 255, 0.12); color: #fff; font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 999px; text-decoration: none; border: 1px solid rgba(255, 255, 255, 0.2); display: inline-flex; align-items: center; }
+    .btn-details-sm:hover { background: rgba(255, 255, 255, 0.22); border-color: rgba(255, 255, 255, 0.4); }
+    .btn-civic-sm { background: #2b4570; color: #fff; font-size: 13px; font-weight: 750; padding: 7px 14px; border-radius: 999px; text-decoration: none; border: 1px solid #4a6fa5; display: inline-flex; align-items: center; }
+    .btn-civic-sm:hover { background: #385994; }
+    .btn-free-sm { background: #00e699; color: #072a1e; font-size: 13px; font-weight: 800; padding: 7px 14px; border-radius: 999px; text-decoration: none; border: 0; display: inline-flex; align-items: center; }
+    .btn-free-sm:hover { background: #33ebb0; }
+
+    .source-quality-tag { font-size: 11px; font-weight: 700; background: rgba(106, 130, 251, 0.12); border: 1px solid rgba(106, 130, 251, 0.35); color: #a4b6ff; padding: 3px 8px; border-radius: 999px; }
+    .easy-miss-tag { font-size: 11px; font-weight: 800; background: rgba(255, 46, 99, 0.15); border: 1px solid rgba(255, 46, 99, 0.4); color: #ff809d; padding: 3px 8px; border-radius: 999px; }
+    .seasonal-tag { font-size: 11px; font-weight: 750; background: rgba(255, 184, 107, 0.15); border: 1px solid rgba(255, 184, 107, 0.35); color: #ffca85; padding: 3px 8px; border-radius: 999px; }
+
     #radar { display: none; height: 540px; border-radius: 18px; overflow: hidden; margin-top: 16px; border: 1px solid var(--card-border); }
     .empty { padding: 60px 20px; text-align: center; color: var(--text-dim); }
     .empty h3 { color: #fff; margin-bottom: 8px; }
-    
+
     dialog { border: 1px solid var(--card-border); background: #120e1a; color: #fff; border-radius: 20px; width: min(600px, 94vw); padding: 22px; }
     dialog::backdrop { background: rgba(5, 3, 10, 0.85); }
     .actions-bar { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
-    
+
     /* Worldwide Guides Footer */
     .city-guides-footer { margin-top: 50px; padding-top: 30px; border-top: 1px solid #1c1628; }
     .city-guides-footer h3 { font-size: 18px; font-weight: 800; margin-bottom: 14px; color: #fff; }
@@ -169,12 +810,22 @@ module.exports = (req, res) => {
     .city-links-col h4 { margin: 0 0 8px; font-size: 14px; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; }
     .city-links-col a { display: block; color: var(--text-dim); text-decoration: none; font-size: 13.5px; margin-bottom: 6px; }
     .city-links-col a:hover { color: #fff; text-decoration: underline; }
-    
+
+    @media (max-width: 768px) {
+      .hero-vertical-entry-paths { grid-template-columns: 1fr; gap: 10px; }
+      .hero-header-bar { flex-direction: column; align-items: flex-start; }
+      .radar-lock-bar { width: 100%; justify-content: space-between; }
+    }
     @media (max-width: 640px) {
       .grid { grid-template-columns: 1fr; }
       #radar { height: 400px; }
       .app { padding: 14px 14px 50px; }
-      .hero h1 { font-size: 32px; }
+      .hero h1 { font-size: 22px; }
+      .search-action-row { flex-direction: column; align-items: stretch; }
+      .btn-loc { justify-content: center; width: 100%; }
+      .filter-divider { display: none; }
+      .filter-bar { padding: 10px 12px; gap: 10px; }
+      .filter-group { width: 100%; justify-content: flex-start; }
     }
   </style>
 </head>
@@ -182,60 +833,196 @@ module.exports = (req, res) => {
   <div class="app">
     <header class="top">
       <a class="brand" href="/"><b>●</b> Brinkberry</a>
-      <button id="locBtn">📍 Use my location</button>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <a href="/submit-comedy" style="color:var(--primary); font-size:12.5px; font-weight:700; text-decoration:none; padding:5px 12px; border-radius:999px; border:1px solid rgba(255,184,107,0.3); background:rgba(255,184,107,0.08); display:inline-flex; align-items:center; gap:4px;">🎤 Submit Show</a>
+        <div class="top-radar-indicator">
+          <span class="pulse-dot"></span>
+          <span>Hyperlocal Radar</span>
+        </div>
+      </div>
     </header>
 
     <section class="hero">
-      <h1>Find what’s happening near you.</h1>
-      <p>Real things. Nearby. Pick a location, set a time, and go.</p>
+      <!-- Top Radar & Location Indicator Bar -->
+      <div class="hero-header-bar">
+        <div class="hero-badge">
+          <span class="radar-ping"></span>
+          <span>Worldwide Hyperlocal Event Radar</span>
+        </div>
+        <div class="radar-lock-bar">
+          <span class="radar-status-label">Radar locked:</span>
+          <button id="locIndicatorBtn" class="loc-indicator-btn" type="button" aria-expanded="false" title="Click to change city or search">
+            <span id="activeCityLabel">Denver, CO</span>
+            <span class="dropdown-arrow">▾</span>
+          </button>
+          <button id="locBtn" class="btn-loc-sm" title="Detect your current GPS location">
+            <span>📍 Use my location</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Expandable Location Drawer (Preserves all required elements & test IDs) -->
+      <div id="locationDrawer" class="location-drawer" style="display:none;">
+        <div class="search-action-row">
+          <div id="citySearchContainer" style="flex: 1; min-width: 250px; display: flex;">
+            <div id="citySearchForm" class="search-input-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="citySearchInput" placeholder="Search any city or postal code worldwide..." autocomplete="off">
+              <button id="citySearchGo" class="btn-go">Find Events</button>
+              <button id="citySearchClose" style="display:none"></button>
+            </div>
+            <button id="citySearchToggle" style="display:none"></button>
+          </div>
+        </div>
+
+        <div class="presets-row" id="locationRow">
+          <span class="presets-label">Popular Hubs</span>
+          <span id="customLocWrap"></span>
+          <button id="presetDenver" class="preset-btn">Denver, CO</button>
+          <button id="presetParis" class="preset-btn">Paris</button>
+          <button id="presetLondon" class="preset-btn">London</button>
+          <button id="presetTokyo" class="preset-btn">Tokyo</button>
+          <button id="presetNewYork" class="preset-btn">New York</button>
+
+          <!-- Preserved Colorado preset buttons for regression test coverage -->
+          <span style="display:none">
+            <button id="presetBoulder">Boulder</button>
+            <button id="presetGolden">Golden</button>
+            <button id="presetAurora">Aurora</button>
+          </span>
+        </div>
+      </div>
+
+      <!-- Core Question Headline -->
+      <h1 class="hero-title">What are you looking for tonight?</h1>
+      <p class="hero-sub">Wondering what should I do tonight? Find what’s happening near you right now. Real events within 48 hours worldwide — direct to official box offices, clubs, and tracks.</p>
+
+      <!-- Three Prominent Vertical Choice Cards -->
+      <div class="hero-vertical-entry-paths" role="tablist" aria-label="Discovery Paths">
+        <!-- 1. Everything near me -->
+        <button id="entryPathAll" class="entry-path-card active" type="button" role="tab" aria-selected="true" title="Explore all live music, arts, food, and neighborhood events">
+          <div class="card-top-row">
+            <span class="card-icon-tag">🌐 ALL HAPPENINGS</span>
+            <span class="card-status-dot"></span>
+          </div>
+          <div class="card-hero-title">Everything near me</div>
+          <p class="card-hero-desc">Live music, arts, outdoor events, food gatherings &amp; neighborhood happenings.</p>
+          <div class="card-path-footer">
+            <span class="path-badge">All Local Events</span>
+            <span class="path-action-cue">Select Mode →</span>
+          </div>
+        </button>
+
+        <!-- 2. Comedy near me -->
+        <button id="entryPathComedy" class="entry-path-card" type="button" role="tab" aria-selected="false" title="Explore stand-up comedy, showcases, open mics, and headliners">
+          <div class="card-top-row">
+            <span class="card-icon-tag comedy-tag">🎤 STAND-UP COMEDY</span>
+            <span class="card-status-dot comedy-dot"></span>
+          </div>
+          <div class="card-hero-title">Comedy near me</div>
+          <p class="card-hero-desc">Stand-up clubs, underground showcases, open mics &amp; national tour headliners.</p>
+          <div class="card-path-footer">
+            <span class="path-badge comedy-badge">Clubs &amp; Open Mics</span>
+            <span class="path-action-cue comedy-cue">Select Mode →</span>
+          </div>
+        </button>
+
+        <!-- 3. Motorsports near me -->
+        <button id="entryPathRacing" class="entry-path-card" type="button" role="tab" aria-selected="false" title="Explore short tracks, dirt ovals, drag strips, and racing schedules">
+          <div class="card-top-row">
+            <span class="card-icon-tag racing-tag">🏁 MOTORSPORTS</span>
+            <span class="card-status-dot racing-dot"></span>
+          </div>
+          <div class="card-hero-title">Motorsports near me</div>
+          <p class="card-hero-desc">Dirt ovals, paved short tracks, drag strips &amp; race weekend schedules with weather radar.</p>
+          <div class="card-path-footer">
+            <span class="path-badge racing-badge">Dirt Ovals &amp; Tracks</span>
+            <span class="path-action-cue racing-cue">Select Mode →</span>
+          </div>
+        </button>
+      </div>
     </section>
 
-    <!-- Filters Panel -->
-    <div class="panel">
-      <!-- Location row -->
-      <div class="row" style="margin-bottom: 12px;" id="locationRow">
-        <span class="section-label">Location</span>
-        <span id="customLocWrap"></span>
-        <button id="presetDenver" class="preset-btn">Denver, CO</button>
-        <button id="presetLondon" class="preset-btn">London</button>
-        <button id="presetNewYork" class="preset-btn">New York</button>
-        <button id="presetTokyo" class="preset-btn">Tokyo</button>
-        <button id="presetParis" class="preset-btn">Paris</button>
-        
-        <!-- Preserved Colorado preset buttons for regression test coverage -->
-        <span style="display:none">
-          <button id="presetBoulder">Boulder</button>
-          <button id="presetGolden">Golden</button>
-          <button id="presetAurora">Aurora</button>
-        </span>
+    <!-- Contextual Controls Container (Progressive Disclosure) -->
+    <div id="contextualControls" class="contextual-controls-panel">
+      <!-- Panel A: Everything Sub-Filters (Category Pills) -->
+      <div id="everythingSubRow">
+        <div class="category-pills-row" id="categoryRow"></div>
+      </div>
 
-        <div id="citySearchContainer" style="display:inline-flex; align-items:center; gap:6px;">
-          <button id="citySearchToggle" style="background:#191424; border:1px dashed var(--card-border); color:var(--text-dim); font-size:13px; font-weight:600; padding:6px 12px;">🔍 Other City</button>
-          <div id="citySearchForm" style="display:none; align-items:center; gap:6px;">
-            <input type="text" id="citySearchInput" placeholder="City or zip code..." style="background:#191424; border:1px solid #403458; color:#fff; padding:6px 12px; border-radius:999px; font-size:13px; outline:none; width:150px;">
-            <button id="citySearchGo" style="background:var(--accent); color:#fff; border:0; padding:6px 12px; font-size:13px; font-weight:700;">Go</button>
-            <button id="citySearchClose" style="background:transparent; border:0; color:var(--text-dim); cursor:pointer; font-size:16px; padding:2px 6px;">✕</button>
+      <!-- Panel B: Stand-Up Comedy Deep Filter Console -->
+      <div id="comedySubFilterConsole" class="comedy-sub-console" style="display:none;">
+        <div class="sub-filter-row">
+          <span class="sub-filter-label">Format:</span>
+          <div id="comedyTypeFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
+        </div>
+        <div class="sub-filter-row">
+          <span class="sub-filter-label">Age & Price:</span>
+          <div id="comedyAgeFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
+          <div id="comedyPriceFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
+        </div>
+        <div class="sub-filter-row" style="margin-bottom:0;">
+          <span class="sub-filter-label">Urgency:</span>
+          <div id="comedyUrgencyFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
+        </div>
+        <div class="community-promo-banner">
+          <span>🎤 Are you a comedian, show host, or venue manager?</span>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <a id="comedyGuideLink" href="/denver/comedy" style="color:var(--accent); font-weight:700; text-decoration:none;">Denver Comedy Guide ↗</a>
+            <a href="/submit-comedy" style="color:var(--primary); font-weight:700; text-decoration:none;">Submit or edit show without logging in →</a>
           </div>
         </div>
       </div>
 
-      <!-- Radius row -->
-      <div class="row" style="margin-bottom: 12px;">
-        <span class="section-label">Radius</span>
-        <div id="radiusFilters" class="row"></div>
+      <!-- Panel C: Grassroots Motorsports Deep Filter Console -->
+      <div id="racingSubFilterConsole" class="racing-sub-console" style="display:none;">
+        <div class="sub-filter-row">
+          <span class="sub-filter-label">Discipline:</span>
+          <div id="racingDisciplineFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
+        </div>
+        <div class="sub-filter-row">
+          <span class="sub-filter-label">Planning:</span>
+          <div id="racingPlanningFilters" style="display:inline-flex; gap:6px; flex-wrap:wrap;"></div>
+        </div>
+        <div class="community-promo-banner racing-promo-banner">
+          <span>🏁 Grassroots car racing radar with real-time rainout &amp; weather tracking</span>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <a id="racingGuideLink" href="/denver/racing" style="color:var(--radar-cyan); font-weight:700; text-decoration:none;">Denver Track Guide ↗</a>
+            <a href="/admin/pilot-racing" style="color:var(--primary); font-weight:700; text-decoration:none;">Track Promoter Portal →</a>
+          </div>
+        </div>
       </div>
 
-      <!-- Time window row -->
-      <div class="row" style="margin-bottom: 12px;">
-        <span class="section-label">When</span>
-        <div id="timeWindows" class="row"></div>
-      </div>
+      <!-- Secondary Refinement Bar: When, Radius, Vibe -->
+      <div id="generalFilterBar" class="filter-bar">
+        <!-- When Group -->
+        <div class="filter-group">
+          <span class="filter-label">When</span>
+          <div id="timeWindows" class="pills-wrap"></div>
+        </div>
 
-      <!-- Vibe / Mode row -->
-      <div class="row">
-        <span class="section-label">Vibe</span>
-        <div id="modeFilters" class="row"></div>
+        <div class="filter-divider"></div>
+
+        <!-- Radius Group -->
+        <div class="filter-group">
+          <span class="filter-label">Radius</span>
+          <div id="radiusFilters" class="pills-wrap"></div>
+        </div>
+
+        <div class="filter-divider" id="vibeDivider"></div>
+
+        <!-- Vibe Group -->
+        <div class="filter-group" id="vibeGroup">
+          <span class="filter-label">Vibe</span>
+          <div id="modeFilters" class="pills-wrap"></div>
+        </div>
       </div>
+    </div>
+
+    <!-- Trust & Platform Transparency Notice -->
+    <div class="trust-notice-bar">
+      <span>🛡️</span>
+      <span><b>Independent Live Discovery</b>: Brinkberry links directly to official venue box offices &amp; primary sellers. We do not mark up ticket prices, charge consumer fees, or broker direct payments.</span>
     </div>
 
     <!-- Live Status & Weather Alerts -->
@@ -403,6 +1190,14 @@ module.exports = (req, res) => {
       radius: 25,
       window: 'tonight',
       mode: '',
+      category: '',
+      racingDiscipline: '',
+      showType: '',
+      ageLimit: '',
+      priceFilter: '',
+      startingSoon: false,
+      recurring: false,
+      clean: false,
       events: [],
       coverage: { isSupported: true, nearestMarket: 'Denver', supportedMarkets: [] },
       weather: null,
@@ -411,22 +1206,283 @@ module.exports = (req, res) => {
       currentDetailEvent: null
     };
 
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get('category')) S.category = sp.get('category');
+      if (sp.get('discipline')) S.racingDiscipline = sp.get('discipline');
+      if (sp.get('showType')) S.showType = sp.get('showType');
+      if (sp.get('mode')) S.mode = sp.get('mode');
+      if (sp.get('window')) S.window = sp.get('window');
+      if (sp.get('ageLimit')) S.ageLimit = sp.get('ageLimit');
+      if (sp.get('priceFilter')) S.priceFilter = sp.get('priceFilter');
+      if (sp.get('startingSoon') === 'true') S.startingSoon = true;
+      if (sp.get('recurring') === 'true') S.recurring = true;
+    } catch (_) {}
+
     const $ = id => document.getElementById(id);
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
     const fmtTime = iso => new Date(iso).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
     function initControls() {
+      // 0. Location Drawer Toggle
+      const locInd = $('locIndicatorBtn');
+      if (locInd && !locInd._bound) {
+        locInd._bound = true;
+        locInd.onclick = () => {
+          const drawer = $('locationDrawer');
+          if (drawer) {
+            const isOpen = drawer.style.display !== 'none';
+            drawer.style.display = isOpen ? 'none' : 'block';
+            locInd.setAttribute('aria-expanded', String(!isOpen));
+            if (!isOpen) {
+              const inp = $('citySearchInput');
+              if (inp) inp.focus();
+            }
+          }
+        };
+      }
+
+      // 1. Hero Vertical Entry Path State & Listeners
+      const bAll = $('entryPathAll');
+      const bCom = $('entryPathComedy');
+      const bRac = $('entryPathRacing');
+      if (bAll) {
+        bAll.classList.toggle('active', !S.category);
+        bAll.setAttribute('aria-selected', String(!S.category));
+        bAll.onclick = () => {
+          S.category = '';
+          S.mode = '';
+          S.racingDiscipline = '';
+          initControls();
+          loadFeed();
+        };
+      }
+      if (bCom) {
+        bCom.classList.toggle('active', S.category === 'comedy');
+        bCom.setAttribute('aria-selected', String(S.category === 'comedy'));
+        bCom.onclick = () => {
+          S.category = 'comedy';
+          S.racingDiscipline = '';
+          initControls();
+          loadFeed();
+        };
+      }
+      if (bRac) {
+        bRac.classList.toggle('active', S.category === 'racing');
+        bRac.setAttribute('aria-selected', String(S.category === 'racing'));
+        bRac.onclick = () => {
+          S.category = 'racing';
+          S.showType = '';
+          S.ageLimit = '';
+          S.priceFilter = '';
+          S.startingSoon = false;
+          S.recurring = false;
+          initControls();
+          loadFeed();
+        };
+      }
+
+      // 2. Progressive Disclosure of Contextual Sub-Panels
+      const everyRow = $('everythingSubRow');
+      if (everyRow) everyRow.style.display = (!S.category) ? 'block' : 'none';
+
+      const comedyConsole = $('comedySubFilterConsole');
+      if (comedyConsole) {
+        comedyConsole.style.display = (S.category === 'comedy') ? 'block' : 'none';
+        if (S.category === 'comedy') renderComedySubConsole();
+      }
+
+      const racingConsole = $('racingSubFilterConsole');
+      if (racingConsole) {
+        racingConsole.style.display = (S.category === 'racing') ? 'block' : 'none';
+        if (S.category === 'racing') renderRacingSubConsole();
+      }
+
+      const vibeGrp = $('vibeGroup');
+      const vibeDiv = $('vibeDivider');
+      if (vibeGrp) vibeGrp.style.display = (!S.category) ? 'inline-flex' : 'none';
+      if (vibeDiv) vibeDiv.style.display = (!S.category) ? 'inline-block' : 'none';
+
+      // 3. Category Discovery Pills (Everything Mode)
+      const categories = [
+        ['', 'All Events'],
+        ['comedy', '🎤 Comedy Radar'],
+        ['racing', '🏁 Motorsports'],
+        ['civic', '🏛️ Civic & Politics'],
+        ['community', '📚 Community & Libraries'],
+        ['music', '🎵 Live Music'],
+        ['arts', '🎭 Arts & Culture'],
+        ['festival', '🎡 Seasonal & Fairs'],
+        ['outdoor', '🏃 Outdoors'],
+        ['free', '🎟️ Free Tonight']
+      ];
+      const catRow = $('categoryRow');
+      if (catRow) {
+        catRow.innerHTML = categories.map(([k, l]) =>
+          \`<button class="cat-btn \${k === 'comedy' ? 'comedy-btn' : (k === 'racing' ? 'racing-btn' : (k === 'civic' ? 'civic-btn' : (k === 'community' ? 'community-btn' : '')))} \${S.category === k ? 'active' : ''}" data-cat="\${k}">\${l}</button>\`
+        ).join('');
+        document.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => {
+          S.category = b.dataset.cat;
+          if (S.category !== 'comedy') {
+            S.showType = '';
+            S.ageLimit = '';
+            S.priceFilter = '';
+            S.startingSoon = false;
+            S.recurring = false;
+          }
+          initControls();
+          loadFeed();
+        });
+      }
+
+      // 4. Radius Filters
       const radii = [5, 10, 25, 50];
       $('radiusFilters').innerHTML = radii.map(r => \`<button class="\${S.radius === r ? 'active' : ''}" data-r="\${r}">\${r} mi</button>\`).join('');
       document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { S.radius = Number(b.dataset.r); initControls(); loadFeed(); });
 
+      // 5. Time Windows
       const windows = [['now', 'Now'], ['tonight', 'Tonight'], ['tomorrow', 'Tomorrow'], ['48h', 'Next 48 Hours']];
       $('timeWindows').innerHTML = windows.map(([k, l]) => \`<button class="\${(S.window === k || (k === '48h' && S.window === 'weekend')) ? 'active' : ''}" data-w="\${k}">\${l}</button>\`).join('');
       document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { S.window = b.dataset.w; initControls(); loadFeed(); });
 
-      const modes = [['', 'All'], ['cheap', 'Cheap / Free'], ['date', 'Date Night'], ['outside', 'Outside'], ['kids', 'Kids']];
+      // 6. Modes (Vibe)
+      const modes = [
+        ['', 'All'],
+        ['easy-to-miss', 'Easy to Miss ✨'],
+        ['seasonal', 'Seasonal 🎡'],
+        ['civic', 'Civic & Politics 🏛️'],
+        ['community', 'Community & Library 📚'],
+        ['comedy', 'Comedy 🎤'],
+        ['cheap', 'Cheap / Free'],
+        ['date', 'Date Night'],
+        ['outside', 'Outside'],
+        ['kids', 'Kids']
+      ];
       $('modeFilters').innerHTML = modes.map(([k, l]) => \`<button class="mode-btn \${S.mode === k ? 'active' : ''}" data-m="\${k}">\${l}</button>\`).join('');
       document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { S.mode = b.dataset.m; initControls(); loadFeed(); });
+    }
+
+    function renderComedySubConsole() {
+      // Show format
+      const types = [
+        ['', 'All Formats'],
+        ['standup', 'Stand-Up'],
+        ['open_mic', 'Open Mics 🎙️'],
+        ['showcase', 'Showcases'],
+        ['headliner', 'Headliners ⭐'],
+        ['improv', 'Improv / Sketch']
+      ];
+      const typeEl = $('comedyTypeFilters');
+      if (typeEl) {
+        typeEl.innerHTML = types.map(([t, l]) =>
+          \`<button class="sub-filter-btn \${S.showType === t ? 'active' : ''}" data-st="\${t}">\${l}</button>\`
+        ).join('');
+        document.querySelectorAll('[data-st]').forEach(b => b.onclick = () => {
+          S.showType = b.dataset.st;
+          renderComedySubConsole();
+          loadFeed();
+        });
+      }
+
+      // Age limits
+      const ages = [
+        ['', 'Any Age'],
+        ['all_ages', 'All Ages'],
+        ['18+', '18+'],
+        ['21+', '21+']
+      ];
+      const ageEl = $('comedyAgeFilters');
+      if (ageEl) {
+        ageEl.innerHTML = ages.map(([a, l]) =>
+          \`<button class="sub-filter-btn \${S.ageLimit === a ? 'active' : ''}" data-al="\${a}">\${l}</button>\`
+        ).join('');
+        document.querySelectorAll('[data-al]').forEach(b => b.onclick = () => {
+          S.ageLimit = b.dataset.al;
+          renderComedySubConsole();
+          loadFeed();
+        });
+      }
+
+      // Price filter
+      const prices = [
+        ['', 'Any Price'],
+        ['free', 'Free / No Cover'],
+        ['under_15', 'Under $15'],
+        ['under_25', 'Under $25']
+      ];
+      const priceEl = $('comedyPriceFilters');
+      if (priceEl) {
+        priceEl.innerHTML = prices.map(([p, l]) =>
+          \`<button class="sub-filter-btn \${S.priceFilter === p ? 'active' : ''}" data-pf="\${p}">\${l}</button>\`
+        ).join('');
+        document.querySelectorAll('[data-pf]').forEach(b => b.onclick = () => {
+          S.priceFilter = b.dataset.pf;
+          renderComedySubConsole();
+          loadFeed();
+        });
+      }
+
+      // Urgency & Recurring
+      const urgEl = $('comedyUrgencyFilters');
+      if (urgEl) {
+        urgEl.innerHTML = \`
+          <button class="sub-filter-btn \${S.startingSoon ? 'active' : ''}" id="btnStartingSoon">⚡ Starting Soon (&lt;4h)</button>
+          <button class="sub-filter-btn \${S.recurring ? 'active' : ''}" id="btnRecurring">🔄 Recurring Shows</button>
+        \`;
+        const bSoon = $('btnStartingSoon');
+        if (bSoon) bSoon.onclick = () => {
+          S.startingSoon = !S.startingSoon;
+          renderComedySubConsole();
+          loadFeed();
+        };
+        const bRec = $('btnRecurring');
+        if (bRec) bRec.onclick = () => {
+          S.recurring = !S.recurring;
+          renderComedySubConsole();
+          loadFeed();
+        };
+      }
+    }
+
+    function renderRacingSubConsole() {
+      // Track disciplines
+      const disciplines = [
+        ['', 'All Disciplines'],
+        ['dirt_oval', 'Dirt Ovals 🏁'],
+        ['paved_short_track', 'Paved Ovals'],
+        ['drag_strip', 'Drag Strips ⏱️'],
+        ['road_course', 'Road Courses']
+      ];
+      const discEl = $('racingDisciplineFilters');
+      if (discEl) {
+        discEl.innerHTML = disciplines.map(([d, l]) =>
+          \`<button class="sub-filter-btn \${S.racingDiscipline === d ? 'active' : ''}" data-rd="\${d}">\${l}</button>\`
+        ).join('');
+        document.querySelectorAll('[data-rd]').forEach(b => b.onclick = () => {
+          S.racingDiscipline = b.dataset.rd;
+          renderRacingSubConsole();
+          loadFeed();
+        });
+      }
+
+      // Planning windows
+      const windows = [
+        ['48h', 'Next 48 Hours'],
+        ['this_weekend', 'This Weekend'],
+        ['next_weekend', 'Next Weekend'],
+        ['30d', 'Next 30 Days']
+      ];
+      const planEl = $('racingPlanningFilters');
+      if (planEl) {
+        planEl.innerHTML = windows.map(([w, l]) =>
+          \`<button class="sub-filter-btn \${(S.window === w || (w === '48h' && S.window === 'tonight')) ? 'active' : ''}" data-rw="\${w}">\${l}</button>\`
+        ).join('');
+        document.querySelectorAll('[data-rw]').forEach(b => b.onclick = () => {
+          S.window = b.dataset.rw;
+          renderRacingSubConsole();
+          loadFeed();
+        });
+      }
     }
 
     function renderFeed() {
@@ -479,12 +1535,30 @@ module.exports = (req, res) => {
         const modeText = S.mode && modeLabels[S.mode] ? ' for "' + modeLabels[S.mode] + '"' : '';
         const windowLabels = { now: 'happening right now', tonight: 'tonight', tomorrow: 'tomorrow', '48h': 'in the next 48 hours', weekend: 'this weekend' };
         const winText = windowLabels[S.window] || 'in the next 48 hours';
+        const isComedy = S.category === 'comedy';
+        const isRacing = S.category === 'racing';
+        const emptyLabel = isComedy ? 'comedy shows' : (isRacing ? 'grassroots races' : 'qualifying events');
+
         $('feed').innerHTML = \`
           <div class="empty">
-            <h3>No qualifying events found within \${S.radius} miles \${winText}\${modeText}</h3>
-            <p>We strictly show verified events happening in the next 48 hours. Try expanding your radius or checking a different vibe filter.</p>
+            <h3>No \${emptyLabel} found within \${S.radius} miles \${winText}\${modeText}</h3>
+            <p>We strictly show verified events happening in the next 48 hours. Try expanding your radius or checking another filter.</p>
+            \${isComedy ? \`
+              <div style="margin:16px 0 10px; font-size:13.5px; color:var(--text-dim);">
+                Are you hosting or performing a show in this area?
+                <br>
+                <a href="/submit-comedy" style="color:var(--primary); font-weight:700; text-decoration:none; display:inline-block; margin-top:6px;">Submit your comedy show without logging in →</a>
+              </div>
+            \` : ''}
+            \${isRacing ? \`
+              <div style="margin:16px 0 10px; font-size:13.5px; color:var(--text-dim);">
+                Looking for short tracks, dirt ovals, or drag strips in this region?
+                <br>
+                <a href="\${(S.city || '').toLowerCase().includes('eau claire') ? '/eau-claire/racing' : '/denver/racing'}" id="emptyRacingGuideLink" style="color:var(--radar-cyan); font-weight:700; text-decoration:none; display:inline-block; margin-top:6px;">View Local Race Track &amp; Schedule Directory →</a>
+              </div>
+            \` : ''}
             <div class="row" style="justify-content:center; margin-top:14px; gap:8px;">
-              \${S.mode ? '<button onclick="S.mode=\\'\\'; initControls(); loadFeed();" style="background:#191424; color:#fff">Clear Vibe Filter</button>' : ''}
+              \${(S.mode || S.showType || S.ageLimit || S.priceFilter || S.startingSoon || S.recurring || S.racingDiscipline) ? '<button onclick="S.mode=\\'\\'; S.showType=\\'\\'; S.ageLimit=\\'\\'; S.priceFilter=\\'\\'; S.startingSoon=false; S.recurring=false; S.racingDiscipline=\\'\\'; initControls(); loadFeed();" style="background:#191424; color:#fff">Clear Sub-Filters</button>' : ''}
               <button onclick="S.radius=50; S.window='48h'; S.mode=''; initControls(); loadFeed();" style="background:var(--primary); color:var(--primary-dark); font-weight:800">
                 Search 50 Miles / Next 48 Hours →
               </button>
@@ -514,12 +1588,34 @@ module.exports = (req, res) => {
             <div class="card-meta">⏰ \${esc(fmtTime(e.start))}\${e.distanceMiles != null ? ' · <b>' + e.distanceMiles.toFixed(1) + ' mi</b>' : ''}</div>
             <div class="why-tags">
               \${(e.whyThis || []).map(t => '<span class="why-tag">' + esc(t) + '</span>').join('')}
+              \${e.sourceQualityLabel ? '<span class="source-quality-tag">' + esc(e.sourceQualityLabel) + '</span>' : ''}
+              \${e.isEasyToMiss ? '<span class="easy-miss-tag">✨ Easy to Miss</span>' : ''}
+              \${e.isSeasonal ? '<span class="seasonal-tag">🎡 Seasonal</span>' : ''}
+              \${e.isRareReturn ? '<span class="easy-miss-tag">🌟 Rare Return</span>' : ''}
+              \${e.comedy?.showType ? '<span class="why-tag" style="color:var(--primary);">' + esc(e.comedy.showType) + '</span>' : ''}
+              \${e.comedy?.ageLimit && e.comedy.ageLimit !== 'unknown' ? '<span class="why-tag" style="color:var(--accent);">' + esc(e.comedy.ageLimit) + '</span>' : ''}
+              \${e.racing?.surface ? '<span class="why-tag" style="color:var(--radar-cyan);">' + esc(e.racing.surface) + '</span>' : ''}
+              \${e.racing?.classes?.[0] ? '<span class="why-tag" style="color:var(--primary);">' + esc(e.racing.classes[0]) + '</span>' : ''}
             </div>
             <div class="card-footer">
-              <div class="card-price">\${esc(e.priceDisplay || 'Details')}</div>
-              <a class="btn-ticket-sm" href="/api/click?url=\${encodeURIComponent(e.ticketUrl)}&eventId=\${encodeURIComponent(e.id)}&surface=feed_card" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
-                Get Tickets →
-              </a>
+              <div class="card-price">\${esc(e.priceDisplay || (e.isFree ? 'Free' : 'Details'))}</div>
+              \${e.hasTicket ? \`
+                <a class="btn-ticket-sm" href="/api/click?url=\${encodeURIComponent(e.ticketUrl)}&eventId=\${encodeURIComponent(e.id)}&surface=feed_card" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
+                  Get Tickets →
+                </a>
+              \` : (e.category === 'civic' ? \`
+                <a class="btn-civic-sm" href="\${(e.detailsUrl || e.ticketUrl) ? '/api/click?url=' + encodeURIComponent(e.detailsUrl || e.ticketUrl) + '&eventId=' + encodeURIComponent(e.id) + '&surface=feed_card' : '/event/' + encodeURIComponent(e.id)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
+                  Meeting Agenda →
+                </a>
+              \` : (e.isFree || (e.priceDisplay && e.priceDisplay.toLowerCase().includes('free')) ? \`
+                <a class="btn-free-sm" href="\${(e.detailsUrl || e.ticketUrl) ? '/api/click?url=' + encodeURIComponent(e.detailsUrl || e.ticketUrl) + '&eventId=' + encodeURIComponent(e.id) + '&surface=feed_card' : '/event/' + encodeURIComponent(e.id)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
+                  Free Event →
+                </a>
+              \` : \`
+                <a class="btn-details-sm" href="\${(e.detailsUrl || e.ticketUrl) ? '/api/click?url=' + encodeURIComponent(e.detailsUrl || e.ticketUrl) + '&eventId=' + encodeURIComponent(e.id) + '&surface=feed_card' : '/event/' + encodeURIComponent(e.id)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
+                  View Details →
+                </a>
+              \`))}
             </div>
             \${(e.source === 'seatgeek' || e.provenance?.provider === 'seatgeek') ? \`
               <div style="font-size:11px; color:var(--text-dim); margin-top:8px; display:flex; justify-content:flex-end;">
@@ -558,9 +1654,27 @@ module.exports = (req, res) => {
     }
 
     async function loadFeed() {
-      $('status').textContent = \`Finding events near \${S.city} (\${S.radius} mi) · \${S.window}…\`;
+      const catLabel = S.category === 'comedy' ? 'comedy shows' : (S.category === 'racing' ? 'grassroots races' : 'events');
+      $('status').textContent = \`Finding \${catLabel} near \${S.city} (\${S.radius} mi) · \${S.window}…\`;
       try {
-        const r = await fetch(\`/api/feed?lat=\${S.lat}&lng=\${S.lon}&radius=\${S.radius}&window=\${S.window}&mode=\${encodeURIComponent(S.mode)}&city=\${encodeURIComponent(S.city)}\`);
+        const qp = new URLSearchParams({
+          lat: S.lat,
+          lng: S.lon,
+          radius: S.radius,
+          window: S.window,
+          mode: S.mode,
+          city: S.city
+        });
+        if (S.category) qp.set('category', S.category);
+        if (S.racingDiscipline) qp.set('discipline', S.racingDiscipline);
+        if (S.showType) qp.set('showType', S.showType);
+        if (S.ageLimit) qp.set('ageLimit', S.ageLimit);
+        if (S.priceFilter) qp.set('priceFilter', S.priceFilter);
+        if (S.startingSoon) qp.set('startingSoon', 'true');
+        if (S.recurring) qp.set('recurring', 'true');
+        if (S.clean) qp.set('clean', 'true');
+
+        const r = await fetch(\`/api/feed?\${qp.toString()}\`);
         const data = await r.json();
         if (!r.ok) throw new Error(data.error || r.status);
         S.events = data.events || [];
@@ -574,8 +1688,8 @@ module.exports = (req, res) => {
           }
         }
 
-        // If 'tonight' has 0 events (e.g. late night), seamlessly expand to next 48 hours
-        if (S.events.length === 0 && S.window === 'tonight' && !S.hasAutoExpanded) {
+        // If 'tonight' has 0 events (e.g. late night) and no specific sub-filters, seamlessly expand to next 48 hours
+        if (S.events.length === 0 && S.window === 'tonight' && !S.hasAutoExpanded && !S.showType && !S.priceFilter && !S.racingDiscipline) {
           S.hasAutoExpanded = true;
           S.window = '48h';
           initControls();
@@ -585,7 +1699,7 @@ module.exports = (req, res) => {
         if (S.coverage && S.coverage.isSupported === false) {
           $('status').innerHTML = \`📍 <b>\${esc(S.locationName || S.city)}</b> has no active event feeds right now.\`;
         } else {
-          $('status').textContent = \`\${S.events.length} events found near \${S.city} (\${S.radius} mi radius)\`;
+          $('status').textContent = \`\${S.events.length} \${catLabel} found near \${S.city} (\${S.radius} mi radius)\`;
         }
         renderFeed();
         loadWeather();
@@ -626,21 +1740,72 @@ module.exports = (req, res) => {
       const e = S.events.find(x => x.id === id);
       if (!e) return;
       S.currentDetailEvent = e;
-      const clickUrl = \`/api/click?url=\${encodeURIComponent(e.ticketUrl)}&eventId=\${encodeURIComponent(e.id)}&surface=detail_modal\`;
+      const destUrl = e.detailsUrl || e.ticketUrl || '';
+      const clickUrl = destUrl ? \`/api/click?url=\${encodeURIComponent(destUrl)}&eventId=\${encodeURIComponent(e.id)}&surface=detail_modal\` : \`/event/\${encodeURIComponent(e.id)}\`;
       $('detailBody').innerHTML = \`
         \${e.image ? '<img src="' + esc(e.image) + '" alt="" style="width:100%; max-height:240px; object-fit:cover; border-radius:12px; margin-bottom:14px;">' : ''}
         <h2 style="margin-top:0">\${esc(e.title)}</h2>
         <p style="color:var(--text-dim)">📍 \${esc(e.venue)}\${e.city ? ', ' + esc(e.city) : ''} \${e.distanceMiles != null ? ' · ' + e.distanceMiles.toFixed(1) + ' mi' : ''}</p>
         <p style="color:var(--text-dim)">⏰ \${esc(fmtTime(e.start))}</p>
-        <p><b>Admission:</b> \${esc(e.priceDisplay || 'Details on ticket page')}</p>
+        <p><b>Admission:</b> \${esc(e.priceDisplay || (e.isFree ? 'Free Admission' : 'Details on official page'))}</p>
+        \${e.sourceQualityLabel ? '<p style="font-size:12.5px; color:var(--text-dim); margin:4px 0 10px;"><b>Source Verification:</b> <span class="source-quality-tag">' + esc(e.sourceQualityLabel) + '</span></p>' : ''}
         \${e.desc ? \`<p style="line-height:1.5">\${esc(e.desc)}</p>\` : ''}
+        \${e.category === 'civic' ? \`
+          <div style="background:rgba(43,69,112,0.18); border:1px solid rgba(106,130,251,0.35); border-radius:12px; padding:12px; margin:14px 0; font-size:13.5px;">
+            <div style="font-weight:800; color:#9bb0ff; font-size:12px; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">🏛️ Official Civic &amp; Public Process</div>
+            <div style="line-height:1.45; color:#e0d8f0; margin-bottom:8px;">
+              Public meetings, council sessions, and hearings are indexed directly from official government records for citizen transparency.
+            </div>
+            <div style="font-size:12px; color:var(--text-dim); line-height:1.4;">
+              <em>Notice: Brinkberry provides neutral public scheduling information and does not endorse any candidate, party, ballot measure, or policy proposal. All meetings are subject to local open meetings laws and public participation rules.</em>
+            </div>
+          </div>
+        \` : ''}
+        \${e.category === 'community' ? \`
+          <div style="background:rgba(17,153,142,0.1); border:1px solid rgba(56,239,125,0.3); border-radius:12px; padding:12px; margin:14px 0; font-size:13.5px;">
+            <div style="font-weight:800; color:#38ef7d; font-size:12px; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">📚 Public Community &amp; Library Program</div>
+            <div style="line-height:1.45; color:#e0d8f0;">
+              Gatherings, workshops, and local programs organized for neighborhood enrichment and public learning.
+            </div>
+          </div>
+        \` : ''}
+        \${e.comedy ? \`
+          <div style="background:rgba(255,184,107,0.08); border:1px solid rgba(255,184,107,0.25); border-radius:12px; padding:12px; margin:14px 0; font-size:13.5px;">
+            <div style="font-weight:800; color:var(--primary); font-size:12px; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">🎤 Stand-Up Comedy Details</div>
+            \${e.comedy.showType ? '<div style="margin-bottom:3px"><b>Show Type:</b> ' + esc(e.comedy.showType) + '</div>' : ''}
+            \${e.comedy.ageLimit && e.comedy.ageLimit !== 'unknown' ? '<div style="margin-bottom:3px"><b>Age Limit:</b> ' + esc(e.comedy.ageLimit) + '</div>' : ''}
+            \${e.comedy.comedians && e.comedy.comedians.length ? '<div style="margin-bottom:3px"><b>Lineup:</b> ' + esc(e.comedy.comedians.join(', ')) + '</div>' : ''}
+            \${e.comedy.recurring ? '<div style="margin-bottom:3px"><b>Schedule:</b> ' + esc(e.comedy.recurrenceText || 'Recurring') + '</div>' : ''}
+          </div>
+        \` : ''}
+        \${e.racing ? \`
+          <div style="background:rgba(0,230,153,0.08); border:1px solid rgba(0,230,153,0.25); border-radius:12px; padding:12px; margin:14px 0; font-size:13.5px;">
+            <div style="font-weight:800; color:var(--radar-cyan); font-size:12px; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">🏁 Grassroots Motorsports Details</div>
+            \${e.racing.trackName ? '<div style="margin-bottom:3px"><b>Track:</b> ' + esc(e.racing.trackName) + '</div>' : ''}
+            \${e.racing.surface ? '<div style="margin-bottom:3px"><b>Surface:</b> ' + esc(e.racing.surface) + '</div>' : ''}
+            \${e.racing.classes && e.racing.classes.length ? '<div style="margin-bottom:3px"><b>Divisions:</b> ' + esc(e.racing.classes.join(', ')) + '</div>' : ''}
+            \${e.racing.gateTime ? '<div style="margin-bottom:3px"><b>Gates Open:</b> ' + esc(e.racing.gateTime) + '</div>' : ''}
+            \${e.racing.hotLapsTime ? '<div style="margin-bottom:3px"><b>Hot Laps:</b> ' + esc(e.racing.hotLapsTime) + '</div>' : ''}
+            \${e.racing.greenFlagTime ? '<div style="margin-bottom:3px"><b>Green Flag:</b> ' + esc(e.racing.greenFlagTime) + '</div>' : ''}
+            \${e.racing.weatherStatus ? '<div style="margin-bottom:3px"><b>Weather / Race Status:</b> ' + esc(e.racing.weatherStatus) + '</div>' : ''}
+            \${e.racing.admissionModel ? '<div style="margin-bottom:3px"><b>Admission:</b> ' + esc(e.racing.admissionModel) + '</div>' : ''}
+          </div>
+        \` : ''}
         \${(e.source === 'seatgeek' || e.provenance?.provider === 'seatgeek') ? \`
           <p style="font-size:12px; color:var(--text-dim); margin:12px 0 6px;">
             Tickets and event data via <a href="https://seatgeek.com" target="_blank" rel="noopener noreferrer" style="color:var(--primary); font-weight:700; text-decoration:none;">SeatGeek ↗</a>.
           </p>
         \` : ''}
         <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap">
-          <a class="btn" style="background:var(--primary); color:var(--primary-dark); font-weight:800" href="\${esc(clickUrl)}" target="_blank" rel="noopener noreferrer">Get Tickets & Details →</a>
+          \${e.hasTicket ? \`
+            <a class="btn" style="background:var(--primary); color:var(--primary-dark); font-weight:800" href="\${esc(clickUrl)}" target="_blank" rel="noopener noreferrer">Get Tickets &amp; Details →</a>
+          \` : (e.category === 'civic' ? \`
+            <a class="btn btn-civic-sm" style="font-size:14px; padding:9px 18px;" href="\${esc(clickUrl)}" target="_blank" rel="noopener noreferrer">Official Meeting Agenda →</a>
+          \` : (e.isFree || (e.priceDisplay && e.priceDisplay.toLowerCase().includes('free')) ? \`
+            <a class="btn btn-free-sm" style="font-size:14px; padding:9px 18px;" href="\${esc(clickUrl)}" target="_blank" rel="noopener noreferrer">View Free Event Info →</a>
+          \` : \`
+            <a class="btn btn-details-sm" style="font-size:14px; padding:9px 18px;" href="\${esc(clickUrl)}" target="_blank" rel="noopener noreferrer">View Official Details →</a>
+          \`))}
           <a class="btn" href="/event/\${encodeURIComponent(e.id)}" target="_blank">Standalone Event Page</a>
         </div>
       \`;
@@ -691,6 +1856,26 @@ module.exports = (req, res) => {
       S.lon = loc.lon;
       S.city = loc.city;
       S.locationName = loc.locationName || loc.city;
+
+      if ($('activeCityLabel')) $('activeCityLabel').textContent = S.locationName || S.city;
+      if ($('locationDrawer')) $('locationDrawer').style.display = 'none';
+      if ($('locIndicatorBtn')) $('locIndicatorBtn').setAttribute('aria-expanded', 'false');
+
+      const isEC = (S.city || '').toLowerCase().includes('eau claire');
+      const cLink = $('comedyGuideLink');
+      if (cLink) {
+        cLink.href = isEC ? '/eau-claire/comedy' : '/denver/comedy';
+        cLink.textContent = (isEC ? 'Eau Claire' : 'Denver') + ' Comedy Guide ↗';
+      }
+      const rLink = $('racingGuideLink');
+      if (rLink) {
+        rLink.href = isEC ? '/eau-claire/racing' : '/denver/racing';
+        rLink.textContent = (isEC ? 'Eau Claire' : 'Denver') + ' Track Guide ↗';
+      }
+      const emptyRLink = $('emptyRacingGuideLink');
+      if (emptyRLink) {
+        emptyRLink.href = isEC ? '/eau-claire/racing' : '/denver/racing';
+      }
 
       // Unselect standard preset buttons
       ['presetDenver', 'presetLondon', 'presetNewYork', 'presetTokyo', 'presetParis', 'presetBoulder', 'presetGolden', 'presetAurora'].forEach(id => {

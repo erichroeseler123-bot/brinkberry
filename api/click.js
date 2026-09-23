@@ -1,4 +1,6 @@
 const { isValidTicketUrl } = require('../lib/affiliate');
+const { trackTicketClick, trackPilotTicketClick } = require('../lib/telemetry');
+const { getComedyShowById } = require('../lib/comedy/registry');
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co').replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -32,6 +34,16 @@ function logClickTelemetry(eventId, targetUrl, surface) {
 }
 
 module.exports = async (req, res) => {
+  if (!res.status) {
+    res.status = function(code) { this.statusCode = code; return this; };
+  }
+  if (!res.json) {
+    res.json = function(data) {
+      if (this.setHeader) this.setHeader('Content-Type', 'application/json');
+      this.end(JSON.stringify(data));
+      return this;
+    };
+  }
   try {
     const u = new URL(req.url, 'https://brinkberry.local');
     const target = u.searchParams.get('url') || u.searchParams.get('dest');
@@ -50,11 +62,26 @@ module.exports = async (req, res) => {
 
     // Telemetry logging is isolated and non-blocking
     logClickTelemetry(eventId, target, surface);
+    trackTicketClick(target, eventId, surface);
 
-    res.writeHead(302, {
-      Location: target,
-      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
-    });
+    const comedyShow = eventId ? getComedyShowById(eventId) : null;
+    const venueSlug = comedyShow?.venueSlug || null;
+    trackPilotTicketClick(venueSlug, eventId);
+
+    if (typeof res.writeHead === 'function') {
+      res.writeHead(302, {
+        Location: target,
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+      });
+    } else {
+      if (res.setHeader) {
+        res.setHeader('Location', target);
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      }
+      if (typeof res.status === 'function') {
+        res.status(302);
+      }
+    }
     res.end();
   } catch (err) {
     console.error('Click redirect error:', err);

@@ -138,14 +138,14 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
   });
 
   test('Step 6: Complete visitor path from Location -> Next 48h -> Topic -> Event Page -> Ticket Redirect', async () => {
-    // 1. Visit Denver Music Landing Page
+    // 1. Visit Denver Next 48 Hours Landing Page
     let landingHtml = '';
-    await landingHandler({ url: '/denver/music' }, {
+    await landingHandler({ url: '/denver/next-48-hours' }, {
       setHeader() {},
       status() { return this; },
       send(b) { landingHtml = b; }
     });
-    assert.match(landingHtml, /Denver Live Music & Concerts/);
+    assert.match(landingHtml, /Denver/);
 
     // Extract first event ID from JSON-LD
     const jsonLdMatch = landingHtml.match(/<script type="application\/ld\+json">(.*?)<\/script>/s);

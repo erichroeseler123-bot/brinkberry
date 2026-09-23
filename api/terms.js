@@ -68,10 +68,14 @@ module.exports = async (req, res) => {
       Brinkberry is an independent discovery tool. Third-party event providers, ticketing platforms (including SeatGeek and Ticketmaster), venues, and performers do not sponsor, endorse, or guarantee Brinkberry, and Brinkberry is not an affiliate or agent of these entities unless expressly agreed in writing.
     </div>
 
-    <h2>3. Outbound Ticketing & Third-Party Platforms</h2>
+    <h2>3. Public Event Indexing & Venue Relations Policy</h2>
+    <p>Brinkberry automatically discovers and links to publicly available event information. Venues do not need permission or an account to be listed. Venue participation is entirely optional and only relevant for direct feed suggestions, schedule corrections, or custom contact channels.</p>
+    <p>Brinkberry indexes only factual schedule information accessible without bypassing login, paywalls, CAPTCHA, or technical access controls. We strictly adhere to robots directives, reasonable rate limits, website terms, and email unsubscribe mechanisms.</p>
+
+    <h2>4. Outbound Ticketing & Third-Party Platforms</h2>
     <p>Brinkberry does not process ticket purchases, broker transactions, or collect credit card information. When you click “Get Tickets” or an event link, you are redirected directly to the third-party event organizer, venue box office, or ticketing platform (e.g., SeatGeek, Ticketmaster, Eventbrite). Any ticket purchase is made solely between you and the respective third-party platform under their terms and policies.</p>
 
-    <h2>4. Acceptable Use</h2>
+    <h2>5. Acceptable Use</h2>
     <p>You agree not to misuse Brinkberry or its embeddable widgets. Specifically, you may not:</p>
     <ul>
       <li>Scrape, harvest, or systematically download event data or materials.</li>
@@ -80,13 +84,13 @@ module.exports = async (req, res) => {
       <li>Feed or expose aggregated third-party data into machine learning models or artificial intelligence datasets.</li>
     </ul>
 
-    <h2>5. Disclaimer of Warranties</h2>
+    <h2>6. Disclaimer of Warranties</h2>
     <p>Brinkberry and all event information are provided on an “as-is” and “as-available” basis without warranties of any kind. Event schedules, line-ups, pricing, and availability are subject to change by venues and promoters at any time.</p>
 
-    <h2>6. Limitation of Liability & Third-Party Beneficiaries</h2>
+    <h2>7. Limitation of Liability & Third-Party Beneficiaries</h2>
     <p>To the maximum extent permitted by applicable law, Brinkberry and its creators shall not be liable for any indirect, incidental, or consequential damages resulting from your use of the service. Third-party data providers whose materials are displayed on Brinkberry are intended third-party beneficiaries of these protective provisions.</p>
 
-    <h2>7. Contact</h2>
+    <h2>8. Contact</h2>
     <p>For questions regarding these Terms of Service, please contact <a href="mailto:hello@brinkberry.com">hello@brinkberry.com</a>.</p>
   </div>
 </body>

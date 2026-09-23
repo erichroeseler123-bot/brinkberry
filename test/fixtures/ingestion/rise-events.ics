@@ -1,0 +1,64 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Rise Comedy - ECP//NONSGML v1.0//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Rise Comedy Events Calendar
+X-ORIGINAL-URL:https://risecomedy.com/events/
+X-WR-CALDESC:Denver's home for improv, sketch, and stand-up comedy in Ballpark.
+BEGIN:VEVENT
+UID:rise_show_10022361_20260920
+DTSTAMP:20260920T120000Z
+DTSTART:20260921T010000Z
+DTEND:20260921T023000Z
+SUMMARY:She Speaks Open Mic
+DESCRIPTION:Denver's premier open stage for women and non-binary comedians.
+LOCATION:Rise Comedy\, 1260 22nd St\, Denver\, CO 80205
+URL:https://risecomedy.com/event/she-speaks-open-mic/
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:rise_show_10022362_20260921
+DTSTAMP:20260920T120000Z
+DTSTART:20260922T013000Z
+DTEND:20260922T030000Z
+SUMMARY:Tuesday Night Comedy Open Mic
+DESCRIPTION:Fast-paced open mic testing new material in Ballpark.
+LOCATION:Rise Comedy\, 1260 22nd St\, Denver\, CO 80205
+URL:https://risecomedy.com/event/tuesday-open-mic/
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:rise_show_10022363_20260925
+DTSTAMP:20260920T120000Z
+DTSTART:20260926T013000Z
+DTEND:20260926T033000Z
+SUMMARY:Hit and Run: Musical Improv
+DESCRIPTION:High energy musical comedy created entirely on the spot from audience suggestions.
+LOCATION:Rise Comedy\, 1260 22nd St\, Denver\, CO 80205
+URL:https://risecomedy.com/event/hit-and-run-musical/
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:rise_show_10022364_20260926
+DTSTAMP:20260920T120000Z
+DTSTART:20260927T010000Z
+DTEND:20260927T024500Z
+SUMMARY:Spontaneous Combustion Improv & Stand-Up Fusion
+DESCRIPTION:Two powerhouse teams collide for an explosive night of comedy.
+LOCATION:Rise Comedy\, 1260 22nd St\, Denver\, CO 80205
+URL:https://risecomedy.com/event/spontaneous-combustion/
+STATUS:CONFIRMED
+END:VEVENT
+BEGIN:VEVENT
+UID:rise_show_10022365_cancelled
+DTSTAMP:20260920T120000Z
+DTSTART:20260927T040000Z
+DTEND:20260927T053000Z
+SUMMARY:[CANCELLED] Midnight Uncensored Underground Mic
+DESCRIPTION:Late night open jam session.
+LOCATION:Rise Comedy\, 1260 22nd St\, Denver\, CO 80205
+URL:https://risecomedy.com/event/midnight-mic/
+STATUS:CANCELLED
+END:VEVENT
+END:VCALENDAR

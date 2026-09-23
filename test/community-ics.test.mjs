@@ -115,7 +115,9 @@ END:VCALENDAR`;
 
     test('returns empty community feeds list for distant markets', () => {
       const feeds = getNearbyCommunityFeeds(39.7392, -104.9903, 25, distMiles);
-      assert.equal(feeds.length, 0, 'Denver should not match Eau Claire community feeds');
+      assert.ok(!feeds.some(f => f.city === 'Eau Claire'), 'Denver should not match Eau Claire community feeds');
+      const remoteFeeds = getNearbyCommunityFeeds(25.0000, -45.0000, 25, distMiles);
+      assert.equal(remoteFeeds.length, 0, 'Remote coordinate should have zero community feeds');
     });
   });
 

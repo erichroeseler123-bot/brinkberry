@@ -1,4 +1,5 @@
 const { buildSafeAffiliateUrl, isValidTicketUrl } = require('../lib/affiliate');
+const { getComedyShowById } = require('../lib/comedy/registry');
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co').replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
 const KEY = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_2ygc158CkPm28E9j6zNdmA_Cvvj5kGr';
@@ -15,7 +16,73 @@ function esc(s = '') {
 }
 
 async function getEvent(id) {
-  if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return null;
+  if (!id) return null;
+  if (typeof id === 'string' && id.startsWith('comedy_')) {
+    return getComedyShowById(id);
+  }
+  if (typeof id === 'string' && id.startsWith('race_')) {
+    const { getAllScheduledRaces } = require('../lib/racing/registry');
+    return getAllScheduledRaces().find(r => r.id === id) || null;
+  }
+  if (typeof id === 'string' && id.startsWith('comm_')) {
+    try {
+      const { COMMUNITY_FEEDS } = require('../lib/providers/community-registry');
+      const { fetchCommunityFeedEvents } = require('../lib/providers/community-ics');
+      const feed = COMMUNITY_FEEDS.find(f => id.startsWith(`comm_${f.id}_`));
+      if (feed) {
+        const res = await fetchCommunityFeedEvents(feed, {
+          useFallback: true,
+          windowStart: new Date(Date.now() - 7 * 86400e3).toISOString(),
+          windowEnd: new Date(Date.now() + 7 * 86400e3).toISOString()
+        });
+        const ev = (res.events || []).find(e => e.id === id);
+        if (ev) return ev;
+      }
+    } catch (_) {}
+  }
+  if (typeof id === 'string' && id.startsWith('ingest_')) {
+    const { OFFICIAL_SOURCES, ingestSource } = require('../lib/ingestion/engine');
+    const matchedSource = OFFICIAL_SOURCES.find(s => id.startsWith(`ingest_${s.id}_`));
+    if (matchedSource) {
+      const rep = await ingestSource(matchedSource);
+      const ev = rep.events.find(e => e.id === id);
+      if (ev) return ev;
+    }
+  }
+  if (typeof id === 'string' && (id.startsWith('atl_') || id.includes('punchline') || id.includes('laughing-skull'))) {
+    try {
+      const { getAtlantaCanonicalShows } = require('../lib/comedy/atlanta-ingestion');
+      const shows = await getAtlantaCanonicalShows({ includePast: true });
+      const found = shows.find(s => s.id === id || s.slug === id || s.fingerprint === id);
+      if (found) return found;
+    } catch (_) {}
+  }
+  if (typeof id === 'string' && (id.startsWith('bhm_') || id.startsWith('clt_') || id.includes('stardome') || id.includes('comedy-zone'))) {
+    try {
+      const { ingestStardome, ingestComedyZone } = require('../lib/comedy/expansion-ingestion');
+      if (id.startsWith('bhm_') || id.includes('stardome')) {
+        const rep = await ingestStardome();
+        const found = rep.events.find(s => s.id === id || s.slug === id || s.fingerprint === id);
+        if (found) return found;
+      }
+      if (id.startsWith('clt_') || id.includes('comedy-zone')) {
+        const rep = await ingestComedyZone();
+        const found = rep.events.find(s => s.id === id || s.slug === id || s.fingerprint === id);
+        if (found) return found;
+      }
+    } catch (_) {}
+  }
+  try {
+    const { defaultCanonicalStorage } = require('../lib/storage/canonical-event-storage');
+    if (defaultCanonicalStorage) {
+      const byId = await defaultCanonicalStorage.getEventById(id);
+      if (byId) return byId;
+      const all = await defaultCanonicalStorage.queryEvents({ windowStart: '1970-01-01', windowEnd: '2099-01-01' });
+      const found = all.find(e => e.id === id || e.slug === id || e.fingerprint === id);
+      if (found) return found;
+    }
+  } catch (_) {}
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/bb_get_public_event`, {
     method: 'POST',
     headers: {
@@ -40,27 +107,30 @@ module.exports = async (req, res) => {
 
     const e = await getEvent(id);
     const nowMs = Date.now();
-    const startTime = e ? new Date(e.start_time).getTime() : 0;
-    // Brinkberry strictly presents events in the active rolling 48-hour window
-    if (!e || startTime < (nowMs - 4 * 3600e3) || startTime > (nowMs + 48 * 3600e3)) {
+    const startTime = e?.start_time ? new Date(e.start_time).getTime() : null;
+    // Brinkberry strictly presents events in the active rolling planning window or verified master schedule
+    if (!e || (startTime != null && (startTime < (nowMs - 24 * 3600e3) || startTime > (nowMs + 180 * 86400e3)))) {
       res.setHeader('content-type', 'text/html; charset=utf-8');
-      return res.status(404).send('<!doctype html><html><body style="background:#080610;color:#fff;font-family:system-ui;padding:40px;text-align:center"><h1>Event Not Found</h1><p style="color:#90869e">This event is not in the active 48-hour window or is no longer listed.</p><p><a href="/" style="color:#ffb86b;font-weight:bold;text-decoration:none">← Find what’s happening right now</a></p></body></html>');
+      return res.status(404).send('<!doctype html><html><body style="background:#080610;color:#fff;font-family:system-ui;padding:40px;text-align:center"><h1>Event Not Found</h1><p style="color:#90869e">This event is not in the active planning window or is no longer listed.</p><p><a href="/" style="color:#ffb86b;font-weight:bold;text-decoration:none">← Find what’s happening right now</a></p></body></html>');
     }
 
     const price = e.price_status === 'free' ? 'Free' : (e.price_display || 'Check tickets');
-    const startObj = new Date(e.start_time);
-    const when = startObj.toLocaleString('en-US', {
-      timeZone: 'America/Denver',
+    const startObj = e.start_time ? new Date(e.start_time) : null;
+    const timeZone = e.timezone || 'America/Denver';
+    const when = startObj ? startObj.toLocaleString('en-US', {
+      timeZone,
       weekday: 'long',
       month: 'long',
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit'
-    });
+    }) : (e.gateTime ? `Gates ${e.gateTime} · Green Flag ${e.greenFlagTime || 'TBA'}` : 'Official Schedule');
     const desc = [e.venue_name, e.city, price, when].filter(Boolean).join(' · ');
-    const og = `${ORIGIN}/og/event/${e.id}.png`;
-    const safeTarget = buildSafeAffiliateUrl(e.source || 'custom', e.canonical_url, e.id);
+    const og = `${ORIGIN}/card/${e.id}/svg`;
+    const safeTarget = e.ticket_url || e.ticketUrl || buildSafeAffiliateUrl(e.source || 'custom', e.canonical_url, e.id);
     const clickUrl = `/api/click?url=${encodeURIComponent(safeTarget)}&eventId=${encodeURIComponent(e.id)}&surface=event_page`;
+    const isOfficial = e.confirmationStatus === 'confirmed_by_official_calendar';
+    const btnLabel = isOfficial ? `Official Box Office (${price}) →` : 'Get Tickets & Event Details →';
 
     const jsonLd = JSON.stringify({
       '@context': 'https://schema.org',
@@ -139,16 +209,72 @@ module.exports = async (req, res) => {
       ${(e.vibe_labels || []).map(v => `<span class="badge" style="color:#ff809d">${esc(v)}</span>`).join('')}
     </div>
     <h1>${esc(e.title)}</h1>
+
+    ${e.confirmationStatus === 'confirmed_by_dual_official_sources' ? `
+      <div style="background: rgba(100,223,223,0.1); border: 1px solid rgba(100,223,223,0.4); border-radius: 12px; padding: 12px 16px; margin: 16px 0;">
+        <p style="margin: 0; color: #64dfdf; font-size: 0.95rem; font-weight: 700;">
+          ✨ Confirmed by official venue and artist sources
+        </p>
+      </div>
+    ` : isOfficial ? `
+      <div style="background: rgba(255,184,107,0.08); border: 1px solid rgba(255,184,107,0.3); border-radius: 12px; padding: 12px 16px; margin: 16px 0;">
+        <p style="margin: 0; color: #ffb86b; font-size: 0.9rem; font-weight: 600;">
+          🔒 Brinkberry found this public schedule. We link directly to the venue’s official ticket page with zero markups or fees.
+        </p>
+      </div>
+    ` : ''}
+
     <div class="meta-box">
       <div class="meta-row"><b>When:</b> ${esc(when)}</div>
       <div class="meta-row"><b>Where:</b> ${esc(e.venue_name)}${e.city ? `, ${esc(e.city)}` : ''}${e.neighborhood ? ` (${esc(e.neighborhood)})` : ''}</div>
+      ${e.venue_address ? `<div class="meta-row"><b>Address:</b> ${esc(e.venue_address)}</div>` : ''}
       <div class="meta-row"><b>Admission:</b> ${esc(price)}</div>
     </div>
     ${e.description ? `<div class="desc">${esc(e.description)}</div>` : ''}
     <div class="actions">
-      <a class="btn-ticket" href="${esc(clickUrl)}" target="_blank" rel="noopener noreferrer">Get Tickets & Event Details →</a>
+      <a class="btn-ticket" href="${isOfficial ? esc(safeTarget) : esc(clickUrl)}" target="_blank" rel="noopener noreferrer">${btnLabel}</a>
       <button class="btn-share" id="shareBtn">Share Event</button>
+      <a class="btn-share" href="/card/${esc(e.id)}" target="_blank" style="text-decoration:none;">Social Card ↗</a>
     </div>
+
+    ${(e.sourceEvidence || (Array.isArray(e.sources) && e.sources.length > 0)) ? `
+      <details style="margin-top: 36px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px 18px;">
+        <summary style="cursor: pointer; color: #a99ec0; font-size: 0.9rem; font-weight: 700; user-select: none;">
+          🔍 Official Source Provenance Audit
+        </summary>
+        <div style="margin-top: 14px; font-size: 0.85rem; color: #c4bdd0; font-family: monospace; line-height: 1.7; word-break: break-all;">
+          <div><strong>Confirmation Status:</strong> <span style="color:#64dfdf">${esc(e.confirmationStatus || 'confirmed_by_official_calendar')}</span></div>
+          ${e.correlatedTicketingProvider ? `<div><strong>Ticketing Provider Correlation:</strong> <span style="color:#ffb86b">Shared ${esc(e.correlatedTicketingProvider)} (ID: ${esc(e.correlatedTicketingId || 'matched')})</span></div>` : ''}
+          ${Array.isArray(e.sources) && e.sources.length > 1 ? `
+            <div style="margin-top: 8px;"><strong>Dual Corroborating Sources:</strong></div>
+            ${e.sources.map((s, idx) => `
+              <div style="padding-left: 12px; margin: 4px 0; border-left: 2px solid #64dfdf;">
+                <div>Source #${idx + 1}: <b>${esc(s.feedType || s.type || 'official_source')}</b></div>
+                <div>URL: <a href="${esc(s.sourceUrl || s.feedUrl || '')}" target="_blank" rel="noopener noreferrer" style="color:#ffb86b">${esc(s.sourceUrl || s.feedUrl || 'n/a')}</a></div>
+                ${s.contentHash || s.rawHash ? `<div>SHA-256: <code>${esc((s.contentHash || s.rawHash).slice(0, 32))}...</code></div>` : ''}
+              </div>
+            `).join('')}
+          ` : `
+            <div><strong>Source Feed URL:</strong> <a href="${esc(e.sourceEvidence?.sourceUrl || e.canonical_url)}" target="_blank" rel="noopener noreferrer" style="color:#ffb86b; text-decoration:underline;">${esc(e.sourceEvidence?.sourceUrl || e.canonical_url)}</a></div>
+            ${e.sourceEvidence?.feedTechnology ? `<div><strong>Feed Technology:</strong> ${esc(e.sourceEvidence.feedTechnology)}</div>` : ''}
+            ${(e.sourceEvidence?.contentHash || e.sourceEvidence?.rawHash) ? `<div><strong>Evidence SHA-256:</strong> ${esc(e.sourceEvidence.contentHash || e.sourceEvidence.rawHash)}</div>` : ''}
+            ${e.sourceEvidence?.fetchedAt ? `<div><strong>Last Verified:</strong> ${esc(e.sourceEvidence.fetchedAt)}</div>` : ''}
+          `}
+          ${e.provenanceConflict ? `
+            <div style="margin-top: 10px; padding: 10px 14px; background: rgba(255, 184, 107, 0.08); border-left: 3px solid #ffb86b; border-radius: 4px;">
+              <div style="color: #ffb86b; font-weight: 700;">⚠️ Provenance Conflict Notice:</div>
+              <div><strong>Type:</strong> ${esc(e.provenanceConflict.conflictType)}</div>
+              ${e.provenanceConflict.artistExpectedDate ? `<div><strong>Artist Expected:</strong> ${esc(e.provenanceConflict.artistExpectedDate)} ${esc(e.provenanceConflict.artistExpectedTime || '')}</div>` : ''}
+              ${e.provenanceConflict.venuePublishedDate ? `<div><strong>Venue Published:</strong> ${esc(e.provenanceConflict.venuePublishedDate)} ${esc(e.provenanceConflict.venuePublishedTime || '')}</div>` : ''}
+              ${e.provenanceConflict.note ? `<div><strong>Note:</strong> ${esc(e.provenanceConflict.note)}</div>` : ''}
+            </div>
+          ` : ''}
+
+          ${(e.venue_latitude && e.venue_longitude) ? `<div><strong>Venue Location:</strong> ${esc(e.venue_address || e.venue_name)} (${e.venue_latitude}, ${e.venue_longitude}) · ${esc(timeZone)}</div>` : ''}
+        </div>
+      </details>
+    ` : ''}
+
   </div>
   <script>
     document.getElementById('shareBtn').onclick = async () => {

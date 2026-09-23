@@ -1,5 +1,6 @@
 const { buildSafeAffiliateUrl } = require('../lib/affiliate');
 const { executeHybridFeed } = require('../lib/providers/engine');
+const { trackGuideView, trackRacingGuideView } = require('../lib/telemetry');
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co').replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
 const KEY = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_2ygc158CkPm28E9j6zNdmA_Cvvj5kGr';
@@ -114,7 +115,47 @@ const CITIES = {
     desc: 'From legendary North Side comedy clubs and historic blues joints to Loop theater and open-air lakefront events in Chicago.',
     neighborhoods: ['The Loop', 'River North', 'Wicker Park', 'Lincoln Park', 'Logan Square', 'Hyde Park']
   },
+  atlanta: {
+    name: 'Atlanta',
+    state: 'GA',
+    country: 'US',
+    slug: 'atlanta',
+    lat: 33.7490,
+    lon: -84.3880,
+    radius: 30,
+    timezone: 'America/New_York',
+    tagline: 'The South’s premier live comedy & stand-up radar.',
+    desc: 'From landmark rooms like The Punchline and Laughing Skull Lounge to Midtown indie showcases, discover tonight’s verified stand-up lineup in Atlanta.',
+    neighborhoods: ['Midtown', 'Buckhead', 'Old Fourth Ward', 'Inman Park', 'Virginia-Highland', 'Little Five Points', 'East Atlanta Village']
+  },
+  birmingham: {
+    name: 'Birmingham',
+    state: 'AL',
+    country: 'US',
+    slug: 'birmingham',
+    lat: 33.5186,
+    lon: -86.8104,
+    radius: 35,
+    timezone: 'America/Chicago',
+    tagline: 'Alabama’s premiere live stand-up comedy and showcase radar.',
+    desc: 'From landmark rooms like the Stardome Comedy Club to Birmingham indie showcases, discover tonight’s verified stand-up lineup in Birmingham.',
+    neighborhoods: ['Hoover', 'Downtown', 'Five Points South', 'Avondale', 'Lakeview']
+  },
+  charlotte: {
+    name: 'Charlotte',
+    state: 'NC',
+    country: 'US',
+    slug: 'charlotte',
+    lat: 35.2271,
+    lon: -80.8431,
+    radius: 35,
+    timezone: 'America/New_York',
+    tagline: 'The Queen City’s definitive live stand-up comedy radar.',
+    desc: 'From landmark stages like The Comedy Zone at the NC Music Factory to Queen City showcases, discover tonight’s verified stand-up lineup in Charlotte.',
+    neighborhoods: ['Uptown', 'NC Music Factory', 'NoDa Arts District', 'South End', 'Dilworth', 'Plaza Midwood']
+  },
   austin: {
+
     name: 'Austin',
     state: 'TX',
     country: 'US',
@@ -125,6 +166,42 @@ const CITIES = {
     tagline: 'Live Music Capital of the World.',
     desc: 'Catch nightly roots and indie gigs along Red River, open-air sessions at Zilker, and comedy showcases across Austin.',
     neighborhoods: ['Downtown / 6th St', 'Red River Cultural District', 'South Congress', 'East Austin', 'Zilker']
+  },
+  reykjavik: {
+    name: 'Reykjavik',
+    state: '',
+    country: 'IS',
+    slug: 'reykjavik',
+    lat: 64.1466,
+    lon: -21.9426,
+    radius: 25,
+    tagline: 'Live music, harbour culture, and Icelandic arts.',
+    desc: 'Discover live indie shows in downtown Reykjavik, Harpa concert hall performances, art museum exhibits, and coastal open-air gatherings.',
+    neighborhoods: ['Miðborg / Downtown', 'Grandagarður / Old Harbour', 'Vesturbær', 'Hlíðar']
+  },
+  edinburgh: {
+    name: 'Edinburgh',
+    state: '',
+    country: 'UK',
+    slug: 'edinburgh',
+    lat: 55.9533,
+    lon: -3.1883,
+    radius: 25,
+    tagline: 'Historic venues, live comedy, and Scottish arts.',
+    desc: 'Explore live music along the Royal Mile, comedy clubs, theatre showcases, and open-air walks around Holyrood Park and Arthur’s Seat.',
+    neighborhoods: ['Old Town', 'New Town', 'Leith', 'Stockbridge', 'Southside']
+  },
+  'eau-claire': {
+    name: 'Eau Claire',
+    state: 'WI',
+    country: 'US',
+    slug: 'eau-claire',
+    lat: 44.8113,
+    lon: -91.4985,
+    radius: 25,
+    tagline: 'Chippewa Valley indie comedy, live music, and arts.',
+    desc: 'From The Plus comedy open mics and Pablo Center concerts to downtown riverfront gatherings.',
+    neighborhoods: ['Downtown / Barstow St', 'Water Street', 'Confluence', 'Third Ward']
   }
 };
 
@@ -237,12 +314,84 @@ const TOPICS = {
   'comedy': {
     slug: 'comedy',
     aliases: ['standup', 'improv', 'comedy-shows'],
-    title: 'Live Comedy Shows (Next 48 Hours)',
-    headingSuffix: 'Live Comedy Shows (Next 48 Hours)',
-    metaDescTemplate: (city) => `Find live standup comedy and improv shows in the next 48 hours in ${city.name}${city.state ? ', ' + city.state : ''}.`,
-    intro: (city) => `Catch touring headliners, local showcase nights, and uncensored standup comedy sets across ${city.name} over the next 48 hours.`,
+    title: 'Live Stand-Up Comedy & Shows (Next 48 Hours)',
+    headingSuffix: 'Live Stand-Up Comedy & Shows (Next 48 Hours)',
+    metaDescTemplate: (city) => `Find live stand-up comedy, open mics, showcases, and improv shows in the next 48 hours in ${city.name}${city.state ? ', ' + city.state : ''}.`,
+    intro: (city) => `Catch touring headliners, underground club showcases, bar open mics, and uncensored stand-up comedy sets across ${city.name} tonight and over the next 48 hours.`,
     window: '48h',
     filter: (e) => (e.category_tags || e.categories || []).includes('comedy')
+  },
+  'open-mics': {
+    slug: 'open-mics',
+    aliases: ['open-mic', 'comedy-open-mics', 'comedy-open-mic'],
+    title: 'Live Comedy Open Mics Tonight & This Week',
+    headingSuffix: 'Comedy Open Mics (Next 48 Hours)',
+    metaDescTemplate: (city) => `Discover live comedy open mics and sign-up rooms in ${city.name}${city.state ? ', ' + city.state : ''} over the next 48 hours. Free and cheap stage time for comics and fans.`,
+    intro: (city) => `Looking to get on stage or catch raw, unscripted local talent? Here are verified comedy open mics happening across ${city.name} tonight and over the next 48 hours.`,
+    window: '48h',
+    filter: (e) => {
+      const isComedy = (e.category_tags || e.categories || []).includes('comedy');
+      const text = `${e.title || ''} ${e.desc || e.description || ''}`.toLowerCase();
+      return isComedy && (e.comedy?.showType === 'open_mic' || /open mic|open-mic|sign-up|signup/i.test(text));
+    }
+  },
+  'comedy-clubs': {
+    slug: 'comedy-clubs',
+    aliases: ['comedy-rooms', 'standup-clubs'],
+    title: 'Comedy Clubs & Headliners (Next 48 Hours)',
+    headingSuffix: 'Comedy Clubs & Headliners (Next 48 Hours)',
+    metaDescTemplate: (city) => `Explore comedy clubs, basement listening rooms, and headliner shows across ${city.name}${city.state ? ', ' + city.state : ''} over the next 48 hours.`,
+    intro: (city) => `From historic brick-wall listening rooms to independent underground showcases, find the best comedy clubs and headliner performances in ${city.name}.`,
+    window: '48h',
+    filter: (e) => {
+      const isComedy = (e.category_tags || e.categories || []).includes('comedy');
+      const isClubShow = ['headliner', 'showcase', 'standup'].includes(e.comedy?.showType) || e.venueSlug != null || /club|underground|center|theater|theatre|comedy works/i.test(e.venue || e.venue_name || '');
+      return isComedy && isClubShow;
+    }
+  },
+  'cheap-comedy': {
+    slug: 'cheap-comedy',
+    aliases: ['free-comedy', 'cheap-standup', 'free-standup'],
+    title: 'Free & Cheap Comedy Shows (Under $15)',
+    headingSuffix: 'Free & Cheap Comedy Shows (Next 48 Hours)',
+    metaDescTemplate: (city) => `Find free and low-cost comedy shows in ${city.name}${city.state ? ', ' + city.state : ''} tonight and this weekend. Affordable laughs for under $15.`,
+    intro: (city) => `Great comedy doesn't have to cost a fortune. Discover free open mics, brewery showcases, and cheap admission comedy shows under $15 across ${city.name}.`,
+    window: '48h',
+    filter: (e) => {
+      const isComedy = (e.category_tags || e.categories || []).includes('comedy');
+      const isCheap = e.price_status === 'free' || e.priceStatus === 'free' || (e.price_min != null && e.price_min <= 15) || (e.priceLow != null && e.priceLow <= 15);
+      return isComedy && isCheap;
+    }
+  },
+  'racing': {
+    slug: 'racing',
+    aliases: ['races', 'motorsports', 'race-tracks', 'short-tracks'],
+    title: 'Grassroots Motorsports & Short Track Racing (Next 48 Hours)',
+    headingSuffix: 'Live Grassroots Motorsports (Next 48 Hours)',
+    metaDescTemplate: (city) => `Discover grassroots short-track racing, dirt ovals, drag strips, and motorsports in ${city.name}${city.state ? ', ' + city.state : ''} over the next 48 hours.`,
+    intro: (city) => `From high-banked paved short tracks and High Plains dirt ovals to Friday night drag strips, explore live grassroots racing across ${city.name} tonight and over the next 48 hours.`,
+    window: '48h',
+    filter: (e) => (e.category_tags || e.categories || []).includes('racing') || (e.category_tags || e.categories || []).includes('sports') || Boolean(e.racing)
+  },
+  'dirt-tracks': {
+    slug: 'dirt-tracks',
+    aliases: ['dirt-ovals', 'dirt-racing'],
+    title: 'High Plains & Dirt Oval Racing (Next 48 Hours)',
+    headingSuffix: 'Dirt Oval Racing (Next 48 Hours)',
+    metaDescTemplate: (city) => `Catch live dirt oval racing, IMCA Modifieds, and sprint cars in ${city.name}${city.state ? ', ' + city.state : ''} over the next 48 hours.`,
+    intro: (city) => `Hear the clay roar. Discover dirt track racing, sprint cars, stock cars, and late models across ${city.name} and surrounding fairgrounds.`,
+    window: '48h',
+    filter: (e) => Boolean(e.racing?.surface?.toLowerCase().includes('dirt') || e.trackType === 'dirt_oval')
+  },
+  'asphalt-tracks': {
+    slug: 'asphalt-tracks',
+    aliases: ['short-tracks', 'paved-ovals'],
+    title: 'Paved Short Track Racing (Next 48 Hours)',
+    headingSuffix: 'Paved Short Tracks (Next 48 Hours)',
+    metaDescTemplate: (city) => `Find paved short track racing and NASCAR Weekly Series events in ${city.name}${city.state ? ', ' + city.state : ''} over the next 48 hours.`,
+    intro: (city) => `High-banked asphalt battles, Super Late Models, Pro Trucks, and thrilling Figure-8 shootouts within driving distance of ${city.name}.`,
+    window: '48h',
+    filter: (e) => Boolean(e.racing?.surface?.toLowerCase().includes('asphalt') || e.racing?.surface?.toLowerCase().includes('paved') || e.trackType === 'asphalt_oval')
   }
 };
 
@@ -292,6 +441,24 @@ async function fetchEvents(city, topic) {
     console.warn('[Landing] Curated query error:', err.message);
   }
 
+  // Pioneer & Expansion Comedy Markets: load verified canonical comedy shows directly
+  if (['atlanta', 'birmingham', 'charlotte'].includes(city.slug)) {
+    try {
+      const { getCityCanonicalShows } = require('../lib/comedy/expansion-ingestion');
+      const canonicalShows = await getCityCanonicalShows(city.slug, { includePast: false });
+      if (canonicalShows && canonicalShows.length > 0) {
+        let events = canonicalShows;
+        if (typeof topic.filter === 'function') {
+          events = events.filter(topic.filter);
+        }
+        if (events.length > 0) return events;
+      }
+    } catch (err) {
+      console.warn(`[Landing] ${city.name} canonical fetch error:`, err.message);
+    }
+  }
+
+
   // Execute hybrid dynamic engine so cities without database rows (London, NYC, Paris, etc.)
   // seamlessly render verified live events
   try {
@@ -302,8 +469,26 @@ async function fetchEvents(city, topic) {
       window: '48h',
       windowStart: start.toISOString(),
       windowEnd: end.toISOString(),
-      mode: '',
-      curatedEvents: rawCurated,
+      mode: ['comedy', 'open-mics', 'comedy-clubs', 'cheap-comedy'].includes(topic.slug) ? 'comedy' :
+            ['racing', 'dirt-tracks', 'asphalt-tracks'].includes(topic.slug) ? 'racing' : '',
+      category: ['comedy', 'open-mics', 'comedy-clubs', 'cheap-comedy'].includes(topic.slug) ? 'comedy' :
+                ['racing', 'dirt-tracks', 'asphalt-tracks'].includes(topic.slug) ? 'racing' : '',
+      curatedEvents: (rawCurated || []).map(e => ({
+        ...e,
+        source: e.source || 'curated',
+        confirmationStatus: e.confirmationStatus || 'confirmed_by_official_calendar',
+        sourceEvidence: e.sourceEvidence || {
+          sourceId: 'curated_supabase',
+          sourceUrl: e.canonical_url,
+          fetchedAt: e.last_verified_at || new Date().toISOString(),
+          exactConfirmationFields: {
+            title: true,
+            date: true,
+            venue: true
+          }
+        },
+        lastVerifiedAt: e.last_verified_at || new Date().toISOString()
+      })),
       enableDynamic: true
     });
 
@@ -329,6 +514,16 @@ async function fetchEvents(city, topic) {
 }
 
 module.exports = async (req, res) => {
+  const sendHtml = (status, html) => {
+    res.setHeader('content-type', 'text/html; charset=utf-8');
+    if (res.status && typeof res.status === 'function') {
+      const ret = res.status(status);
+      if (ret && typeof ret.send === 'function') return ret.send(html);
+    }
+    if (typeof res.send === 'function') return res.send(html);
+    return res.end(html);
+  };
+
   try {
     const u = new URL(req.url, ORIGIN);
     const parts = u.pathname.split('/').filter(Boolean);
@@ -336,14 +531,19 @@ module.exports = async (req, res) => {
     const topicSlug = parts[1]?.toLowerCase() || 'this-weekend';
     const city = CITIES[citySlug];
     if (!city) {
-      res.setHeader('content-type', 'text/html; charset=utf-8');
-      return res.status(404).send('<!doctype html><html><body style="background:#080610;color:#fff;font-family:system-ui;padding:40px;text-align:center"><h1>City Not Found</h1><p><a href="/" style="color:#ffb86b">← Return to Brinkberry</a></p></body></html>');
+      return sendHtml(404, '<!doctype html><html><body style="background:#080610;color:#fff;font-family:system-ui;padding:40px;text-align:center"><h1>City Not Found</h1><p><a href="/" style="color:#ffb86b">← Return to Brinkberry</a></p></body></html>');
     }
 
     // Resolve topic or alias
     let topicKey = Object.keys(TOPICS).find(k => k === topicSlug || TOPICS[k].aliases.includes(topicSlug));
     if (!topicKey) topicKey = 'this-weekend';
     const topic = TOPICS[topicKey];
+
+    trackGuideView(city.slug, topicKey);
+    if (['racing', 'dirt-tracks', 'asphalt-tracks'].includes(topicKey)) {
+      const discipline = topicKey === 'dirt-tracks' ? 'dirt' : topicKey === 'asphalt-tracks' ? 'asphalt' : 'all';
+      trackRacingGuideView(city.slug, discipline);
+    }
 
     const events = await fetchEvents(city, topic);
     const pageUrl = `${ORIGIN}/${city.slug}/${topic.slug}`;
@@ -391,8 +591,7 @@ module.exports = async (req, res) => {
       }))
     });
 
-    res.setHeader('content-type', 'text/html; charset=utf-8');
-    res.status(200).send(`<!doctype html>
+    return sendHtml(200, `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -514,6 +713,16 @@ module.exports = async (req, res) => {
       </nav>
     </div>
 
+    ${(topicKey === 'comedy' || topicKey === 'open-mics' || topicKey === 'comedy-clubs' || topicKey === 'cheap-comedy') ? `
+      <div style="background:linear-gradient(135deg, rgba(255,184,107,0.12) 0%, rgba(26,20,38,0.85) 100%); border:1px solid rgba(255,184,107,0.3); border-radius:16px; padding:18px 22px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div>
+          <div style="color:var(--primary); font-weight:800; font-size:15px; margin-bottom:3px;">🎤 Producing a comedy show or hosting an open mic in ${esc(city.name)}?</div>
+          <div style="color:var(--text-dim); font-size:13.5px;">List your show on Brinkberry for free. Direct box office links, zero fees, and instant radar discovery.</div>
+        </div>
+        <a href="/submit-comedy" class="btn-ticket-sm" style="background:var(--primary); color:var(--primary-dark); padding:9px 18px; font-size:13.5px; font-weight:800; text-decoration:none; border-radius:999px;">Submit Your Show for Free →</a>
+      </div>
+    ` : ''}
+
     <!-- Live Event Grid -->
     <main>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -545,9 +754,13 @@ module.exports = async (req, res) => {
             const dist = distVal != null ? Number(distVal).toFixed(1) + ' mi' : null;
             const img = e.canonical_image_url || e.image;
 
+            const eventLink = e.slug ? `/shows/${encodeURIComponent(e.slug)}` : `/event/${encodeURIComponent(e.id)}`;
+            const isOfficialCal = (e.confirmationStatus || e.confirmation_status) === 'confirmed_by_official_calendar';
+            const ticketDestination = isOfficialCal ? (e.ticket_url || e.ticketUrl || safeTarget) : clickUrl;
+
             return `
               <article class="card">
-                <a href="/event/${encodeURIComponent(e.id)}" style="text-decoration:none; color:inherit">
+                <a href="${esc(eventLink)}" style="text-decoration:none; color:inherit">
                   <div class="card-img" style="${img ? `background-image:url('${encodeURI(img).replace(/'/g, '%27')}')` : ''}">
                     ${img ? `<img src="${esc(img)}" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;" loading="lazy" onerror="this.style.display='none'">` : ''}
                   </div>
@@ -557,7 +770,10 @@ module.exports = async (req, res) => {
                     <div class="card-meta">📍 ${esc(e.venue_name || e.venue)}${e.city ? `, ${esc(e.city)}` : ''}</div>
                     <div class="card-meta">⏰ ${esc(timeStr)}${dist ? ` · <b>${dist}</b>` : ''}</div>
                     <div class="why-tags">
+                      ${isOfficialCal ? '<span class="why-tag" style="color:#64dfdf">Official Calendar</span>' : ''}
                       ${(e.category_tags || e.categories || []).slice(0, 2).map(t => `<span class="why-tag">${esc(t)}</span>`).join('')}
+                      ${e.comedy?.showType ? `<span class="why-tag" style="color:var(--primary)">${esc(e.comedy.showType)}</span>` : ''}
+                      ${e.comedy?.ageLimit && e.comedy.ageLimit !== 'unknown' ? `<span class="why-tag" style="color:var(--accent)">${esc(e.comedy.ageLimit)}</span>` : ''}
                       ${(e.indoor_outdoor === 'outdoor' || e.indoorOutdoor === 'outdoor') ? '<span class="why-tag">Outdoor</span>' : ''}
                       ${(e.price_status === 'free' || e.priceStatus === 'free') ? '<span class="why-tag" style="color:var(--primary)">Free</span>' : ''}
                     </div>
@@ -565,7 +781,7 @@ module.exports = async (req, res) => {
                 </a>
                 <div class="card-footer" style="padding:0 18px 18px">
                   <div class="card-price">${esc(price)}</div>
-                  <a class="btn-ticket-sm" href="${esc(clickUrl)}" target="_blank" rel="noopener noreferrer">
+                  <a class="btn-ticket-sm" href="${esc(ticketDestination)}" target="_blank" rel="noopener noreferrer">
                     Get Tickets →
                   </a>
                 </div>
@@ -575,6 +791,14 @@ module.exports = async (req, res) => {
         </div>
       `}
     </main>
+
+    ${topicKey === 'comedy' ? `
+      <div style="background:linear-gradient(135deg, rgba(38,20,55,0.7), rgba(18,13,28,0.9)); border:1px solid #3d2757; border-radius:18px; padding:22px; margin-top:28px; text-align:center;">
+        <h3 style="margin:0 0 6px; font-size:18px; color:#fff">🎤 Running an Open Mic or Stand-Up Showcase in ${esc(city.name)}?</h3>
+        <p style="color:var(--text-dim); margin:0 0 14px; font-size:14px">Get your independent room, brewery showcase, or open mic on Brinkberry's live radar for free.</p>
+        <a href="/submit-comedy" class="btn-ticket-sm" style="background:var(--primary); color:var(--primary-dark); font-weight:800;">+ Submit a Comedy Show</a>
+      </div>
+    ` : ''}
 
     <!-- Neighborhoods Context -->
     <div class="neighborhood-bar">
@@ -613,7 +837,6 @@ module.exports = async (req, res) => {
 </html>`);
   } catch (err) {
     console.error('Landing page error:', err);
-    res.setHeader('content-type', 'text/html; charset=utf-8');
-    res.status(500).send('<!doctype html><html><body style="background:#080610;color:#fff;font-family:system-ui;padding:40px;text-align:center"><h1>Page temporarily unavailable</h1><p><a href="/" style="color:#ffb86b">← Return to Brinkberry</a></p></body></html>');
+    return sendHtml(500, '<!doctype html><html><body style="background:#080610;color:#fff;font-family:system-ui;padding:40px;text-align:center"><h1>Page temporarily unavailable</h1><p><a href="/" style="color:#ffb86b">← Return to Brinkberry</a></p></body></html>');
   }
 };
