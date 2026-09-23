@@ -118,7 +118,7 @@ describe('Homepage Hero Redesign & Streamlined Discovery', () => {
     assert.match(output, /id="racingSubFilterConsole"/);
   });
 
-  test('renders rich content discovery sections: venues showcase, curated guides, and neighborhoods', () => {
+  test('removes destination showcases and generic venue cards from homepage', () => {
     let output = '';
     const res = {
       setHeader: () => {},
@@ -126,26 +126,21 @@ describe('Homepage Hero Redesign & Streamlined Discovery', () => {
     };
     homeHandler({ url: '/', headers: {} }, res);
 
-    // Venues & Tracks showcase
-    assert.match(output, /Local Stages, Clubs &amp; Speedways/);
-    assert.match(output, /Comedy Works Downtown/);
-    assert.match(output, /Colorado National Speedway/);
-    assert.match(output, /RISE Comedy/);
-    assert.match(output, /I-76 Speedway/);
+    // Static venue showcase, curated destination guides, and neighborhoods explorer must not exist
+    assert.doesNotMatch(output, /id="venuesSection"/);
+    assert.doesNotMatch(output, /id="guidesSection"/);
+    assert.doesNotMatch(output, /id="neighborhoodSection"/);
+    assert.doesNotMatch(output, /Featured Stages &amp; Iconic Venues/);
+    assert.doesNotMatch(output, /Local Stages, Clubs &amp; Speedways/);
+    assert.doesNotMatch(output, /Curated Discovery Guides/);
+    assert.doesNotMatch(output, /Explore by Neighborhood/);
 
-    // Curated discovery guides
-    assert.match(output, /Curated Discovery Guides/);
-    assert.match(output, /Stand-Up Comedy Radar/);
-    assert.match(output, /Grassroots Motorsports/);
-    assert.match(output, /Live Music &amp; Concerts/);
-    assert.match(output, /Free Things to Do/);
-
-    // Neighborhoods explorer
-    assert.match(output, /Explore by Neighborhood/);
-    assert.match(output, /LoDo/);
-    assert.match(output, /RiNo Arts District/);
-    assert.match(output, /Capitol Hill/);
-    assert.match(output, /Highlands/);
+    // Famous venues must not be hardcoded as cards
+    assert.doesNotMatch(output, /Comedy Works Downtown/);
+    assert.doesNotMatch(output, /Colorado National Speedway/);
+    assert.doesNotMatch(output, /Comedy Cellar/);
+    assert.doesNotMatch(output, /Circuit of the Americas/);
+    assert.doesNotMatch(output, /Soho Theatre/);
   });
 
   test('guarantees every place and event card has an image with fallback onerror', () => {
@@ -166,37 +161,7 @@ describe('Homepage Hero Redesign & Streamlined Discovery', () => {
     assert.doesNotMatch(output, /class="card-no-img"/);
   });
 
-  test('dynamically adapts discovery sections for other curated cities (e.g. London)', () => {
-    let output = '';
-    const res = {
-      setHeader: () => {},
-      end: (content) => { output = content; }
-    };
-    homeHandler({ url: '/?city=london', headers: {} }, res);
-
-    // Active city label reflects London
-    assert.match(output, /<span id="activeCityLabel">London, UK<\/span>/);
-
-    // Stages showcase reflects London stages in venuesGrid
-    const venuesMarkup = output.split('id="venuesGrid">')[1].split('</section>')[0];
-    assert.match(venuesMarkup, /Soho Theatre/);
-    assert.match(venuesMarkup, /Top Secret Comedy Club/);
-    assert.doesNotMatch(venuesMarkup, /Comedy Works Downtown/);
-
-    // Curated discovery guides link to London
-    assert.match(output, /href="\/london\/comedy"/);
-    assert.match(output, /href="\/london\/racing"/);
-
-    // Neighborhoods explorer reflects London neighborhoods in neighborhoodChips
-    const neighborhoodMarkup = output.split('id="neighborhoodChips">')[1].split('</section>')[0];
-    assert.match(neighborhoodMarkup, /Soho/);
-    assert.match(neighborhoodMarkup, /Covent Garden/);
-    assert.match(neighborhoodMarkup, /Camden/);
-    assert.doesNotMatch(neighborhoodMarkup, /LoDo/);
-    assert.doesNotMatch(neighborhoodMarkup, /RiNo Arts District/);
-  });
-
-  test('adapts to non-curated cities (e.g. Phoenix) without displaying Denver neighborhoods or Denver-only stages', () => {
+  test('prioritizes live local event feed and selected location for any city (e.g. Phoenix, London, Denver)', () => {
     let output = '';
     const res = {
       setHeader: () => {},
@@ -215,26 +180,16 @@ describe('Homepage Hero Redesign & Streamlined Discovery', () => {
     // Active city label reflects visitor's detected IP city
     assert.match(output, /<span id="activeCityLabel">Phoenix, AZ<\/span>/);
 
-    // Shows Featured Stages & Iconic Venues with explicit city tagging
-    assert.match(output, /Featured Stages &amp; Iconic Venues/);
-    const venuesMarkup = output.split('id="venuesGrid">')[1].split('</section>')[0];
-    assert.match(venuesMarkup, /Comedy Works Downtown/);
-    assert.match(venuesMarkup, /Larimer Square · Denver, CO/);
-    assert.match(venuesMarkup, /Comedy Cellar/);
-    assert.match(venuesMarkup, /Greenwich Village · New York, NY/);
+    // Live feed exists and is front and center
+    assert.match(output, /id="feed"/);
 
-    // Discovery guides link to the detected city
-    assert.match(output, /href="\/phoenix\/comedy"/);
-    assert.match(output, /href="\/phoenix\/racing"/);
-
-    // Neighborhood section is hidden by default for non-curated cities (never shows LoDo to Phoenix users)
-    assert.match(output, /id="neighborhoodSection" style="display:none;"/);
-    const neighborhoodMarkup = output.split('id="neighborhoodChips">')[1].split('</section>')[0];
-    assert.doesNotMatch(neighborhoodMarkup, /LoDo/);
-    assert.doesNotMatch(neighborhoodMarkup, /RiNo Arts District/);
+    // Zero static venue promotion or destination cards
+    assert.doesNotMatch(output, /Comedy Works Downtown/);
+    assert.doesNotMatch(output, /Comedy Cellar/);
+    assert.doesNotMatch(output, /id="venuesSection"/);
   });
 
-  test('client script defines updateLocationDiscovery and binds dynamic location updates', () => {
+  test('client script defines updateLocationDisplay and updates city display cleanly', () => {
     let output = '';
     const res = {
       setHeader: () => {},
@@ -242,11 +197,11 @@ describe('Homepage Hero Redesign & Streamlined Discovery', () => {
     };
     homeHandler({ url: '/', headers: {} }, res);
 
-    assert.match(output, /function updateLocationDiscovery/);
-    assert.match(output, /function renderVenuesGrid/);
-    assert.match(output, /function selectDiscoveryCategory/);
-    assert.match(output, /updateLocationDiscovery\(initLoc\)/);
-    assert.match(output, /updateLocationDiscovery\(loc\)/);
+    assert.match(output, /function updateLocationDisplay/);
+    assert.doesNotMatch(output, /function updateLocationDiscovery/);
+    assert.doesNotMatch(output, /function renderVenuesGrid/);
+    assert.match(output, /updateLocationDisplay\(initLoc\)/);
+    assert.match(output, /updateLocationDisplay\(loc\)/);
   });
 
   test('inline client script contains no syntax errors and defaults to All Events plus Next 48 Hours', () => {
