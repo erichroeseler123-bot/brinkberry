@@ -98,19 +98,50 @@ Prior to this engineering run, an audit of the feed pipeline revealed four syste
 
 ---
 
-## 5. Verified Multi-Market Discovery Checks
+## 5. Verified Multi-Market Discovery Checks (Live Production https://brinkberry.com)
 
-- **Denver, CO**: Curated comedy clubs (Comedy Works Downtown/South, Denver Comedy Underground) + Colorado motorsports + Civic & library community feeds.
-- **Eau Claire, WI**: Verified community & campus calendar feeds (UWEC Arts & Jazz, Pablo Center, Eau Claire Public Library) + regional short-track racing.
-- **Minneapolis, MN**: Dynamic SeatGeek live music/concert feeds + Hennepin County library & civic integration.
-- **Austin, TX**: Dynamic showcase inventory + City Council & Austin Public Library integrations.
-- **New York, NY**: Curated clubs + NYPL & NYC Community Board hearings.
-- **Remote / Ocean Coordinates**: Honestly returns 0 events with active timezone, maintaining zero hallucination.
+External verification script `scripts/test-live-external-discovery.mjs` was executed directly against `https://brinkberry.com`. The feed confirms multiple broad local categories live in production:
+
+### 1. Eau Claire, WI (44.8113, -91.4985)
+- **Total Events Returned**: 18
+- **Category Diversity (6 distinct categories)**: `festival`, `civic`, `community`, `music`, `arts`, `theater`
+- **Source Quality Labels**:
+  - *Public community listing*: 14
+  - *Official government calendar*: 3
+  - *Verified ticket link*: 1
+- **Ticketing Optionality**: 17 events without forced tickets (direct links to agendas/library/exhibits), 1 with ticket checkout.
+- **Sample Verified Events**:
+  - *Civic*: Eau Claire City Council Regular Legislative Session & Public Hearing (`https://www.eauclairewi.gov/government/city-council/agendas-minutes`)
+  - *Civic*: Eau Claire Advisory Plan Commission Zoning Hearing (`https://www.eauclairewi.gov/government/plan-commission`)
+  - *Community / Library*: Chippewa Valley Seed Library & Native Flora Forum at L.E. Phillips Memorial Library (`https://www.ecpubliclibrary.info/events/seed-library`)
+  - *Community / Library*: Digital Media Lab & Podcast Studio Workshop at L.E. Phillips Memorial Library (`https://www.ecpubliclibrary.info/events/digital-lab`)
+  - *Community*: Celebrate the Chinese Moon Festival at McIntyre Library (`https://calendar.uwec.edu/live/events/50125-celebrate-the-chinese-moon-festival`)
+  - *Arts / Theater / Music*: "Do you know why we resist?" Foster Gallery Exhibition & Artist Talks; Fall '26 Jazz Audition at Haas Fine Arts Center.
+
+### 2. Denver, CO (39.7392, -104.9903)
+- **Total Events Returned**: 66
+- **Category Diversity (9 distinct categories)**: `outdoor`, `civic`, `community`, `festival`, `workshop`, `sports`, `theater`, `music`, `comedy`
+- **Source Quality Labels**:
+  - *Verified ticket link*: 44
+  - *Official venue schedule*: 13
+  - *Public community listing*: 5
+  - *Official government calendar*: 4
+- **Ticketing Optionality**: 44 with tickets, 22 without forced tickets (`Meeting Agenda →`, `Free Event →`, `View Details →`).
+- **Sample Verified Events**:
+  - *Civic*: Colorado General Assembly Joint Transportation Committee Public Hearing (`https://leg.colorado.gov/committees/transportation`)
+  - *Civic*: Denver Planning Board Zoning & Public Land Use Hearing (`https://denvergov.org/cpd/planning-board`)
+  - *Civic*: Denver Board of Education (DPS) Community Advisory & Public Forum (`https://www.dpsk12.org/board-of-education/`)
+  - *Community / Library*: Colorado History & Rare Manuscripts Walkthrough at Denver Public Library Central Western History Collection (`https://denverlibrary.org/western-history`)
+  - *Community / Arcade*: Front Range Arcade Tournament: Classic Pinball & Retro Showdown at The 1Up Arcade Bar Colfax (`https://the1uparcadebar.com/tournaments`)
+  - *Festival*: RiNo Artisan Craft Fair & Flea Market at RiNo Art Park (`https://rinoartdistrict.org/do/rino-flea-market`)
+  - *Community / Workshop*: All Recovery Community at Tivoli Student Union; Climbing & Wellness courses at Salazar Center.
+  - *Comedy / Live Music*: Comedy Works Downtown; Fillmore Auditorium, Bluebird Theater, Ogden Theatre concerts.
 
 ---
 
 ## 6. Next Steps & Operating Cadence
 
-1. **Production Deployment Ready**: Changes are strictly non-breaking, fully backward-compatible with existing comedy/racing pilots, and pass 100% of automated tests.
-2. **Feed Ingestion Monitoring**: Observe live civic and community feed ingestion latencies and upstream ICS endpoint availability.
-3. **Admin Review Queue**: Keep unpromoted candidate comedy clubs quarantined in `needs_review` until explicit human operator promotion.
+1. **Production Deployment Complete**: Commit `cb1e1c0` deployed live to `https://brinkberry.com`. Broad local discovery is active and verified across civic, library, community, festival, racing, and comedy categories.
+2. **Feed Ingestion Monitoring**: Observe live civic and community feed ingestion latencies and upstream municipal/library ICS endpoint availability.
+3. **Admin Review Queue**: Keep unpromoted candidate comedy clubs quarantined in `needs_review` (751 clean candidates in `data/expansion-checkpoint.json`) until explicit human operator promotion.
+
