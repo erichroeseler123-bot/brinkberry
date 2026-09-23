@@ -50,7 +50,7 @@ describe('Brinkberry Autonomous Community Post System', () => {
       assert.ok(result.event.id.startsWith('comm_post_'));
       assert.equal(result.event.title, 'Friday Backyard Jam & Acoustic Circle');
       assert.equal(result.event.broadcastRadiusMiles, 2);
-      assert.equal(result.event.sourceQualityLabel, 'Community submitted — not independently verified');
+      assert.equal(result.event.sourceQualityLabel, 'Community-submitted*');
 
       // Verify stored record
       const post = getCommunityPostById(result.event.id);
@@ -141,7 +141,10 @@ describe('Brinkberry Autonomous Community Post System', () => {
         city: 'Denver',
         lat: 39.7392,
         lon: -104.9903,
-        broadcastRadius: 'broad' // 35 miles
+        broadcastRadius: 'broad', // 30-35 miles
+        emailConfirmed: true,
+        phoneConfirmed: true,
+        detailsUrl: 'https://frontrangefaire.org'
       }, { ip: '1.2.3.5' });
       assert.equal(broadRes.success, true);
 
@@ -301,7 +304,7 @@ describe('Brinkberry Autonomous Community Post System', () => {
   });
 
   describe('6. Labeling & Freshness Validation', () => {
-    it('labels community posts with "Community submitted — not independently verified"', () => {
+    it('labels community posts with "Community-submitted*"', () => {
       const post = {
         source: 'community_post',
         sourceType: 'community_submission',
@@ -310,7 +313,7 @@ describe('Brinkberry Autonomous Community Post System', () => {
       };
 
       const label = resolveSourceQualityLabel(post);
-      assert.equal(label, 'Community submitted — not independently verified');
+      assert.equal(label, 'Community-submitted*');
     });
 
     it('marks autonomous community post as displayable in freshness engine without admin review', () => {
@@ -354,7 +357,7 @@ describe('Brinkberry Autonomous Community Post System', () => {
 
       const matched = feed.events.find(e => e.title === 'Autonomous Library Chess & Puzzle Jam');
       assert.ok(matched, 'Expected community post to be included in hybrid feed');
-      assert.equal(matched.sourceQualityLabel, 'Community submitted — not independently verified');
+      assert.equal(matched.sourceQualityLabel, 'Community-submitted*');
       assert.equal(matched.hasTicket, false);
       assert.equal(matched.category, 'community');
     });

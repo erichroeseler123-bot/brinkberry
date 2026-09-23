@@ -147,6 +147,7 @@ module.exports = async (req, res) => {
     const startingSoon = u.searchParams.get('startingSoon') === 'true';
     const recurring = u.searchParams.get('recurring') === 'true';
     const clean = u.searchParams.get('clean') === 'true';
+    const sourceFilter = u.searchParams.get('sourceFilter') || u.searchParams.get('source') || 'all';
     const radiusParam = Number(u.searchParams.get('radius')) || 25;
     const radiusMiles = Math.min(100, Math.max(1, radiusParam));
     const dynamicParam = u.searchParams.get('dynamic');
@@ -311,6 +312,7 @@ module.exports = async (req, res) => {
       startingSoon,
       recurring,
       clean,
+      sourceFilter,
       curatedEvents: (rawCurated || []).map(e => ({
         ...e,
         source: e.source || 'curated',

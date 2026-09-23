@@ -160,7 +160,7 @@ module.exports = async (req, res) => {
       if (match) req.query.id = match[1];
       return adminApiHandler(req, res);
     }
-    if (p === '/post' || p === '/submit' || p === '/api/post' || p.startsWith('/api/post/')) {
+    if (p === '/post' || p === '/submit' || p === '/manage' || p.startsWith('/post/') || p === '/api/post' || p.startsWith('/api/post/')) {
       return postHandler(req, res);
     }
     if (p === '/for-venues' || p.startsWith('/api/submit')) {
@@ -214,7 +214,7 @@ module.exports = async (req, res) => {
 
     // City & category landing pages: /denver/this-weekend, /london/music, /paris/arts, /denver/comedy, /denver/racing, etc.
     const segments = p.split('/').filter(Boolean);
-    const systemPrefixes = ['api', 'event', 'shows', 'show', 'admin', 'widget', 'terms', 'privacy', 'sitemap.xml', 'sitemap', 'robots.txt', 'og', 'venue', 'comedian', 'track', 'series', 'racing', 'submit-comedy', 'door', 'ticket', 'show-ledger', 'card'];
+    const systemPrefixes = ['api', 'event', 'shows', 'show', 'admin', 'widget', 'terms', 'privacy', 'sitemap.xml', 'sitemap', 'robots.txt', 'og', 'venue', 'comedian', 'track', 'series', 'racing', 'submit-comedy', 'door', 'ticket', 'show-ledger', 'card', 'post', 'submit', 'manage'];
     if (segments.length >= 1 && segments.length <= 2 && !systemPrefixes.includes(segments[0].toLowerCase())) {
       return landingHandler(req, res);
     }

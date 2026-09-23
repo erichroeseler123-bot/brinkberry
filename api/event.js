@@ -221,7 +221,7 @@ module.exports = async (req, res) => {
     <div>
       ${(e.category_tags || []).map(t => `<span class="badge">${esc(t)}</span>`).join('')}
       ${(e.vibe_labels || []).map(v => `<span class="badge" style="color:#ff809d">${esc(v)}</span>`).join('')}
-      ${isCommunityPost ? '<span class="badge" style="color:#ffb86b; background:rgba(255,184,107,0.15)">Community Submitted</span>' : ''}
+      ${isCommunityPost ? '<span class="badge" title="*This event was submitted by a Brinkberry user and has not been independently verified. Details may change." style="color:#ffb86b; background:rgba(255,184,107,0.15)">Community-submitted*</span>' : ''}
     </div>
     <h1>${esc(e.title)}</h1>
 
@@ -231,12 +231,12 @@ module.exports = async (req, res) => {
           📢 Community submitted — not independently verified
         </p>
         <p style="margin: 6px 0 0; color: #d0c5df; font-size: 0.85rem; line-height: 1.45;">
-          This event was posted directly by a community organizer or attendee. Brinkberry does not endorse or certify submissions. Attend public or private gatherings at your own discretion.
+          *This event was submitted by a Brinkberry user and has not been independently verified. Details may change. Attend public or private gatherings at your own discretion.
         </p>
       </div>
       ${e.isApproximateLocation ? `
         <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px 16px; margin: 12px 0; font-size: 13px; color: #ffdfba;">
-          🔒 <b>Private / Approximate Location:</b> The exact street address is not displayed publicly to preserve privacy.
+          🔒 <b>Private / Approximate Location:</b> Exact street address hidden to protect host privacy.
         </div>
       ` : ''}
     ` : e.confirmationStatus === 'confirmed_by_dual_official_sources' ? `
@@ -264,14 +264,68 @@ module.exports = async (req, res) => {
     <div class="actions">
       ${safeTarget ? `<a class="btn-ticket" href="${isOfficial ? esc(safeTarget) : esc(clickUrl)}" target="_blank" rel="noopener noreferrer">${btnLabel}</a>` : ''}
       <button class="btn-share" id="shareBtn">Share Event</button>
-      ${isCommunityPost ? `<button class="btn-report" id="reportBtn">⚑ Report Post</button>` : `<a class="btn-share" href="/card/${esc(e.id)}" target="_blank" style="text-decoration:none;">Social Card ↗</a>`}
+      ${isCommunityPost ? `
+        <span id="ownerControls" style="display:none;"><a id="managePostBtn" class="btn-share" href="#" style="text-decoration:none; background:rgba(255,184,107,0.15); border-color:var(--primary); color:#ffb86b;">⚙️ Manage / Delete Post</a></span>
+        <button class="btn-report" id="reportBtn">⚑ Report Post</button>
+      ` : `<a class="btn-share" href="/card/${esc(e.id)}" target="_blank" style="text-decoration:none;">Social Card ↗</a>`}
     </div>
 
     ${isCommunityPost ? `
+      <!-- Report Modal Dialog -->
+      <dialog id="reportDialog" style="background:#140f22; color:#fff; border:1px solid #281f38; border-radius:16px; padding:24px; max-width:480px; width:90%; box-shadow:0 12px 36px rgba(0,0,0,0.6);">
+        <h3 style="margin:0 0 8px; font-size:18px;">Report Community Post</h3>
+        <p style="color:#9b90aa; font-size:13px; margin:0 0 14px; line-height:1.4;">
+          Brinkberry removes posts that are abusive, deceptive, dangerous, unlawful, or harmful. Posts are not removed for differences in lawful opinion, politics, or viewpoint.
+        </p>
+        <form id="reportForm" method="dialog">
+          <label style="display:block; font-size:12px; font-weight:750; color:#9b90aa; margin-bottom:6px; text-transform:uppercase;">Reason for report *</label>
+          <select id="reportReasonSelect" required style="width:100%; background:rgba(255,255,255,0.06); border:1px solid #281f38; border-radius:8px; padding:10px; color:#fff; font-size:14px; margin-bottom:16px;">
+            <option value="spam">Commercial spam or repetitive promotion</option>
+            <option value="scam">Scam or deceptive financial solicitation</option>
+            <option value="violence">Threat of violence or physical harm</option>
+            <option value="harassment">Harassment or hate speech</option>
+            <option value="doxxing">Doxxing or unauthorized personal private info</option>
+            <option value="impersonation">Impersonation of another person or venue</option>
+            <option value="illegal">Unlawful or prohibited activity</option>
+            <option value="false_logistics">False logistics, fake address, or nonexistent event</option>
+            <option value="broken_details">Outdated, cancelled, or broken details</option>
+          </select>
+          <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button type="button" id="closeReportBtn" style="background:transparent; border:1px solid #281f38; color:#9b90aa; padding:8px 14px; border-radius:8px; cursor:pointer;">Cancel</button>
+            <button type="submit" style="background:#ff2e63; border:none; color:#fff; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer;">Submit Report</button>
+          </div>
+        </form>
+      </dialog>
+
       <script>
-        document.getElementById('reportBtn')?.addEventListener('click', async () => {
-          const reason = prompt('Reason for reporting this post (spam, scam, harassment, threat, illegal):');
-          if (!reason) return;
+        // Check if current visitor is the creator
+        try {
+          const u = new URL(location.href);
+          const urlKey = u.searchParams.get('key');
+          const storedKeys = JSON.parse(localStorage.getItem('bb_post_keys') || '{}');
+          const myKey = urlKey || storedKeys[${JSON.stringify(e.id)}];
+          if (myKey) {
+            const ownerEl = document.getElementById('ownerControls');
+            const manageBtn = document.getElementById('managePostBtn');
+            if (ownerEl && manageBtn) {
+              ownerEl.style.display = 'inline-block';
+              manageBtn.href = '/post/manage?id=' + encodeURIComponent(${JSON.stringify(e.id)}) + '&key=' + encodeURIComponent(myKey);
+            }
+          }
+        } catch (_) {}
+
+        // Reporting flow
+        const reportDialog = document.getElementById('reportDialog');
+        document.getElementById('reportBtn')?.addEventListener('click', () => {
+          if (reportDialog?.showModal) reportDialog.showModal();
+        });
+        document.getElementById('closeReportBtn')?.addEventListener('click', () => {
+          reportDialog?.close();
+        });
+        document.getElementById('reportForm')?.addEventListener('submit', async (ev) => {
+          ev.preventDefault();
+          const reason = document.getElementById('reportReasonSelect').value;
+          reportDialog?.close();
           try {
             const res = await fetch('/api/post/report', {
               method: 'POST',
@@ -280,7 +334,12 @@ module.exports = async (req, res) => {
             });
             const data = await res.json();
             if (data.success) {
-              alert('Thank you. This post has been reported for community review.');
+              alert('Thank you. Your report has been submitted for review.');
+              if (data.action === 'hidden') {
+                location.reload();
+              }
+            } else {
+              alert(data.error || 'Unable to submit report.');
             }
           } catch (_) {
             alert('Unable to submit report right now.');

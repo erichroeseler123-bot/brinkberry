@@ -1020,6 +1020,14 @@ module.exports = (req, res) => {
           <span class="filter-label">Vibe</span>
           <div id="modeFilters" class="pills-wrap"></div>
         </div>
+
+        <div class="filter-divider" id="sourceDivider"></div>
+
+        <!-- Source Group -->
+        <div class="filter-group" id="sourceGroup">
+          <span class="filter-label">Source</span>
+          <div id="sourceFilters" class="pills-wrap"></div>
+        </div>
       </div>
     </div>
 
@@ -1202,6 +1210,7 @@ module.exports = (req, res) => {
       startingSoon: false,
       recurring: false,
       clean: false,
+      sourceFilter: 'all',
       events: [],
       coverage: { isSupported: true, nearestMarket: 'Denver', supportedMarkets: [] },
       weather: null,
@@ -1221,6 +1230,7 @@ module.exports = (req, res) => {
       if (sp.get('priceFilter')) S.priceFilter = sp.get('priceFilter');
       if (sp.get('startingSoon') === 'true') S.startingSoon = true;
       if (sp.get('recurring') === 'true') S.recurring = true;
+      if (sp.get('sourceFilter')) S.sourceFilter = sp.get('sourceFilter');
     } catch (_) {}
 
     const $ = id => document.getElementById(id);
@@ -1364,6 +1374,18 @@ module.exports = (req, res) => {
       ];
       $('modeFilters').innerHTML = modes.map(([k, l]) => \`<button class="mode-btn \${S.mode === k ? 'active' : ''}" data-m="\${k}">\${l}</button>\`).join('');
       document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { S.mode = b.dataset.m; initControls(); loadFeed(); });
+
+      // 7. Source Filters (All, Official, Community)
+      const sources = [
+        ['all', 'All Events'],
+        ['official', 'Official Only 🏛️'],
+        ['community', 'Community Only 👥']
+      ];
+      const srcEl = $('sourceFilters');
+      if (srcEl) {
+        srcEl.innerHTML = sources.map(([k, l]) => \`<button class="\${(S.sourceFilter || 'all') === k ? 'active' : ''}" data-src="\${k}">\${l}</button>\`).join('');
+        document.querySelectorAll('[data-src]').forEach(b => b.onclick = () => { S.sourceFilter = b.dataset.src; initControls(); loadFeed(); });
+      }
     }
 
     function renderComedySubConsole() {
@@ -1602,6 +1624,12 @@ module.exports = (req, res) => {
         }
       } catch (_) {}
 
+      if (S.sourceFilter === 'official') {
+        allEvents = allEvents.filter(e => !e.isCommunityPost && e.source !== 'community_post' && !e.id?.startsWith('comm_post_'));
+      } else if (S.sourceFilter === 'community') {
+        allEvents = allEvents.filter(e => e.isCommunityPost || e.source === 'community_post' || e.id?.startsWith('comm_post_') || e.sourceType === 'community_submission');
+      }
+
       const visibleEvents = allEvents.filter(e => !hiddenMap[e.id]);
 
       if (visibleEvents.length === 0) {
@@ -1640,7 +1668,7 @@ module.exports = (req, res) => {
             <div class="card-meta">⏰ \${esc(fmtTime(e.start))}\${e.distanceMiles != null ? ' · <b>' + e.distanceMiles.toFixed(1) + ' mi</b>' : ''}</div>
             <div class="why-tags">
               \${(e.whyThis || []).map(t => '<span class="why-tag">' + esc(t) + '</span>').join('')}
-              \${e.sourceQualityLabel ? '<span class="source-quality-tag ' + (e.sourceQualityLabel.includes('Community submitted') ? 'source-quality-community' : '') + '">' + esc(e.sourceQualityLabel) + '</span>' : ''}
+              \${(e.sourceQualityLabel || (e.isCommunityPost ? 'Community-submitted*' : '')) ? '<span class="source-quality-tag ' + ((e.sourceQualityLabel || '').includes('Community') || e.isCommunityPost ? 'source-quality-community' : '') + '" title="' + esc(e.sourceQualityTooltip || '*This event was submitted by a Brinkberry user and has not been independently verified. Details may change.') + '">' + esc(e.sourceQualityLabel || 'Community-submitted*') + '</span>' : ''}
               \${e.isEasyToMiss ? '<span class="easy-miss-tag">✨ Easy to Miss</span>' : ''}
               \${e.isSeasonal ? '<span class="seasonal-tag">🎡 Seasonal</span>' : ''}
               \${e.isRareReturn ? '<span class="easy-miss-tag">🌟 Rare Return</span>' : ''}
@@ -1749,6 +1777,7 @@ module.exports = (req, res) => {
         if (S.startingSoon) qp.set('startingSoon', 'true');
         if (S.recurring) qp.set('recurring', 'true');
         if (S.clean) qp.set('clean', 'true');
+        if (S.sourceFilter && S.sourceFilter !== 'all') qp.set('sourceFilter', S.sourceFilter);
 
         const r = await fetch(\`/api/feed?\${qp.toString()}\`);
         const data = await r.json();
