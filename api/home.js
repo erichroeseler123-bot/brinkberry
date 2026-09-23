@@ -28,6 +28,395 @@ const KNOWN_CITIES = {
   'edinburgh': { city: 'Edinburgh', locationName: 'Edinburgh, UK', lat: 55.9533, lon: -3.1883 }
 };
 
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
+}
+
+const CITY_DISCOVERY = {
+  'denver': {
+    name: 'Denver',
+    state: 'CO',
+    slug: 'denver',
+    neighborhoods: ['LoDo', 'RiNo Arts District', 'Capitol Hill', 'Highlands', 'South Broadway', 'Cherry Creek', 'Boulder', 'Golden'],
+    venues: [
+      {
+        title: 'Comedy Works Downtown',
+        loc: 'Larimer Square · Denver, CO',
+        badge: '🎤 Landmark Club',
+        desc: 'Legendary underground comedy room renowned nationwide for low ceilings, intimate listening, and top touring comics.',
+        img: 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&auto=format&fit=crop',
+        url: '/venue/comedy-works-downtown',
+        cta: 'View Live Shows &amp; Tickets →'
+      },
+      {
+        title: 'Colorado National Speedway',
+        loc: 'Dacono, CO · High Plains',
+        badge: '🏁 NASCAR Short Track',
+        desc: 'High-banked 3/8-mile asphalt oval hosting NASCAR Advance Auto Parts Weekly racing, Super Late Models, and Figure-8s.',
+        img: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop',
+        url: '/track/colorado-national-speedway',
+        cta: 'View Race Schedule &amp; Weather →'
+      },
+      {
+        title: 'RISE Comedy',
+        loc: 'RiNo / Ballpark · Denver, CO',
+        badge: '🎭 Improv &amp; Stand-Up',
+        desc: 'Artist-driven comedy theater and training hub hosting nightly showcases, improv troupes, open mics, and musical comedy.',
+        img: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800&auto=format&fit=crop',
+        url: '/venue/rise-comedy',
+        cta: 'View Live Shows &amp; Tickets →'
+      },
+      {
+        title: 'I-76 Speedway',
+        loc: 'Fort Morgan, CO',
+        badge: '🏁 Dirt Oval',
+        desc: 'Quarter-mile semi-banked dirt clay oval featuring IMCA Modifieds, 305 Sprint Cars, and Saturday night stock cars under the lights.',
+        img: 'https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=800&auto=format&fit=crop',
+        url: '/track/i-76-speedway',
+        cta: 'View Race Schedule &amp; Weather →'
+      },
+      {
+        title: 'Denver Comedy Underground',
+        loc: 'Capitol Hill · Denver, CO',
+        badge: '🎤 Indie Basement',
+        desc: 'Cap Hill subterranean independent comedy haven with national touring headliners, local comics, and intimate basement energy.',
+        img: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800&auto=format&fit=crop',
+        url: '/venue/denver-comedy-underground',
+        cta: 'View Live Shows &amp; Tickets →'
+      },
+      {
+        title: 'Comedy Works South',
+        loc: 'Landmark · Greenwood Village, CO',
+        badge: '🎤 Comedy Theater',
+        desc: 'Spacious stadium-style sister theater in the Denver Tech Center hosting major national headliners and full dinner service.',
+        img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop',
+        url: '/venue/comedy-works-south',
+        cta: 'View Live Shows &amp; Tickets →'
+      }
+    ]
+  },
+  'boulder': {
+    name: 'Boulder',
+    state: 'CO',
+    slug: 'boulder',
+    neighborhoods: ['Downtown / Pearl St', 'The Hill', 'University Hill', 'North Boulder', 'Chautauqua', 'South Boulder'],
+    venues: [
+      {
+        title: 'Boulder Theater',
+        loc: 'Downtown · Boulder, CO',
+        badge: '🎵 Historic Music Hall',
+        desc: 'Art deco music and comedy hall hosting national touring acts, film festivals, and acoustic showcases.',
+        img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop',
+        url: '/boulder/music',
+        cta: 'View Live Shows →'
+      },
+      {
+        title: 'Fox Theatre',
+        loc: 'The Hill · Boulder, CO',
+        badge: '🎸 Iconic Club',
+        desc: 'World-renowned live music club on University Hill celebrated for legendary acoustics and intimate club sets.',
+        img: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop',
+        url: '/boulder/music',
+        cta: 'View Live Shows →'
+      },
+      {
+        title: 'Colorado National Speedway',
+        loc: 'Dacono, CO · High Plains',
+        badge: '🏁 NASCAR Short Track',
+        desc: 'High-banked 3/8-mile asphalt oval east of Boulder hosting Super Late Models and stock car racing.',
+        img: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop',
+        url: '/track/colorado-national-speedway',
+        cta: 'View Race Schedule →'
+      }
+    ]
+  },
+  'new-york': {
+    name: 'New York',
+    state: 'NY',
+    slug: 'new-york',
+    neighborhoods: ['Greenwich Village', 'Williamsburg', 'Lower East Side', 'Midtown', 'Chelsea', 'Astoria', 'Bushwick', 'DUMBO'],
+    venues: [
+      {
+        title: 'Comedy Cellar',
+        loc: 'Greenwich Village · New York, NY',
+        badge: '🎤 Landmark Club',
+        desc: 'World-famous underground comedy cellar on MacDougal Street known for surprise drop-ins from comedy icons.',
+        img: 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&auto=format&fit=crop',
+        url: '/new-york/comedy',
+        cta: 'View Live Lineups →'
+      },
+      {
+        title: 'The Stand NYC',
+        loc: 'Union Square · New York, NY',
+        badge: '🎤 Showcase & Dining',
+        desc: 'Premier two-floor comedy club and craft dining room featuring New York’s top touring and resident headliners.',
+        img: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800&auto=format&fit=crop',
+        url: '/new-york/comedy',
+        cta: 'View Live Lineups →'
+      },
+      {
+        title: 'Riverhead Raceway',
+        loc: 'Riverhead, NY · Long Island',
+        badge: '🏁 Historic NASCAR Oval',
+        desc: 'Quarter-mile high-banked asphalt oval hosting NASCAR Whelen Modifieds, Figure-8s, and Legend cars.',
+        img: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop',
+        url: '/new-york/racing',
+        cta: 'View Race Schedule →'
+      },
+      {
+        title: 'Radio City Music Hall',
+        loc: 'Midtown · New York, NY',
+        badge: '🏛️ Historic Hall',
+        desc: 'Legendary art deco theater hosting world-class concert tours, gala premieres, and marquee performances.',
+        img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop',
+        url: '/new-york/music',
+        cta: 'View Live Shows →'
+      }
+    ]
+  },
+  'london': {
+    name: 'London',
+    state: 'UK',
+    slug: 'london',
+    neighborhoods: ['Soho', 'Covent Garden', 'Camden', 'Shoreditch', 'Brixton', 'West End', 'Hackney', 'Southbank'],
+    venues: [
+      {
+        title: 'Soho Theatre',
+        loc: 'Soho · London, UK',
+        badge: '🎭 Comedy & Drama',
+        desc: 'Dean Street powerhouse producing innovative comedy, cabaret, and groundbreaking contemporary theatre.',
+        img: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800&auto=format&fit=crop',
+        url: '/london/comedy',
+        cta: 'View Live Shows →'
+      },
+      {
+        title: 'Top Secret Comedy Club',
+        loc: 'Covent Garden · London, UK',
+        badge: '🎤 Underground Club',
+        desc: 'High-energy basement comedy club renowned for bargain tickets and secret warm-up sets from arena headliners.',
+        img: 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&auto=format&fit=crop',
+        url: '/london/comedy',
+        cta: 'View Live Lineups →'
+      },
+      {
+        title: 'The Comedy Store',
+        loc: 'Piccadilly Circus · London, UK',
+        badge: '🎤 Landmark Stage',
+        desc: 'The historic cradle of British alternative stand-up comedy with weekend showcases and topical improvisation.',
+        img: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800&auto=format&fit=crop',
+        url: '/london/comedy',
+        cta: 'View Live Lineups →'
+      },
+      {
+        title: 'Eventim Apollo',
+        loc: 'Hammersmith · London, UK',
+        badge: '🏛️ Art Deco Theatre',
+        desc: 'Iconic Grade II* listed live performance hall hosting international music legends and stadium comedy tours.',
+        img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop',
+        url: '/london/music',
+        cta: 'View Live Shows →'
+      }
+    ]
+  },
+  'paris': {
+    name: 'Paris',
+    state: 'France',
+    slug: 'paris',
+    neighborhoods: ['Le Marais', 'Montmartre', 'Saint-Germain', 'Bastille', 'Canal Saint-Martin', 'Belleville', 'Latin Quarter'],
+    venues: [
+      {
+        title: 'Paname Art Café',
+        loc: '11e Arrondissement · Paris, FR',
+        badge: '🎤 Stand-Up & Comedy',
+        desc: 'Intimate comedy club and tapas hub spotlighting the sharpest voices in Parisian stand-up seven nights a week.',
+        img: 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&auto=format&fit=crop',
+        url: '/paris/comedy',
+        cta: 'View Live Shows →'
+      },
+      {
+        title: 'Le Point Virgule',
+        loc: 'Le Marais · Paris, FR',
+        badge: '🎭 Legendary Stage',
+        desc: 'Historic Marais theatre known as the incubator for French comedy stars and intimate one-man shows.',
+        img: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800&auto=format&fit=crop',
+        url: '/paris/comedy',
+        cta: 'View Live Shows →'
+      },
+      {
+        title: "L'Olympia",
+        loc: '9e Arrondissement · Paris, FR',
+        badge: '🏛️ Historic Music Hall',
+        desc: 'Legendary Paris venue that has hosted worldwide music icons, orchestra performances, and stand-up specials.',
+        img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop',
+        url: '/paris/music',
+        cta: 'View Live Shows →'
+      }
+    ]
+  },
+  'chicago': {
+    name: 'Chicago',
+    state: 'IL',
+    slug: 'chicago',
+    neighborhoods: ['Old Town', 'Wicker Park', 'Logan Square', 'Lincoln Park', 'The Loop', 'River North', 'West Loop', 'Hyde Park'],
+    venues: [
+      {
+        title: 'The Second City',
+        loc: 'Old Town · Chicago, IL',
+        badge: '🎭 Improv & Sketch',
+        desc: 'Legendary comedy theater and school that launched Bill Murray, Tina Fey, Steve Carell, and world-class improv.',
+        img: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800&auto=format&fit=crop',
+        url: '/chicago/comedy',
+        cta: 'View Live Shows →'
+      },
+      {
+        title: 'Zanies Comedy Club',
+        loc: 'Old Town · Chicago, IL',
+        badge: '🎤 Historic Listening Room',
+        desc: 'Intimate brick-wall comedy club hosting national headliners and sharp Chicago stand-up since 1978.',
+        img: 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&auto=format&fit=crop',
+        url: '/chicago/comedy',
+        cta: 'View Live Shows →'
+      },
+      {
+        title: 'Sycamore Speedway',
+        loc: 'Maple Park, IL',
+        badge: '🏁 Clay Oval',
+        desc: 'Chicagoland historic dirt oval featuring Super Late Models, Stock Cars, and Saturday night clay-track racing.',
+        img: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop',
+        url: '/chicago/racing',
+        cta: 'View Race Schedule →'
+      },
+      {
+        title: 'Metro Chicago',
+        loc: 'Wrigleyville · Chicago, IL',
+        badge: '🎵 Live Music Hall',
+        desc: 'Renowned independent concert venue hosting landmark rock and indie tours steps from Wrigley Field.',
+        img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop',
+        url: '/chicago/music',
+        cta: 'View Live Shows →'
+      }
+    ]
+  },
+  'austin': {
+    name: 'Austin',
+    state: 'TX',
+    slug: 'austin',
+    neighborhoods: ['Downtown / 6th St', 'South Congress', 'East Austin', 'Red River Cultural District', 'Zilker', 'Rainey Street'],
+    venues: [
+      {
+        title: 'Comedy Mothership',
+        loc: '6th St · Austin, TX',
+        badge: '🎤 Landmark Club',
+        desc: 'State-of-the-art comedy club on 6th Street hosting world-renowned touring headliners and podcast showcases.',
+        img: 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&auto=format&fit=crop',
+        url: '/austin/comedy',
+        cta: 'View Live Shows →'
+      },
+      {
+        title: 'Circuit of the Americas',
+        loc: 'Austin, TX',
+        badge: '🏁 Grand Prix Circuit',
+        desc: 'World-class 3.4-mile FIA Grade 1 circuit hosting Formula 1, NASCAR, MotoGP, and major outdoor amphitheater concerts.',
+        img: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop',
+        url: '/austin/racing',
+        cta: 'View Track Schedule →'
+      },
+      {
+        title: 'The Continental Club',
+        loc: 'South Congress · Austin, TX',
+        badge: '🎸 Live Roots & Blues',
+        desc: 'Legendary live music destination on South Congress continuously rocking since 1955.',
+        img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop',
+        url: '/austin/music',
+        cta: 'View Live Shows →'
+      }
+    ]
+  },
+  'eau-claire': {
+    name: 'Eau Claire',
+    state: 'WI',
+    slug: 'eau-claire',
+    neighborhoods: ['Downtown', 'Water Street', 'Cannery District', 'Third Ward', 'North Side'],
+    venues: [
+      {
+        title: 'Pablo Center at the Confluence',
+        loc: 'Downtown · Eau Claire, WI',
+        badge: '🏛️ Performing Arts Center',
+        desc: 'State-of-the-art regional arts center hosting Broadway tours, national concerts, and local performing arts.',
+        img: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800&auto=format&fit=crop',
+        url: '/eau-claire/community',
+        cta: 'View Schedule →'
+      },
+      {
+        title: 'Red Cedar Speedway',
+        loc: 'Menomonie, WI',
+        badge: '🏁 Clay Oval Track',
+        desc: 'WISSOTA sanctioned dirt oval racing Super Stocks, Midwest Modifieds, and Late Models.',
+        img: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop',
+        url: '/eau-claire/racing',
+        cta: 'View Races →'
+      }
+    ]
+  }
+};
+
+const FEATURED_ICONIC_VENUES = [
+  {
+    title: 'Comedy Works Downtown',
+    loc: 'Larimer Square · Denver, CO',
+    badge: '🎤 Landmark Club',
+    desc: 'Legendary underground comedy room renowned nationwide for low ceilings, intimate listening, and top touring comics.',
+    img: 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&auto=format&fit=crop',
+    url: '/venue/comedy-works-downtown',
+    cta: 'View Live Shows &amp; Tickets →'
+  },
+  {
+    title: 'Comedy Cellar',
+    loc: 'Greenwich Village · New York, NY',
+    badge: '🎤 Legendary Club',
+    desc: 'World-famous underground comedy cellar on MacDougal Street known for surprise drop-ins from comedy icons.',
+    img: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800&auto=format&fit=crop',
+    url: '/new-york/comedy',
+    cta: 'View Live Lineups →'
+  },
+  {
+    title: 'The Second City',
+    loc: 'Old Town · Chicago, IL',
+    badge: '🎭 Improv &amp; Sketch',
+    desc: 'Historic comedy theater and school that trained comedy legends for decades with nightly revues.',
+    img: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800&auto=format&fit=crop',
+    url: '/chicago/comedy',
+    cta: 'View Live Shows →'
+  },
+  {
+    title: 'Circuit of the Americas',
+    loc: 'Austin, TX',
+    badge: '🏁 Grand Prix Circuit',
+    desc: 'World-class 3.4-mile FIA Grade 1 circuit hosting Formula 1, NASCAR, and MotoGP.',
+    img: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop',
+    url: '/austin/racing',
+    cta: 'View Track Schedule →'
+  },
+  {
+    title: 'Soho Theatre',
+    loc: 'Soho · London, UK',
+    badge: '🎭 Comedy &amp; Drama',
+    desc: 'Dean Street powerhouse producing innovative comedy, cabaret, and groundbreaking contemporary theatre.',
+    img: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop',
+    url: '/london/comedy',
+    cta: 'View Live Shows →'
+  },
+  {
+    title: 'Colorado National Speedway',
+    loc: 'Dacono, CO · High Plains',
+    badge: '🏁 NASCAR Short Track',
+    desc: 'High-banked 3/8-mile asphalt oval hosting NASCAR Advance Auto Parts Weekly racing.',
+    img: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop',
+    url: '/track/colorado-national-speedway',
+    cta: 'View Race Schedule →'
+  }
+];
+
 module.exports = (req, res) => {
   res.setHeader('content-type', 'text/html; charset=utf-8');
 
@@ -69,6 +458,16 @@ module.exports = (req, res) => {
     lat: ipLat,
     lon: ipLon
   } : null;
+
+  const initialCity = urlLocation || serverGeo || KNOWN_CITIES.denver;
+  const initialCityName = initialCity.city || 'Denver';
+  const initialCityLabel = initialCity.locationName || initialCityName;
+  const initialCitySlug = (initialCityName || 'denver').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+  const isCuratedInitial = Boolean(CITY_DISCOVERY[initialCitySlug]);
+  const initialDiscovery = CITY_DISCOVERY[initialCitySlug] || {
+    venues: FEATURED_ICONIC_VENUES,
+    neighborhoods: []
+  };
 
   res.end(`<!doctype html>
 <html lang="en">
@@ -1098,8 +1497,8 @@ module.exports = (req, res) => {
               <span>Hyperlocal Radar Active</span>
             </div>
             <div class="menu-divider"></div>
-            <a href="/denver/comedy" class="menu-item" role="menuitem">Denver Comedy Guide</a>
-            <a href="/denver/racing" class="menu-item" role="menuitem">Denver Track Guide</a>
+            <a id="navComedyGuide" href="/${initialCitySlug}/comedy" class="menu-item" role="menuitem">${esc(initialCityName)} Comedy Guide</a>
+            <a id="navTrackGuide" href="/${initialCitySlug}/racing" class="menu-item" role="menuitem">${esc(initialCityName)} Track Guide</a>
             <a href="/admin/pilot-racing" class="menu-item" role="menuitem">Track Promoter Portal</a>
           </div>
         </div>
@@ -1112,7 +1511,7 @@ module.exports = (req, res) => {
         <div class="radar-lock-bar">
           <span class="radar-status-label">Radar locked:</span>
           <button id="locIndicatorBtn" class="loc-indicator-btn" type="button" aria-expanded="false" title="Click to change city or search">
-            <span id="activeCityLabel">Denver, CO</span>
+            <span id="activeCityLabel">${esc(initialCityLabel)}</span>
             <span class="dropdown-arrow">▾</span>
           </button>
           <button id="locBtn" class="btn-loc-sm" title="Detect your current GPS location">
@@ -1213,7 +1612,7 @@ module.exports = (req, res) => {
             <div class="community-promo-banner">
               <span>🎤 Are you a comedian, show host, or venue manager?</span>
               <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <a id="comedyGuideLink" href="/denver/comedy" style="color:var(--accent); font-weight:700; text-decoration:none;">Denver Comedy Guide ↗</a>
+                <a id="comedyGuideLink" href="/${initialCitySlug}/comedy" style="color:var(--accent); font-weight:700; text-decoration:none;">${esc(initialCityName)} Comedy Guide ↗</a>
                 <a href="/submit-comedy" style="color:var(--primary); font-weight:700; text-decoration:none;">Submit or edit show without logging in →</a>
               </div>
             </div>
@@ -1232,7 +1631,7 @@ module.exports = (req, res) => {
             <div class="community-promo-banner racing-promo-banner">
               <span>🏁 Grassroots car racing radar with real-time rainout &amp; weather tracking</span>
               <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <a id="racingGuideLink" href="/denver/racing" style="color:var(--radar-cyan); font-weight:700; text-decoration:none;">Denver Track Guide ↗</a>
+                <a id="racingGuideLink" href="/${initialCitySlug}/racing" style="color:var(--radar-cyan); font-weight:700; text-decoration:none;">${esc(initialCityName)} Track Guide ↗</a>
                 <a href="/admin/pilot-racing" style="color:var(--primary); font-weight:700; text-decoration:none;">Track Promoter Portal →</a>
               </div>
             </div>
@@ -1297,138 +1696,72 @@ module.exports = (req, res) => {
     <div id="radar"></div>
 
     <!-- 1. Local Stages, Clubs & Speedways Showcase -->
-    <section class="discovery-section">
+    <section class="discovery-section" id="venuesSection">
       <div class="section-head">
-        <h2>🏛️ Local Stages, Clubs &amp; Speedways</h2>
-        <span class="subhead">Verified official box offices, schedules &amp; tickets</span>
+        <h2 id="venuesHeading">${isCuratedInitial ? '🏛️ Local Stages, Clubs &amp; Speedways' : '🏛️ Featured Stages &amp; Iconic Venues'}</h2>
+        <span class="subhead" id="venuesSubhead">${isCuratedInitial ? `Verified official box offices, schedules &amp; tickets near ${esc(initialCityName)}` : 'Renowned live performance spaces &amp; legendary tracks'}</span>
       </div>
-      <div class="venues-grid">
-        <a class="venue-spot-card" href="/venue/comedy-works-downtown">
-          <div class="venue-spot-img" style="background-image: url('https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&auto=format&fit=crop');">
-            <span class="venue-spot-badge">🎤 Landmark Club</span>
+      <div class="venues-grid" id="venuesGrid">
+        ${initialDiscovery.venues.map(v => `
+        <a class="venue-spot-card" href="${esc(v.url)}">
+          <div class="venue-spot-img" style="background-image: url('${esc(v.img)}');">
+            <span class="venue-spot-badge">${esc(v.badge)}</span>
           </div>
           <div class="venue-spot-body">
-            <h3 class="venue-spot-title">Comedy Works Downtown</h3>
-            <div class="venue-spot-meta">📍 Larimer Square · Denver, CO</div>
-            <p class="venue-spot-desc">Legendary underground comedy room renowned nationwide for low ceilings, intimate listening, and top touring comics.</p>
-            <span class="venue-spot-cta">View Live Shows &amp; Tickets →</span>
+            <h3 class="venue-spot-title">${esc(v.title)}</h3>
+            <div class="venue-spot-meta">📍 ${esc(v.loc)}</div>
+            <p class="venue-spot-desc">${esc(v.desc)}</p>
+            <span class="venue-spot-cta">${v.cta || 'View Live Shows &amp; Tickets →'}</span>
           </div>
-        </a>
-
-        <a class="venue-spot-card" href="/track/colorado-national-speedway">
-          <div class="venue-spot-img" style="background-image: url('https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop');">
-            <span class="venue-spot-badge">🏁 NASCAR Short Track</span>
-          </div>
-          <div class="venue-spot-body">
-            <h3 class="venue-spot-title">Colorado National Speedway</h3>
-            <div class="venue-spot-meta">📍 Dacono, CO · High Plains</div>
-            <p class="venue-spot-desc">High-banked 3/8-mile asphalt oval hosting NASCAR Advance Auto Parts Weekly racing, Super Late Models, and Figure-8s.</p>
-            <span class="venue-spot-cta">View Race Schedule &amp; Weather →</span>
-          </div>
-        </a>
-
-        <a class="venue-spot-card" href="/venue/rise-comedy">
-          <div class="venue-spot-img" style="background-image: url('https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800&auto=format&fit=crop');">
-            <span class="venue-spot-badge">🎭 Improv &amp; Stand-Up</span>
-          </div>
-          <div class="venue-spot-body">
-            <h3 class="venue-spot-title">RISE Comedy</h3>
-            <div class="venue-spot-meta">📍 RiNo / Ballpark · Denver, CO</div>
-            <p class="venue-spot-desc">Artist-driven comedy theater and training hub hosting nightly showcases, improv troupes, open mics, and musical comedy.</p>
-            <span class="venue-spot-cta">View Live Shows &amp; Tickets →</span>
-          </div>
-        </a>
-
-        <a class="venue-spot-card" href="/track/i-76-speedway">
-          <div class="venue-spot-img" style="background-image: url('https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=800&auto=format&fit=crop');">
-            <span class="venue-spot-badge">🏁 Dirt Oval</span>
-          </div>
-          <div class="venue-spot-body">
-            <h3 class="venue-spot-title">I-76 Speedway</h3>
-            <div class="venue-spot-meta">📍 Fort Morgan, CO</div>
-            <p class="venue-spot-desc">Quarter-mile semi-banked dirt clay oval featuring IMCA Modifieds, 305 Sprint Cars, and Saturday night stock cars under the lights.</p>
-            <span class="venue-spot-cta">View Race Schedule &amp; Weather →</span>
-          </div>
-        </a>
-
-        <a class="venue-spot-card" href="/venue/denver-comedy-underground">
-          <div class="venue-spot-img" style="background-image: url('https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800&auto=format&fit=crop');">
-            <span class="venue-spot-badge">🎤 Indie Basement</span>
-          </div>
-          <div class="venue-spot-body">
-            <h3 class="venue-spot-title">Denver Comedy Underground</h3>
-            <div class="venue-spot-meta">📍 Capitol Hill · Denver, CO</div>
-            <p class="venue-spot-desc">Cap Hill subterranean independent comedy haven with national touring headliners, local comics, and intimate basement energy.</p>
-            <span class="venue-spot-cta">View Live Shows &amp; Tickets →</span>
-          </div>
-        </a>
-
-        <a class="venue-spot-card" href="/venue/comedy-works-south">
-          <div class="venue-spot-img" style="background-image: url('https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop');">
-            <span class="venue-spot-badge">🎤 Comedy Theater</span>
-          </div>
-          <div class="venue-spot-body">
-            <h3 class="venue-spot-title">Comedy Works South</h3>
-            <div class="venue-spot-meta">📍 Landmark · Greenwood Village, CO</div>
-            <p class="venue-spot-desc">Spacious stadium-style sister theater in the Denver Tech Center hosting major national headliners and full dinner service.</p>
-            <span class="venue-spot-cta">View Live Shows &amp; Tickets →</span>
-          </div>
-        </a>
+        </a>`).join('')}
       </div>
     </section>
 
     <!-- 2. Curated Guides & Special Radars -->
-    <section class="discovery-section">
+    <section class="discovery-section" id="guidesSection">
       <div class="section-head">
-        <h2>🧭 Curated Discovery Guides</h2>
-        <span class="subhead">Explore specialized local event directories</span>
+        <h2 id="guidesHeading">🧭 Curated Discovery Guides</h2>
+        <span class="subhead" id="guidesSubhead">Explore specialized local event directories for ${esc(initialCityName)}</span>
       </div>
-      <div class="guides-grid">
-        <a class="guide-box" href="/denver/comedy">
+      <div class="guides-grid" id="guidesGrid">
+        <a class="guide-box" id="guideComedyCard" href="/${initialCitySlug}/comedy" onclick="if (!event.ctrlKey && !event.metaKey) { event.preventDefault(); selectDiscoveryCategory('comedy'); }">
           <div class="guide-box-icon">🎤</div>
           <div class="guide-box-title">Stand-Up Comedy Radar</div>
           <div class="guide-box-desc">Tonight's club headliners, indie showcases, and free open mic sign-up rooms.</div>
-          <div class="guide-box-link">Explore Comedy Guide →</div>
+          <div class="guide-box-link" id="guideComedyLinkText">Explore Comedy Guide →</div>
         </a>
 
-        <a class="guide-box" href="/denver/racing">
+        <a class="guide-box" id="guideRacingCard" href="/${initialCitySlug}/racing" onclick="if (!event.ctrlKey && !event.metaKey) { event.preventDefault(); selectDiscoveryCategory('racing'); }">
           <div class="guide-box-icon">🏁</div>
           <div class="guide-box-title">Grassroots Motorsports</div>
           <div class="guide-box-desc">Dirt ovals, asphalt short tracks, and drag strips with real-time weather &amp; rainout tracking.</div>
-          <div class="guide-box-link">Explore Track Guide →</div>
+          <div class="guide-box-link" id="guideRacingLinkText">Explore Track Guide →</div>
         </a>
 
-        <a class="guide-box" href="/denver/music">
+        <a class="guide-box" id="guideMusicCard" href="/${initialCitySlug}/music" onclick="if (!event.ctrlKey && !event.metaKey) { event.preventDefault(); selectDiscoveryCategory('music'); }">
           <div class="guide-box-icon">🎵</div>
           <div class="guide-box-title">Live Music &amp; Concerts</div>
           <div class="guide-box-desc">Indie rock stages, jazz sessions, acoustic gigs, and outdoor concert amphitheaters.</div>
-          <div class="guide-box-link">Explore Music Radar →</div>
+          <div class="guide-box-link" id="guideMusicLinkText">Explore Music Radar →</div>
         </a>
 
-        <a class="guide-box" href="/denver/free">
+        <a class="guide-box" id="guideFreeCard" href="/${initialCitySlug}/free" onclick="if (!event.ctrlKey && !event.metaKey) { event.preventDefault(); selectDiscoveryCategory('free'); }">
           <div class="guide-box-icon">🎟️</div>
           <div class="guide-box-title">Free Things to Do</div>
           <div class="guide-box-desc">Community markets, gallery walks, library programs, and open public gatherings.</div>
-          <div class="guide-box-link">Explore Free Events →</div>
+          <div class="guide-box-link" id="guideFreeLinkText">Explore Free Events →</div>
         </a>
       </div>
     </section>
 
     <!-- 3. Hyperlocal Neighborhood Explorer -->
-    <section class="discovery-section">
+    <section class="discovery-section" id="neighborhoodSection" style="${initialDiscovery.neighborhoods.length ? '' : 'display:none;'}">
       <div class="section-head">
         <h2>📍 Explore by Neighborhood</h2>
-        <span class="subhead">Find events within walking or transit distance</span>
+        <span class="subhead" id="neighborhoodSubhead">Find events in ${esc(initialCityName)} within walking or transit distance</span>
       </div>
       <div class="neighborhoods-wrap" id="neighborhoodChips">
-        <button class="neighborhood-chip" onclick="filterNeighborhood('LoDo')">LoDo</button>
-        <button class="neighborhood-chip" onclick="filterNeighborhood('RiNo')">RiNo Arts District</button>
-        <button class="neighborhood-chip" onclick="filterNeighborhood('Capitol Hill')">Capitol Hill</button>
-        <button class="neighborhood-chip" onclick="filterNeighborhood('Highlands')">Highlands</button>
-        <button class="neighborhood-chip" onclick="filterNeighborhood('South Broadway')">South Broadway / Baker</button>
-        <button class="neighborhood-chip" onclick="filterNeighborhood('Cherry Creek')">Cherry Creek</button>
-        <button class="neighborhood-chip" onclick="filterNeighborhood('Boulder')">Boulder / Pearl St</button>
-        <button class="neighborhood-chip" onclick="filterNeighborhood('Golden')">Historic Golden</button>
+        ${initialDiscovery.neighborhoods.map(n => `<button class="neighborhood-chip" onclick="filterNeighborhood('${esc(n).replace(/'/g, "\\'")}')">${esc(n)}</button>`).join('')}
       </div>
     </section>
 
@@ -1520,6 +1853,8 @@ module.exports = (req, res) => {
     const SERVER_GEO = ${JSON.stringify(serverGeo)};
     const URL_LOCATION = ${JSON.stringify(urlLocation)};
     const KNOWN_CITIES = ${JSON.stringify(KNOWN_CITIES)};
+    const CITY_DISCOVERY = ${JSON.stringify(CITY_DISCOVERY)};
+    const FEATURED_ICONIC_VENUES = ${JSON.stringify(FEATURED_ICONIC_VENUES)};
 
     const DEFAULT_DENVER = KNOWN_CITIES['denver'];
 
@@ -1639,12 +1974,176 @@ module.exports = (req, res) => {
         S.neighborhood = name;
       }
       document.querySelectorAll('.neighborhood-chip').forEach(b => {
-        b.style.borderColor = (b.textContent.includes(S.neighborhood) && Boolean(S.neighborhood)) ? 'var(--primary)' : '';
-        b.style.color = (b.textContent.includes(S.neighborhood) && Boolean(S.neighborhood)) ? '#fff' : '';
+        const isMatch = b.textContent.trim() === S.neighborhood && Boolean(S.neighborhood);
+        b.style.borderColor = isMatch ? 'var(--primary)' : '';
+        b.style.color = isMatch ? '#fff' : '';
       });
       const feedEl = $('feed');
       if (feedEl) feedEl.scrollIntoView({ behavior: 'smooth' });
       renderFeed();
+    }
+
+    function getCitySlug(name) {
+      return String(name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+    }
+
+    function selectDiscoveryCategory(cat) {
+      S.category = cat;
+      if ($('moreCategoriesRow') && ['civic', 'arts', 'festival', 'outdoor', 'free'].includes(cat)) {
+        S.moreCategoriesExpanded = true;
+      }
+      initControls();
+      const feedEl = $('feed');
+      if (feedEl) feedEl.scrollIntoView({ behavior: 'smooth' });
+      renderFeed();
+    }
+
+    function renderVenuesGrid(venues) {
+      const vGrid = $('venuesGrid');
+      if (!vGrid) return;
+      vGrid.innerHTML = (venues || []).map(function(v) {
+        return '<a class="venue-spot-card" href="' + esc(v.url) + '">' +
+          '<div class="venue-spot-img" style="background-image: url(\'' + esc(v.img) + '\');">' +
+            '<span class="venue-spot-badge">' + esc(v.badge) + '</span>' +
+          '</div>' +
+          '<div class="venue-spot-body">' +
+            '<h3 class="venue-spot-title">' + esc(v.title) + '</h3>' +
+            '<div class="venue-spot-meta">📍 ' + esc(v.loc) + '</div>' +
+            '<p class="venue-spot-desc">' + esc(v.desc) + '</p>' +
+            '<span class="venue-spot-cta">' + (v.cta || 'View Live Shows &amp; Tickets →') + '</span>' +
+          '</div>' +
+        '</a>';
+      }).join('');
+    }
+
+    function updateLocationDiscovery(loc) {
+      if (!loc) return;
+      const cityName = loc.city || 'Nearby';
+      const locName = loc.locationName || cityName;
+      const slug = getCitySlug(cityName);
+
+      // 1. Header & Active City
+      const labelEl = $('activeCityLabel');
+      if (labelEl) labelEl.textContent = locName;
+
+      // 2. Navigation Dropdown Links
+      const navComedy = $('navComedyGuide');
+      if (navComedy) {
+        navComedy.href = '/' + slug + '/comedy';
+        navComedy.textContent = (CITY_DISCOVERY[slug] ? CITY_DISCOVERY[slug].name : cityName) + ' Comedy Guide';
+      }
+      const navTrack = $('navTrackGuide');
+      if (navTrack) {
+        navTrack.href = '/' + slug + '/racing';
+        navTrack.textContent = (CITY_DISCOVERY[slug] ? CITY_DISCOVERY[slug].name : cityName) + ' Track Guide';
+      }
+
+      // 3. Filters Drawer Links
+      const fComedy = $('comedyGuideLink');
+      if (fComedy) {
+        fComedy.href = '/' + slug + '/comedy';
+        fComedy.textContent = (CITY_DISCOVERY[slug] ? CITY_DISCOVERY[slug].name : cityName) + ' Comedy Guide ↗';
+      }
+      const fRacing = $('racingGuideLink');
+      if (fRacing) {
+        fRacing.href = '/' + slug + '/racing';
+        fRacing.textContent = (CITY_DISCOVERY[slug] ? CITY_DISCOVERY[slug].name : cityName) + ' Track Guide ↗';
+      }
+      const emptyRLink = $('emptyRacingGuideLink');
+      if (emptyRLink) {
+        emptyRLink.href = '/' + slug + '/racing';
+      }
+
+      // 4. Curated Discovery Guides Section
+      const gSub = $('guidesSubhead');
+      if (gSub) gSub.innerHTML = 'Explore specialized local event directories for ' + esc(cityName);
+
+      const guideMap = [
+        { id: 'guideComedyCard', linkId: 'guideComedyLinkText', path: '/comedy', linkText: 'Explore Comedy Guide →' },
+        { id: 'guideRacingCard', linkId: 'guideRacingLinkText', path: '/racing', linkText: 'Explore Track Guide →' },
+        { id: 'guideMusicCard', linkId: 'guideMusicLinkText', path: '/music', linkText: 'Explore Music Radar →' },
+        { id: 'guideFreeCard', linkId: 'guideFreeLinkText', path: '/free', linkText: 'Explore Free Events →' }
+      ];
+      guideMap.forEach(function(g) {
+        const card = $(g.id);
+        if (card) {
+          card.href = '/' + slug + g.path;
+          const lt = $(g.linkId);
+          if (lt) lt.textContent = g.linkText;
+        }
+      });
+
+      // 5. Neighborhood Explorer
+      const neighSec = $('neighborhoodSection');
+      const neighChips = $('neighborhoodChips');
+      const neighSub = $('neighborhoodSubhead');
+
+      let nList = [];
+      if (CITY_DISCOVERY[slug] && CITY_DISCOVERY[slug].neighborhoods) {
+        nList = CITY_DISCOVERY[slug].neighborhoods;
+      } else if (S.events && S.events.length > 0) {
+        const set = new Set();
+        S.events.forEach(function(e) {
+          if (e.neighborhood && String(e.neighborhood).trim()) {
+            set.add(String(e.neighborhood).trim());
+          }
+        });
+        nList = Array.from(set).slice(0, 10);
+      }
+
+      if (nList.length > 0) {
+        if (neighSec) neighSec.style.display = 'block';
+        if (neighSub) neighSub.textContent = 'Find events in ' + cityName + ' within walking or transit distance';
+        if (neighChips) {
+          neighChips.innerHTML = nList.map(function(n) {
+            const isActive = S.neighborhood === n;
+            const style = isActive ? 'border-color:var(--primary); color:#fff;' : '';
+            return '<button class="neighborhood-chip" style="' + style + '" onclick="filterNeighborhood(\'' + esc(n).replace(/'/g, "\\'") + '\')">' + esc(n) + '</button>';
+          }).join('');
+        }
+      } else {
+        if (neighSec) neighSec.style.display = 'none';
+      }
+
+      // 6. Stages & Venues Section
+      const vHead = $('venuesHeading');
+      const vSub = $('venuesSubhead');
+      const vGrid = $('venuesGrid');
+
+      if (CITY_DISCOVERY[slug] && CITY_DISCOVERY[slug].venues) {
+        if (vHead) vHead.innerHTML = '🏛️ Local Stages, Clubs &amp; Speedways';
+        if (vSub) vSub.innerHTML = 'Verified official box offices, schedules &amp; tickets near ' + esc(cityName);
+        if (vGrid) renderVenuesGrid(CITY_DISCOVERY[slug].venues);
+      } else {
+        let dynamicVenues = [];
+        if (S.events && S.events.length > 0) {
+          const seenV = new Set();
+          S.events.forEach(function(e) {
+            if (e.venue && !seenV.has(e.venue) && seenV.size < 6) {
+              seenV.add(e.venue);
+              dynamicVenues.push({
+                title: e.venue,
+                loc: (e.neighborhood ? (e.neighborhood + ' · ') : '') + (e.city || cityName),
+                badge: e.category ? (e.category.toUpperCase()) : 'LIVE VENUE',
+                desc: e.title ? ('Catch "' + e.title + '" and upcoming live events at ' + e.venue + '.') : ('Live shows and events at ' + e.venue + '.'),
+                img: e.image || getCategoryFallback(e.category),
+                url: e.detailsUrl || e.ticketUrl || ('/' + slug),
+                cta: 'View Live Shows →'
+              });
+            }
+          });
+        }
+
+        if (dynamicVenues.length >= 2) {
+          if (vHead) vHead.innerHTML = '🏛️ Local Stages &amp; Venues near ' + esc(cityName);
+          if (vSub) vSub.innerHTML = 'Live venues and show schedules discovered in ' + esc(cityName);
+          if (vGrid) renderVenuesGrid(dynamicVenues);
+        } else {
+          if (vHead) vHead.innerHTML = '🏛️ Featured Stages &amp; Iconic Venues';
+          if (vSub) vSub.innerHTML = 'Renowned live performance spaces &amp; legendary tracks';
+          if (vGrid) renderVenuesGrid(FEATURED_ICONIC_VENUES);
+        }
+      }
     }
 
     try {
@@ -2070,7 +2569,7 @@ module.exports = (req, res) => {
               <div style="margin:16px 0 10px; font-size:13.5px; color:var(--text-dim);">
                 Looking for short tracks, dirt ovals, or drag strips in this region?
                 <br>
-                <a href="\${(S.city || '').toLowerCase().includes('eau claire') ? '/eau-claire/racing' : '/denver/racing'}" id="emptyRacingGuideLink" style="color:var(--radar-cyan); font-weight:700; text-decoration:none; display:inline-block; margin-top:6px;">View Local Race Track &amp; Schedule Directory →</a>
+                <a href="/\${getCitySlug(S.city)}/racing" id="emptyRacingGuideLink" style="color:var(--radar-cyan); font-weight:700; text-decoration:none; display:inline-block; margin-top:6px;">View Local Race Track &amp; Schedule Directory →</a>
               </div>
             \` : ''}
             <div class="row" style="justify-content:center; margin-top:14px; gap:8px;">
@@ -2291,6 +2790,9 @@ module.exports = (req, res) => {
         }
         renderFeed();
         loadWeather();
+        if (!CITY_DISCOVERY[getCitySlug(S.city)]) {
+          updateLocationDiscovery(S);
+        }
       } catch (err) {
         $('status').textContent = 'Could not load events: ' + err.message;
       }
@@ -2445,25 +2947,10 @@ module.exports = (req, res) => {
       S.city = loc.city;
       S.locationName = loc.locationName || loc.city;
 
-      if ($('activeCityLabel')) $('activeCityLabel').textContent = S.locationName || S.city;
       if ($('locationDrawer')) $('locationDrawer').style.display = 'none';
       if ($('locIndicatorBtn')) $('locIndicatorBtn').setAttribute('aria-expanded', 'false');
 
-      const isEC = (S.city || '').toLowerCase().includes('eau claire');
-      const cLink = $('comedyGuideLink');
-      if (cLink) {
-        cLink.href = isEC ? '/eau-claire/comedy' : '/denver/comedy';
-        cLink.textContent = (isEC ? 'Eau Claire' : 'Denver') + ' Comedy Guide ↗';
-      }
-      const rLink = $('racingGuideLink');
-      if (rLink) {
-        rLink.href = isEC ? '/eau-claire/racing' : '/denver/racing';
-        rLink.textContent = (isEC ? 'Eau Claire' : 'Denver') + ' Track Guide ↗';
-      }
-      const emptyRLink = $('emptyRacingGuideLink');
-      if (emptyRLink) {
-        emptyRLink.href = isEC ? '/eau-claire/racing' : '/denver/racing';
-      }
+      updateLocationDiscovery(loc);
 
       // Unselect standard preset buttons
       ['presetDenver', 'presetLondon', 'presetNewYork', 'presetTokyo', 'presetParis', 'presetBoulder', 'presetGolden', 'presetAurora'].forEach(id => {
@@ -2628,6 +3115,7 @@ module.exports = (req, res) => {
     $('closeDetail').onclick = () => $('detailDlg').close();
 
     initControls();
+    updateLocationDiscovery(initLoc);
 
     if (initLoc.pendingGeocode) {
       // Asynchronously resolve unknown city coordinates from ?city=

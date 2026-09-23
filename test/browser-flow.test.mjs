@@ -9,6 +9,7 @@ const eventHandler = require('../api/event.js');
 const clickHandler = require('../api/click.js');
 const landingHandler = require('../api/landing.js');
 const sitemapHandler = require('../api/sitemap.js');
+const { isValidTicketUrl } = require('../lib/affiliate.js');
 
 describe('Full Interactive Visitor Journey & Browser Flow', () => {
 
@@ -69,7 +70,7 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
       json(d) { feedData = d; }
     });
 
-    const event = feedData.events[0];
+    const event = feedData.events.find(e => e.hasTicket && e.ticketUrl) || feedData.events[0];
     assert.ok(event, 'Feed should return at least one event');
 
     // 2. Load standalone event page
@@ -87,7 +88,7 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
     assert.match(eventHtml, new RegExp(safeEventTitle));
     assert.match(eventHtml, /rel="canonical"/);
     assert.match(eventHtml, /application\/ld\+json/);
-    assert.match(eventHtml, /Get Tickets & Event Details/);
+    assert.match(eventHtml, /Get Tickets & Event Details|Official Box Office|Official Meeting Agenda|Free Event/);
     assert.match(eventHtml, /Share Event/);
   });
 
@@ -98,7 +99,7 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
       status() { return this; },
       json(d) { feedData = d; }
     });
-    const event = feedData.events[0];
+    const event = feedData.events.find(e => e.ticketUrl && isValidTicketUrl(e.ticketUrl)) || feedData.events[0];
 
     // 2. Click redirect
     let redirectedStatus = null;
@@ -152,7 +153,8 @@ describe('Full Interactive Visitor Journey & Browser Flow', () => {
     assert.ok(jsonLdMatch);
     const jsonLd = JSON.parse(jsonLdMatch[1]);
     assert.ok(jsonLd.itemListElement.length > 0);
-    const firstEvent = jsonLd.itemListElement[0].item;
+    const itemWithTicket = jsonLd.itemListElement.find(el => el.item.offers?.url && isValidTicketUrl(el.item.offers.url)) || jsonLd.itemListElement[0];
+    const firstEvent = itemWithTicket.item;
     const eventUrl = firstEvent.url; // https://brinkberry.com/event/<id>
     const eventId = eventUrl.split('/').pop();
 

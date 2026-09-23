@@ -164,6 +164,89 @@ describe('Homepage Hero Redesign & Streamlined Discovery', () => {
     assert.match(output, /onerror="this\.onerror=null; this\.src=getCategoryFallback/);
     assert.doesNotMatch(output, /class="card-no-img"/);
   });
+
+  test('dynamically adapts discovery sections for other curated cities (e.g. London)', () => {
+    let output = '';
+    const res = {
+      setHeader: () => {},
+      end: (content) => { output = content; }
+    };
+    homeHandler({ url: '/?city=london', headers: {} }, res);
+
+    // Active city label reflects London
+    assert.match(output, /<span id="activeCityLabel">London, UK<\/span>/);
+
+    // Stages showcase reflects London stages in venuesGrid
+    const venuesMarkup = output.split('id="venuesGrid">')[1].split('</section>')[0];
+    assert.match(venuesMarkup, /Soho Theatre/);
+    assert.match(venuesMarkup, /Top Secret Comedy Club/);
+    assert.doesNotMatch(venuesMarkup, /Comedy Works Downtown/);
+
+    // Curated discovery guides link to London
+    assert.match(output, /href="\/london\/comedy"/);
+    assert.match(output, /href="\/london\/racing"/);
+
+    // Neighborhoods explorer reflects London neighborhoods in neighborhoodChips
+    const neighborhoodMarkup = output.split('id="neighborhoodChips">')[1].split('</section>')[0];
+    assert.match(neighborhoodMarkup, /Soho/);
+    assert.match(neighborhoodMarkup, /Covent Garden/);
+    assert.match(neighborhoodMarkup, /Camden/);
+    assert.doesNotMatch(neighborhoodMarkup, /LoDo/);
+    assert.doesNotMatch(neighborhoodMarkup, /RiNo Arts District/);
+  });
+
+  test('adapts to non-curated cities (e.g. Phoenix) without displaying Denver neighborhoods or Denver-only stages', () => {
+    let output = '';
+    const res = {
+      setHeader: () => {},
+      end: (content) => { output = content; }
+    };
+    homeHandler({
+      url: '/',
+      headers: {
+        'x-vercel-ip-city': 'Phoenix',
+        'x-vercel-ip-country-region': 'AZ',
+        'x-vercel-ip-latitude': '33.4484',
+        'x-vercel-ip-longitude': '-112.0740'
+      }
+    }, res);
+
+    // Active city label reflects visitor's detected IP city
+    assert.match(output, /<span id="activeCityLabel">Phoenix, AZ<\/span>/);
+
+    // Shows Featured Stages & Iconic Venues with explicit city tagging
+    assert.match(output, /Featured Stages &amp; Iconic Venues/);
+    const venuesMarkup = output.split('id="venuesGrid">')[1].split('</section>')[0];
+    assert.match(venuesMarkup, /Comedy Works Downtown/);
+    assert.match(venuesMarkup, /Larimer Square · Denver, CO/);
+    assert.match(venuesMarkup, /Comedy Cellar/);
+    assert.match(venuesMarkup, /Greenwich Village · New York, NY/);
+
+    // Discovery guides link to the detected city
+    assert.match(output, /href="\/phoenix\/comedy"/);
+    assert.match(output, /href="\/phoenix\/racing"/);
+
+    // Neighborhood section is hidden by default for non-curated cities (never shows LoDo to Phoenix users)
+    assert.match(output, /id="neighborhoodSection" style="display:none;"/);
+    const neighborhoodMarkup = output.split('id="neighborhoodChips">')[1].split('</section>')[0];
+    assert.doesNotMatch(neighborhoodMarkup, /LoDo/);
+    assert.doesNotMatch(neighborhoodMarkup, /RiNo Arts District/);
+  });
+
+  test('client script defines updateLocationDiscovery and binds dynamic location updates', () => {
+    let output = '';
+    const res = {
+      setHeader: () => {},
+      end: (content) => { output = content; }
+    };
+    homeHandler({ url: '/', headers: {} }, res);
+
+    assert.match(output, /function updateLocationDiscovery/);
+    assert.match(output, /function renderVenuesGrid/);
+    assert.match(output, /function selectDiscoveryCategory/);
+    assert.match(output, /updateLocationDiscovery\(initLoc\)/);
+    assert.match(output, /updateLocationDiscovery\(loc\)/);
+  });
 });
 
 
