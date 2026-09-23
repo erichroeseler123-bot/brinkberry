@@ -1582,8 +1582,8 @@ module.exports = (req, res) => {
         <!-- Primary Action Strip: Quick Time Selection & Filters Button -->
         <div class="hero-actions-bar">
           <div class="quick-time-toggle" id="quickTimeToggle" role="group" aria-label="Quick time selection">
-            <button type="button" class="quick-time-btn active" data-time="tonight">Tonight</button>
-            <button type="button" class="quick-time-btn" data-time="48h">Next 48 Hours</button>
+            <button type="button" class="quick-time-btn" data-time="tonight">Tonight</button>
+            <button type="button" class="quick-time-btn active" data-time="48h">Next 48 Hours</button>
           </div>
           <button id="filtersToggleBtn" class="filters-toggle-btn" type="button" aria-expanded="false" aria-controls="advancedFiltersDrawer">
             <span>⚙️ Filters</span>
@@ -1761,7 +1761,7 @@ module.exports = (req, res) => {
         <span class="subhead" id="neighborhoodSubhead">Find events in ${esc(initialCityName)} within walking or transit distance</span>
       </div>
       <div class="neighborhoods-wrap" id="neighborhoodChips">
-        ${initialDiscovery.neighborhoods.map(n => `<button class="neighborhood-chip" onclick="filterNeighborhood('${esc(n).replace(/'/g, "\\'")}')">${esc(n)}</button>`).join('')}
+        ${initialDiscovery.neighborhoods.map(n => `<button class="neighborhood-chip" data-neighborhood="${esc(n)}" onclick="filterNeighborhood(this.dataset.neighborhood)">${esc(n)}</button>`).join('')}
       </div>
     </section>
 
@@ -1926,7 +1926,7 @@ module.exports = (req, res) => {
       city: initLoc.city,
       locationName: initLoc.locationName || initLoc.city,
       radius: 25,
-      window: 'tonight',
+      window: '48h',
       mode: '',
       category: '',
       racingDiscipline: '',
@@ -2003,8 +2003,8 @@ module.exports = (req, res) => {
       if (!vGrid) return;
       vGrid.innerHTML = (venues || []).map(function(v) {
         return '<a class="venue-spot-card" href="' + esc(v.url) + '">' +
-          '<div class="venue-spot-img" style="background-image: url(\'' + esc(v.img) + '\');">' +
-            '<span class="venue-spot-badge">' + esc(v.badge) + '</span>' +
+          '<div class="venue-spot-img" style="background-image: url(' + esc(v.img) + ');">' +
+          '<span class="venue-spot-badge">' + esc(v.badge) + '</span>' +
           '</div>' +
           '<div class="venue-spot-body">' +
             '<h3 class="venue-spot-title">' + esc(v.title) + '</h3>' +
@@ -2098,7 +2098,7 @@ module.exports = (req, res) => {
           neighChips.innerHTML = nList.map(function(n) {
             const isActive = S.neighborhood === n;
             const style = isActive ? 'border-color:var(--primary); color:#fff;' : '';
-            return '<button class="neighborhood-chip" style="' + style + '" onclick="filterNeighborhood(\'' + esc(n).replace(/'/g, "\\'") + '\')">' + esc(n) + '</button>';
+            return '<button class="neighborhood-chip" style="' + style + '" data-neighborhood="' + esc(n) + '" onclick="filterNeighborhood(this.dataset.neighborhood)">' + esc(n) + '</button>';
           }).join('');
         }
       } else {
@@ -2746,6 +2746,7 @@ module.exports = (req, res) => {
         const qp = new URLSearchParams({
           lat: S.lat,
           lng: S.lon,
+          lon: S.lon,
           radius: S.radius,
           window: S.window,
           mode: S.mode,
@@ -2833,7 +2834,7 @@ module.exports = (req, res) => {
       const destUrl = e.detailsUrl || e.ticketUrl || '';
       const clickUrl = destUrl ? \`/api/click?url=\${encodeURIComponent(destUrl)}&eventId=\${encodeURIComponent(e.id)}&surface=detail_modal\` : \`/event/\${encodeURIComponent(e.id)}\`;
       $('detailBody').innerHTML = \`
-        <img src="' + esc(e.image || getCategoryFallback(e.category)) + '" alt="" onerror="this.onerror=null; this.src=getCategoryFallback(\'' + esc(e.category) + '\');" style="width:100%; max-height:240px; object-fit:cover; border-radius:12px; margin-bottom:14px;">
+        <img src="\${esc(e.image || getCategoryFallback(e.category))}" alt="" onerror="this.onerror=null; this.src=getCategoryFallback('\${esc(e.category)}');" style="width:100%; max-height:240px; object-fit:cover; border-radius:12px; margin-bottom:14px;">
         <h2 style="margin-top:0">\${esc(e.title)}</h2>
         <p style="color:var(--text-dim)">📍 \${esc(e.venue)}\${e.city ? ', ' + esc(e.city) : ''} \${e.distanceMiles != null ? ' · ' + e.distanceMiles.toFixed(1) + ' mi' : ''}</p>
         <p style="color:var(--text-dim)">⏰ \${esc(fmtTime(e.start))}</p>

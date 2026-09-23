@@ -1,6 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import homeHandler from '../api/home.js';
+import vm from 'node:vm';
 
 describe('Homepage Hero Redesign & Streamlined Discovery', () => {
   test('renders the streamlined "What’s happening near you?" headline and subtitle', () => {
@@ -246,6 +247,36 @@ describe('Homepage Hero Redesign & Streamlined Discovery', () => {
     assert.match(output, /function selectDiscoveryCategory/);
     assert.match(output, /updateLocationDiscovery\(initLoc\)/);
     assert.match(output, /updateLocationDiscovery\(loc\)/);
+  });
+
+  test('inline client script contains no syntax errors and defaults to All Events plus Next 48 Hours', () => {
+    let output = '';
+    const res = {
+      setHeader: () => {},
+      end: (content) => { output = content; }
+    };
+    homeHandler({ url: '/', headers: {} }, res);
+
+    // 1. Script extraction and syntax verification
+    const scriptMatch = output.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);
+    assert.ok(scriptMatch, 'Homepage must render main client script');
+    const code = scriptMatch[1];
+    
+    // Will throw if there is any syntax error (such as unexpected string or broken escaping)
+    assert.doesNotThrow(() => {
+      new vm.Script(code, { filename: 'inline-test.js' });
+    }, 'Inline script must parse cleanly without syntax errors');
+
+    // 2. Default filter is All Events (category: '') + Next 48 Hours (window: '48h')
+    assert.match(output, /window:\s*'48h'/);
+    assert.match(output, /category:\s*''/);
+    assert.match(output, /class="quick-time-btn active"\s+data-time="48h"/);
+    assert.match(output, /class="cat-btn active"\s+data-cat=""/);
+
+    // 3. Request uses correct latitude and longitude parameter names
+    assert.match(output, /lat:\s*S\.lat/);
+    assert.match(output, /lng:\s*S\.lon/);
+    assert.match(output, /lon:\s*S\.lon/);
   });
 });
 
