@@ -6,7 +6,8 @@
     "node": "24.x"
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "probe:nightly": "node scripts/run-pilot-onboarding.mjs"
   },
   "dependencies": {
     "@vercel/og": "^0.8.5",

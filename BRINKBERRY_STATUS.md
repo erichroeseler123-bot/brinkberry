@@ -61,33 +61,43 @@ Prior to this engineering run, an audit of the feed pipeline revealed four syste
 - **Quarantined Clean Comedy Candidate Inventory**: **751 clean MVP events** across 15 audited candidate venues in [`data/expansion-checkpoint.json`](file:///C:/Users/erich/Documents/Projects/brinkberry/data/expansion-checkpoint.json)
 - **Production Baseline Writes During Run**: **Strictly 0**
 - **Public-Feed Auto-Promotions**: **Strictly 0** (100% queue-isolated with `isDisplayable: false`)
-- **Test Suite Results**: **617 / 617 tests passed (100%)** across 187 test suites (`npm.cmd test`). All units, browser flows, dynamic providers, and new discovery tests pass cleanly.
+- **Test Suite Results**: **639 / 639 tests passed (100%)** across 197 test suites (`npm.cmd test`). All units, browser flows, dynamic providers, broad discovery tests, and the new autonomous community post system pass cleanly.
 
 ---
 
 ## 4. Key Implementation Details
 
 ### Files Modified & Created
-1. [`lib/freshness.js`](file:///C:/Users/erich/Documents/Projects/brinkberry/lib/freshness.js):
-   - Added explicit confirmation rules for `public_community_listing` and `official_government_calendar`.
-   - Added provenance timestamp fallbacks (`event.provenance?.fetchedAt`, `event.sourceEvidence?.fetchedAt`).
-2. [`lib/providers/normalizer.js`](file:///C:/Users/erich/Documents/Projects/brinkberry/lib/providers/normalizer.js):
-   - Added `civic` normalization covering city council, county board, school board, planning/zoning commissions, and public hearings.
-   - Expanded `community` normalization covering public libraries, maker workshops, repair clinics, flea markets, craft fairs, trivia, arcades, and bowling.
-   - Implemented `resolveSourceQualityLabel(event)` resolving all 6 required objective labels with review fallbacks.
-3. [`lib/providers/community-ics.js`](file:///C:/Users/erich/Documents/Projects/brinkberry/lib/providers/community-ics.js):
-   - Emits structured provenance, `hasTicket: false`, `sourceQualityLabel`, and `confirmationStatus`.
-   - Guards fallback parsing so mock/down network requests do not manufacture phantom events unless explicitly requested in testing.
-4. [`lib/providers/community-registry.js`](file:///C:/Users/erich/Documents/Projects/brinkberry/lib/providers/community-registry.js):
-   - Added municipal and library feeds across Denver, Eau Claire, Minneapolis, Austin, and New York.
+1. [`lib/community-posts/community-posts.js`](file:///C:/Users/erich/Documents/Projects/brinkberry/lib/community-posts/community-posts.js) [NEW]:
+   - Autonomous in-memory and disk-backed store for temporary public submissions.
+   - Immediate publishing with `Community submitted — not independently verified`.
+   - Broadcast radius scoping (Neighborhood 1–2 mi, Nearby 5–10 mi, Broad 25–50 mi).
+   - Rolling 48-hour discovery window and automatic expiration upon event conclusion.
+   - Privacy-safe address masking and coordinate jitter for house parties and private gatherings.
+   - Lightweight anti-abuse (sliding-window rate limiting, duplicate fingerprinting, content safety checks, public reporting).
+2. [`api/post.js`](file:///C:/Users/erich/Documents/Projects/brinkberry/api/post.js) [NEW]:
+   - `GET /post` and `GET /submit`: 60-second mobile-friendly submission flow.
+   - `POST /api/post`: Immediate publishing endpoint.
+   - `POST /api/post/report`: Public reporting endpoint.
+3. [`lib/freshness.js`](file:///C:/Users/erich/Documents/Projects/brinkberry/lib/freshness.js):
+   - Autonomous community post recognition (`isAutonomousCommunityPost: true` / `source: 'community_post'`), validating that user submissions are immediately displayable in discovery feeds without admin gating.
+4. [`lib/providers/normalizer.js`](file:///C:/Users/erich/Documents/Projects/brinkberry/lib/providers/normalizer.js):
+   - Added `Community submitted — not independently verified` label resolution.
+   - Expanded category normalizer for protests, house parties, pickup sports, and food pop-ups.
 5. [`lib/providers/engine.js`](file:///C:/Users/erich/Documents/Projects/brinkberry/lib/providers/engine.js):
-   - Integrated `resolveSourceQualityLabel` and multi-factor ranking scoring rarity, limited runs, seasonal events, and civic transparency.
-   - Added filter modes for `easy-to-miss`, `seasonal`, `civic`, and `community`.
-6. [`lib/affiliate.js`](file:///C:/Users/erich/Documents/Projects/brinkberry/lib/affiliate.js):
-   - Added civic and library domains (`eauclairewi.gov`, `minneapolismn.gov`, `austintexas.gov`, `nyc.gov`, etc.) to `ALLOWED_TICKET_HOSTS` to support safe outbound analytics redirection.
-7. [`api/home.js`](file:///C:/Users/erich/Documents/Projects/brinkberry/api/home.js):
-   - Added category buttons for `🏛️ Civic & Politics`, `📚 Community & Libraries`, and `🎡 Seasonal & Fairs`.
-   - Added CSS badges for source quality, rare return, seasonal, and easy-to-miss highlights.
+   - Integrated `getActiveCommunityPosts` into `executeHybridFeed`.
+   - Clamped distance filtering to each event's `broadcastRadiusMiles` (e.g. 2 miles for neighborhood events).
+6. [`api/router.js`](file:///C:/Users/erich/Documents/Projects/brinkberry/api/router.js):
+   - Routed `/post`, `/submit`, `/api/post`, `/api/post/report` to `api/post.js`.
+7. [`api/event.js`](file:///C:/Users/erich/Documents/Projects/brinkberry/api/event.js):
+   - Resolved `comm_post_` identifiers directly.
+   - Added `robots: noindex, nofollow`, community transparency banner, private gathering alert, and report button.
+8. [`api/home.js`](file:///C:/Users/erich/Documents/Projects/brinkberry/api/home.js):
+   - Added `+ Post an Event` link in header.
+   - Added client-side `✕ Not interested` dismissal button with `localStorage`-backed 48-hour TTL filtering in `renderFeed()`.
+   - Added styling for community-submitted badges and dismissal animations.
+9. [`test/community-post-system.test.mjs`](file:///C:/Users/erich/Documents/Projects/brinkberry/test/community-post-system.test.mjs) [NEW]:
+   - Comprehensive 22-test suite covering anonymous submissions, category normalization, radius scoping, private location masking, 48-hour expiration, duplicate detection, rate limiting, and feed integration.
    - Card footer renders dynamic action buttons (`Meeting Agenda →`, `Free Event →`, `View Details →`, `Get Tickets →`).
    - Detail modal renders dedicated neutral Civic Notice (non-partisan open meetings transparency notice) and Community Program panels.
    - Maintained `entryPathAll`, `entryPathComedy`, `entryPathRacing` IDs and tab semantics to ensure 100% backward compatibility.

@@ -24,6 +24,13 @@ async function getEvent(id) {
     const { getAllScheduledRaces } = require('../lib/racing/registry');
     return getAllScheduledRaces().find(r => r.id === id) || null;
   }
+  if (typeof id === 'string' && id.startsWith('comm_post_')) {
+    try {
+      const { getCommunityPostById } = require('../lib/community-posts/community-posts');
+      const post = getCommunityPostById(id);
+      if (post) return post;
+    } catch (_) {}
+  }
   if (typeof id === 'string' && id.startsWith('comm_')) {
     try {
       const { COMMUNITY_FEEDS } = require('../lib/providers/community-registry');
@@ -127,10 +134,14 @@ module.exports = async (req, res) => {
     }) : (e.gateTime ? `Gates ${e.gateTime} · Green Flag ${e.greenFlagTime || 'TBA'}` : 'Official Schedule');
     const desc = [e.venue_name, e.city, price, when].filter(Boolean).join(' · ');
     const og = `${ORIGIN}/card/${e.id}/svg`;
-    const safeTarget = e.ticket_url || e.ticketUrl || buildSafeAffiliateUrl(e.source || 'custom', e.canonical_url, e.id);
+    const safeTarget = e.ticket_url || e.ticketUrl || e.detailsUrl || buildSafeAffiliateUrl(e.source || 'custom', e.canonical_url, e.id);
     const clickUrl = `/api/click?url=${encodeURIComponent(safeTarget)}&eventId=${encodeURIComponent(e.id)}&surface=event_page`;
     const isOfficial = e.confirmationStatus === 'confirmed_by_official_calendar';
-    const btnLabel = isOfficial ? `Official Box Office (${price}) →` : 'Get Tickets & Event Details →';
+    const isCommunityPost = e.source === 'community_post' || e.isCommunityPost === true;
+    let btnLabel = isOfficial ? `Official Box Office (${price}) →` : 'Get Tickets & Event Details →';
+    if (isCommunityPost) {
+      btnLabel = safeTarget ? 'Visit Event Link →' : 'Free / Community Gathering';
+    }
 
     const jsonLd = JSON.stringify({
       '@context': 'https://schema.org',
@@ -177,6 +188,7 @@ module.exports = async (req, res) => {
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${esc(e.title)}">
   <meta name="twitter:description" content="${esc(desc)}">
+  ${isCommunityPost ? '<meta name="robots" content="noindex, nofollow">' : ''}
   <script type="application/ld+json">${jsonLd}</script>
   
   <!-- Impact.com / Trackonomics Publisher Tag -->
@@ -196,6 +208,8 @@ module.exports = async (req, res) => {
     .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
     .btn-ticket { display: inline-block; background: #ffb86b; color: #201000; padding: 14px 24px; border-radius: 999px; text-decoration: none; font-weight: 850; font-size: 16px; text-align: center; }
     .btn-share { display: inline-block; background: #1a1526; color: #fff; border: 1px solid #362e49; padding: 14px 20px; border-radius: 999px; font-weight: 700; font-size: 15px; cursor: pointer; }
+    .btn-report { display: inline-block; background: transparent; color: #8f85a3; border: 1px solid #2a2437; padding: 14px 20px; border-radius: 999px; font-size: 14px; cursor: pointer; }
+    .btn-report:hover { color: #ff2e63; border-color: #ff2e63; }
     .btn-ticket:hover { background: #ffa84d; }
     .hero-img { width: 100%; height: 260px; object-fit: cover; border-radius: 18px; margin: 16px 0; border: 1px solid #2a2437; }
   </style>
@@ -207,10 +221,25 @@ module.exports = async (req, res) => {
     <div>
       ${(e.category_tags || []).map(t => `<span class="badge">${esc(t)}</span>`).join('')}
       ${(e.vibe_labels || []).map(v => `<span class="badge" style="color:#ff809d">${esc(v)}</span>`).join('')}
+      ${isCommunityPost ? '<span class="badge" style="color:#ffb86b; background:rgba(255,184,107,0.15)">Community Submitted</span>' : ''}
     </div>
     <h1>${esc(e.title)}</h1>
 
-    ${e.confirmationStatus === 'confirmed_by_dual_official_sources' ? `
+    ${isCommunityPost ? `
+      <div style="background: rgba(255,184,107,0.08); border: 1px solid rgba(255,184,107,0.3); border-radius: 12px; padding: 14px 18px; margin: 16px 0;">
+        <p style="margin: 0; color: #ffb86b; font-size: 0.95rem; font-weight: 750;">
+          📢 Community submitted — not independently verified
+        </p>
+        <p style="margin: 6px 0 0; color: #d0c5df; font-size: 0.85rem; line-height: 1.45;">
+          This event was posted directly by a community organizer or attendee. Brinkberry does not endorse or certify submissions. Attend public or private gatherings at your own discretion.
+        </p>
+      </div>
+      ${e.isApproximateLocation ? `
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px 16px; margin: 12px 0; font-size: 13px; color: #ffdfba;">
+          🔒 <b>Private / Approximate Location:</b> The exact street address is not displayed publicly to preserve privacy.
+        </div>
+      ` : ''}
+    ` : e.confirmationStatus === 'confirmed_by_dual_official_sources' ? `
       <div style="background: rgba(100,223,223,0.1); border: 1px solid rgba(100,223,223,0.4); border-radius: 12px; padding: 12px 16px; margin: 16px 0;">
         <p style="margin: 0; color: #64dfdf; font-size: 0.95rem; font-weight: 700;">
           ✨ Confirmed by official venue and artist sources
@@ -226,16 +255,39 @@ module.exports = async (req, res) => {
 
     <div class="meta-box">
       <div class="meta-row"><b>When:</b> ${esc(when)}</div>
-      <div class="meta-row"><b>Where:</b> ${esc(e.venue_name)}${e.city ? `, ${esc(e.city)}` : ''}${e.neighborhood ? ` (${esc(e.neighborhood)})` : ''}</div>
-      ${e.venue_address ? `<div class="meta-row"><b>Address:</b> ${esc(e.venue_address)}</div>` : ''}
+      <div class="meta-row"><b>Where:</b> ${esc(e.venue_name || e.venue)}${e.city ? `, ${esc(e.city)}` : ''}${e.neighborhood ? ` (${esc(e.neighborhood)})` : ''}</div>
+      ${(e.venue_address && !e.isApproximateLocation) ? `<div class="meta-row"><b>Address:</b> ${esc(e.venue_address)}</div>` : ''}
       <div class="meta-row"><b>Admission:</b> ${esc(price)}</div>
+      ${e.contact ? `<div class="meta-row"><b>Contact / Host:</b> ${esc(e.contact)}</div>` : ''}
     </div>
     ${e.description ? `<div class="desc">${esc(e.description)}</div>` : ''}
     <div class="actions">
-      <a class="btn-ticket" href="${isOfficial ? esc(safeTarget) : esc(clickUrl)}" target="_blank" rel="noopener noreferrer">${btnLabel}</a>
+      ${safeTarget ? `<a class="btn-ticket" href="${isOfficial ? esc(safeTarget) : esc(clickUrl)}" target="_blank" rel="noopener noreferrer">${btnLabel}</a>` : ''}
       <button class="btn-share" id="shareBtn">Share Event</button>
-      <a class="btn-share" href="/card/${esc(e.id)}" target="_blank" style="text-decoration:none;">Social Card ↗</a>
+      ${isCommunityPost ? `<button class="btn-report" id="reportBtn">⚑ Report Post</button>` : `<a class="btn-share" href="/card/${esc(e.id)}" target="_blank" style="text-decoration:none;">Social Card ↗</a>`}
     </div>
+
+    ${isCommunityPost ? `
+      <script>
+        document.getElementById('reportBtn')?.addEventListener('click', async () => {
+          const reason = prompt('Reason for reporting this post (spam, scam, harassment, threat, illegal):');
+          if (!reason) return;
+          try {
+            const res = await fetch('/api/post/report', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ eventId: ${JSON.stringify(e.id)}, reason })
+            });
+            const data = await res.json();
+            if (data.success) {
+              alert('Thank you. This post has been reported for community review.');
+            }
+          } catch (_) {
+            alert('Unable to submit report right now.');
+          }
+        });
+      </script>
+    ` : ''}
 
     ${(e.sourceEvidence || (Array.isArray(e.sources) && e.sources.length > 0)) ? `
       <details style="margin-top: 36px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px 18px;">

@@ -43,6 +43,7 @@ const eventSubmissionsHandler = require('./event-submissions');
 const inboundEmailHandler = require('./inbound-email');
 const operationsDashboardHandler = require('./operations-dashboard');
 const submitHandler = require('./submit');
+const postHandler = require('./post');
 
 function wrapRes(res) {
   if (!res.status) {
@@ -159,7 +160,10 @@ module.exports = async (req, res) => {
       if (match) req.query.id = match[1];
       return adminApiHandler(req, res);
     }
-    if (p === '/submit' || p === '/for-venues' || p.startsWith('/api/submit')) {
+    if (p === '/post' || p === '/submit' || p === '/api/post' || p.startsWith('/api/post/')) {
+      return postHandler(req, res);
+    }
+    if (p === '/for-venues' || p.startsWith('/api/submit')) {
       return submitHandler(req, res);
     }
     if (p === '/submit-comedy' || p === '/api/comedy/submit') {

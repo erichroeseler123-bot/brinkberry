@@ -792,6 +792,9 @@ module.exports = (req, res) => {
     .btn-free-sm:hover { background: #33ebb0; }
 
     .source-quality-tag { font-size: 11px; font-weight: 700; background: rgba(106, 130, 251, 0.12); border: 1px solid rgba(106, 130, 251, 0.35); color: #a4b6ff; padding: 3px 8px; border-radius: 999px; }
+    .source-quality-tag.source-quality-community { background: rgba(255, 184, 107, 0.15); border-color: rgba(255, 184, 107, 0.4); color: #ffb86b; }
+    .btn-not-interested { background: transparent; border: 1px solid rgba(255, 255, 255, 0.08); color: #9a8fad; font-size: 11px; font-weight: 600; cursor: pointer; padding: 3px 7px; border-radius: 6px; transition: all 0.15s; }
+    .btn-not-interested:hover { background: rgba(255, 46, 99, 0.15); border-color: rgba(255, 46, 99, 0.35); color: #ff809d; }
     .easy-miss-tag { font-size: 11px; font-weight: 800; background: rgba(255, 46, 99, 0.15); border: 1px solid rgba(255, 46, 99, 0.4); color: #ff809d; padding: 3px 8px; border-radius: 999px; }
     .seasonal-tag { font-size: 11px; font-weight: 750; background: rgba(255, 184, 107, 0.15); border: 1px solid rgba(255, 184, 107, 0.35); color: #ffca85; padding: 3px 8px; border-radius: 999px; }
 
@@ -833,7 +836,8 @@ module.exports = (req, res) => {
   <div class="app">
     <header class="top">
       <a class="brand" href="/"><b>●</b> Brinkberry</a>
-      <div style="display:flex; align-items:center; gap:12px;">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <a href="/post" id="postEventBtn" style="color:#03291d; font-size:12.5px; font-weight:800; text-decoration:none; padding:5px 13px; border-radius:999px; background:var(--radar-cyan); display:inline-flex; align-items:center; gap:4px; box-shadow:0 0 10px rgba(0,230,153,0.3);">+ Post an Event</a>
         <a href="/submit-comedy" style="color:var(--primary); font-size:12.5px; font-weight:700; text-decoration:none; padding:5px 12px; border-radius:999px; border:1px solid rgba(255,184,107,0.3); background:rgba(255,184,107,0.08); display:inline-flex; align-items:center; gap:4px;">🎤 Submit Show</a>
         <div class="top-radar-indicator">
           <span class="pulse-dot"></span>
@@ -1567,7 +1571,40 @@ module.exports = (req, res) => {
         return;
       }
 
-      $('feed').innerHTML = '<div class="grid">' + S.events.map(e => \`
+      let hiddenMap = {};
+      try {
+        hiddenMap = JSON.parse(localStorage.getItem('bb_hidden_events') || '{}');
+      } catch (_) {}
+      const now = Date.now();
+      let pruned = false;
+      for (const k in hiddenMap) {
+        if (hiddenMap[k] < now) {
+          delete hiddenMap[k];
+          pruned = true;
+        }
+      }
+      if (pruned) {
+        try { localStorage.setItem('bb_hidden_events', JSON.stringify(hiddenMap)); } catch (_) {}
+      }
+
+      const visibleEvents = (S.events || []).filter(e => !hiddenMap[e.id]);
+
+      if (visibleEvents.length === 0) {
+        $('feed').innerHTML = \`
+          <div class="empty">
+            <h3>No visible events</h3>
+            <p>All matching events nearby are either past or dismissed with "Not interested".</p>
+            <div class="row" style="justify-content:center; margin-top:14px; gap:8px;">
+              <button onclick="localStorage.removeItem('bb_hidden_events'); renderFeed();" style="background:#191424; color:#fff">Reset Hidden Events</button>
+              <button onclick="S.radius=50; S.window='48h'; S.mode=''; initControls(); loadFeed();" style="background:var(--primary); color:var(--primary-dark); font-weight:800">
+                Search 50 Miles →
+              </button>
+            </div>
+          </div>\`;
+        return;
+      }
+
+      $('feed').innerHTML = '<div class="grid">' + visibleEvents.map(e => \`
         <article class="card \${e.onTheBrink ? 'brink' : ''}" data-id="\${e.id}">
           \${e.image ? \`
             <div class="card-img">
@@ -1588,7 +1625,7 @@ module.exports = (req, res) => {
             <div class="card-meta">⏰ \${esc(fmtTime(e.start))}\${e.distanceMiles != null ? ' · <b>' + e.distanceMiles.toFixed(1) + ' mi</b>' : ''}</div>
             <div class="why-tags">
               \${(e.whyThis || []).map(t => '<span class="why-tag">' + esc(t) + '</span>').join('')}
-              \${e.sourceQualityLabel ? '<span class="source-quality-tag">' + esc(e.sourceQualityLabel) + '</span>' : ''}
+              \${e.sourceQualityLabel ? '<span class="source-quality-tag ' + (e.sourceQualityLabel.includes('Community submitted') ? 'source-quality-community' : '') + '">' + esc(e.sourceQualityLabel) + '</span>' : ''}
               \${e.isEasyToMiss ? '<span class="easy-miss-tag">✨ Easy to Miss</span>' : ''}
               \${e.isSeasonal ? '<span class="seasonal-tag">🎡 Seasonal</span>' : ''}
               \${e.isRareReturn ? '<span class="easy-miss-tag">🌟 Rare Return</span>' : ''}
@@ -1598,7 +1635,10 @@ module.exports = (req, res) => {
               \${e.racing?.classes?.[0] ? '<span class="why-tag" style="color:var(--primary);">' + esc(e.racing.classes[0]) + '</span>' : ''}
             </div>
             <div class="card-footer">
-              <div class="card-price">\${esc(e.priceDisplay || (e.isFree ? 'Free' : 'Details'))}</div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div class="card-price">\${esc(e.priceDisplay || (e.isFree ? 'Free' : 'Details'))}</div>
+                <button class="btn-not-interested" title="Hide this event for 48 hours" onclick="hideEventFor48Hours(event, '\${esc(e.id)}')">✕ Not interested</button>
+              </div>
               \${e.hasTicket ? \`
                 <a class="btn-ticket-sm" href="/api/click?url=\${encodeURIComponent(e.ticketUrl)}&eventId=\${encodeURIComponent(e.id)}&surface=feed_card" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
                   Get Tickets →
@@ -1631,6 +1671,27 @@ module.exports = (req, res) => {
       document.querySelectorAll('.card').forEach(c => c.onclick = () => openDetail(c.dataset.id));
       renderRadar();
       renderPlanB();
+    }
+
+    function hideEventFor48Hours(evt, eventId) {
+      if (evt) {
+        evt.stopPropagation();
+        evt.preventDefault();
+      }
+      try {
+        const hidden = JSON.parse(localStorage.getItem('bb_hidden_events') || '{}');
+        hidden[eventId] = Date.now() + (48 * 3600 * 1000);
+        localStorage.setItem('bb_hidden_events', JSON.stringify(hidden));
+      } catch (_) {}
+      const card = document.querySelector(\`.card[data-id="\${eventId}"]\`);
+      if (card) {
+        card.style.transition = 'opacity 0.2s, transform 0.2s';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+          renderFeed();
+        }, 200);
+      }
     }
 
     async function submitMarketRequest() {
