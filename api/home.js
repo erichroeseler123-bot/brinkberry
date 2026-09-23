@@ -475,11 +475,11 @@ module.exports = (req, res) => {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Brinkberry — Find What’s Happening Near You Right Now</title>
-  <meta name="description" content="Discover real-world events, live music, sports, outdoor activities, and things to do near you right now. Pick a location, set a time, and go.">
+  <meta name="description" content="Find fun things to do near you right now. Stand-up comedy, grassroots motorsports, live music, and real local events to enjoy with friends within the next 48 hours.">
   <link rel="canonical" href="https://brinkberry.com/">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Brinkberry — Find What’s Happening Near You Right Now">
-  <meta property="og:description" content="Discover real-world events, live music, sports, outdoor activities, and things to do near you right now. Pick a location, set a time, and go.">
+  <meta property="og:description" content="Find fun things to do near you right now. Stand-up comedy, grassroots motorsports, live music, and real local events to enjoy with friends within the next 48 hours.">
   <meta property="og:url" content="https://brinkberry.com/">
   <meta name="twitter:card" content="summary_large_image">
   
@@ -1509,7 +1509,7 @@ module.exports = (req, res) => {
       <!-- Location Selector Bar -->
       <div class="location-bar">
         <div class="radar-lock-bar">
-          <span class="radar-status-label">Radar locked:</span>
+          <span class="radar-status-label">📍 Exploring:</span>
           <button id="locIndicatorBtn" class="loc-indicator-btn" type="button" aria-expanded="false" title="Click to change city or search">
             <span id="activeCityLabel">${esc(initialCityLabel)}</span>
             <span class="dropdown-arrow">▾</span>
@@ -1554,7 +1554,7 @@ module.exports = (req, res) => {
 
       <!-- Streamlined Core Headline & Subtitle -->
       <h1 class="hero-title">What’s happening near you?</h1>
-      <p class="hero-sub">Wondering what should I do tonight? Find what’s happening near you right now. Real events within 48 hours worldwide — direct to official box offices, clubs, and tracks.</p>
+      <p class="hero-sub">Wondering what should I do tonight? Find what’s happening near you right now. Stand-up comedy, grassroots racing, live music, and fun local happenings to enjoy with friends — real-time, easy, and direct to the venue.</p>
 
       <!-- Contextual Controls & Category Row -->
       <div id="contextualControls" class="contextual-controls-panel">
@@ -1673,10 +1673,10 @@ module.exports = (req, res) => {
       </div>
     </section>
 
-    <!-- Trust & Platform Transparency Notice -->
+    <!-- Direct Links & Zero Markup Notice -->
     <div class="trust-notice-bar">
-      <span>🛡️</span>
-      <span><b>Independent Live Discovery</b>: Brinkberry links directly to official venue box offices &amp; primary sellers. We do not mark up ticket prices, charge consumer fees, or broker direct payments.</span>
+      <span>🎟️</span>
+      <span><b>Independent Live Discovery</b>: Real fun, zero hassle. We do not mark up ticket prices or charge buyer fees — Brinkberry links you straight to the club, track, or venue so you can get out and have a blast.</span>
     </div>
 
     <!-- Live Status & Weather Alerts -->
@@ -1765,11 +1765,11 @@ module.exports = (req, res) => {
       </div>
     </section>
 
-    <!-- 4. Host / Organizer Free Listing Callout -->
+    <!-- 4. Community & Organizer Callout -->
     <div class="host-cta-banner">
       <div class="host-cta-text">
-        <h3>📣 Hosting a show, open mic, or neighborhood gathering?</h3>
-        <p>Post on Brinkberry in 30 seconds for free. Instant hyperlocal reach and direct links with zero fees.</p>
+        <h3>🎉 Putting on a comedy show, race, or local gathering?</h3>
+        <p>Post it on Brinkberry for free in seconds. Bring people together, pack the house, and share direct links with zero fees.</p>
       </div>
       <div class="host-cta-actions">
         <a href="/post" class="btn-ticket-sm" style="background:var(--primary); color:var(--primary-dark); font-weight:800; font-size:13.5px; padding:9px 18px; text-decoration:none; border-radius:999px;">+ Post an Event</a>
@@ -1831,7 +1831,7 @@ module.exports = (req, res) => {
 
     <!-- Public Legal Footer -->
     <footer style="margin-top: 48px; padding: 24px 0 12px; border-top: 1px solid #1c1628; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 13px; color: var(--text-dim);">
-      <div>© 2026 Brinkberry · Worldwide Hyperlocal Event Radar</div>
+      <div>© 2026 Brinkberry · Worldwide Hyperlocal Event Radar · Fun things to do near you · Live comedy, motorsports &amp; local events</div>
       <div style="display: flex; gap: 16px;">
         <a href="/terms" style="color: var(--text-dim); text-decoration: none;">Terms of Service</a>
         <a href="/privacy" style="color: var(--text-dim); text-decoration: none;">Privacy Policy</a>
@@ -2557,7 +2557,7 @@ module.exports = (req, res) => {
         $('feed').innerHTML = \`
           <div class="empty">
             <h3>No \${emptyLabel} found within \${S.radius} miles \${winText}\${modeText}</h3>
-            <p>We strictly show verified events happening in the next 48 hours. Try expanding your radius or checking another filter.</p>
+            <p>We focus on real things happening right now or in the next 48 hours. Try expanding your radius or checking another category to find something fun!</p>
             \${isComedy ? \`
               <div style="margin:16px 0 10px; font-size:13.5px; color:var(--text-dim);">
                 Are you hosting or performing a show in this area?
@@ -2741,7 +2741,7 @@ module.exports = (req, res) => {
 
     async function loadFeed() {
       const catLabel = S.category === 'comedy' ? 'comedy shows' : (S.category === 'racing' ? 'grassroots races' : 'events');
-      $('status').textContent = \`Finding \${catLabel} near \${S.city} (\${S.radius} mi) · \${S.window}…\`;
+      $('status').textContent = \`Finding fun \${catLabel} near \${S.city} (\${S.radius} mi) · \${S.window}…\`;
       try {
         const qp = new URLSearchParams({
           lat: S.lat,
