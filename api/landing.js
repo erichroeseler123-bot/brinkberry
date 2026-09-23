@@ -1,5 +1,6 @@
 const { buildSafeAffiliateUrl } = require('../lib/affiliate');
 const { executeHybridFeed } = require('../lib/providers/engine');
+const { getCategoryFallbackImage } = require('../lib/providers/normalizer');
 const { trackGuideView, trackRacingGuideView } = require('../lib/telemetry');
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://onsnxawujlzfrzhwndyu.supabase.co').replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
@@ -752,7 +753,8 @@ module.exports = async (req, res) => {
             const price = (e.price_status === 'free' || e.priceStatus === 'free') ? 'Free' : (e.price_display || e.priceDisplay || 'Details');
             const distVal = e.distance_miles != null ? e.distance_miles : e.distanceMiles;
             const dist = distVal != null ? Number(distVal).toFixed(1) + ' mi' : null;
-            const img = e.canonical_image_url || e.image;
+            const cat = (e.category_tags || e.categories)?.[0] || e.category || topic.slug;
+            const img = e.canonical_image_url || e.image || getCategoryFallbackImage(cat);
 
             const eventLink = e.slug ? `/shows/${encodeURIComponent(e.slug)}` : `/event/${encodeURIComponent(e.id)}`;
             const isOfficialCal = (e.confirmationStatus || e.confirmation_status) === 'confirmed_by_official_calendar';
@@ -761,8 +763,8 @@ module.exports = async (req, res) => {
             return `
               <article class="card">
                 <a href="${esc(eventLink)}" style="text-decoration:none; color:inherit">
-                  <div class="card-img" style="${img ? `background-image:url('${encodeURI(img).replace(/'/g, '%27')}')` : ''}">
-                    ${img ? `<img src="${esc(img)}" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;" loading="lazy" onerror="this.style.display='none'">` : ''}
+                  <div class="card-img">
+                    <img src="${esc(img)}" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;" loading="lazy" onerror="this.onerror=null; this.src='${getCategoryFallbackImage(cat)}';">
                   </div>
                   <div class="card-body">
                     <div class="card-meta">${esc((e.category_tags || e.categories)?.[0] || e.category || 'event')}${e.neighborhood ? ` · ${esc(e.neighborhood)}` : ''}</div>

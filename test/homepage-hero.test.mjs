@@ -116,5 +116,54 @@ describe('Homepage Hero Redesign & Streamlined Discovery', () => {
     assert.match(output, /id="comedySubFilterConsole"/);
     assert.match(output, /id="racingSubFilterConsole"/);
   });
+
+  test('renders rich content discovery sections: venues showcase, curated guides, and neighborhoods', () => {
+    let output = '';
+    const res = {
+      setHeader: () => {},
+      end: (content) => { output = content; }
+    };
+    homeHandler({ url: '/', headers: {} }, res);
+
+    // Venues & Tracks showcase
+    assert.match(output, /Local Stages, Clubs &amp; Speedways/);
+    assert.match(output, /Comedy Works Downtown/);
+    assert.match(output, /Colorado National Speedway/);
+    assert.match(output, /RISE Comedy/);
+    assert.match(output, /I-76 Speedway/);
+
+    // Curated discovery guides
+    assert.match(output, /Curated Discovery Guides/);
+    assert.match(output, /Stand-Up Comedy Radar/);
+    assert.match(output, /Grassroots Motorsports/);
+    assert.match(output, /Live Music &amp; Concerts/);
+    assert.match(output, /Free Things to Do/);
+
+    // Neighborhoods explorer
+    assert.match(output, /Explore by Neighborhood/);
+    assert.match(output, /LoDo/);
+    assert.match(output, /RiNo Arts District/);
+    assert.match(output, /Capitol Hill/);
+    assert.match(output, /Highlands/);
+  });
+
+  test('guarantees every place and event card has an image with fallback onerror', () => {
+    let output = '';
+    const res = {
+      setHeader: () => {},
+      end: (content) => { output = content; }
+    };
+    homeHandler({ url: '/', headers: {} }, res);
+
+    // Client defines CATEGORY_FALLBACK_IMAGES dictionary and getCategoryFallback
+    assert.match(output, /CATEGORY_FALLBACK_IMAGES/);
+    assert.match(output, /getCategoryFallback/);
+
+    // Client card rendering ALWAYS uses card-img with onerror fallback
+    assert.match(output, /class="card-img"/);
+    assert.match(output, /onerror="this\.onerror=null; this\.src=getCategoryFallback/);
+    assert.doesNotMatch(output, /class="card-no-img"/);
+  });
 });
+
 

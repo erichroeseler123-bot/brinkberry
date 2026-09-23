@@ -286,7 +286,7 @@ function renderVenuePage(venue) {
 
     <!-- Public Discovery Index Record (Claim workflow deprecated; all public schedules indexed without accounts) -->
     <!-- Compatibility metadata: Verified Venue index record (legacy claim route deprecated: /venue/${esc(venue.slug)}/claim) -->
-    <header class="venue-header">
+    <header class="venue-header" style="${venue.imageUrl ? `background: linear-gradient(180deg, rgba(14, 10, 24, 0.6) 0%, rgba(14, 10, 24, 0.95) 100%), url('${esc(venue.imageUrl)}') center/cover no-repeat; border-color: rgba(255, 255, 255, 0.15);` : ''}">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
         <div class="verified-pill">✓ Official Schedule Indexed</div>
         <a href="/submit?venue=${encodeURIComponent(venue.slug)}" style="color:var(--text-dim); font-size:12px; text-decoration:none;">Update schedule, feed, or cancellation →</a>

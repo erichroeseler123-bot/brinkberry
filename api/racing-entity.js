@@ -303,7 +303,7 @@ function renderTrackPage(track, selectedWindow = '48h') {
       <a href="/track/${esc(track.slug)}/claim" style="color:var(--primary);">Promoter / Track Claim ↗</a>
     </nav>
 
-    <header class="hero">
+    <header class="hero" style="${track.imageUrl ? `background: linear-gradient(180deg, rgba(14, 10, 24, 0.6) 0%, rgba(14, 10, 24, 0.95) 100%), url('${esc(track.imageUrl)}') center/cover no-repeat; border-color: rgba(255, 255, 255, 0.15);` : ''}">
       <div class="verified-pill">✓ Verified Track Venue · Official Box Office Confirmed</div>
       <h1>${esc(track.name)}</h1>
       <div class="tagline">${esc(track.tagline)}</div>

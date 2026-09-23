@@ -860,7 +860,199 @@ module.exports = (req, res) => {
 
     dialog { border: 1px solid var(--card-border); background: #120e1a; color: #fff; border-radius: 20px; width: min(600px, 94vw); padding: 22px; }
     dialog::backdrop { background: rgba(5, 3, 10, 0.85); }
-    .actions-bar { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+    /* Content Discovery Sections */
+    .discovery-section {
+      margin-top: 48px;
+      padding-top: 28px;
+      border-top: 1px solid #1c1628;
+    }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .section-head h2 {
+      font-size: 21px;
+      font-weight: 850;
+      margin: 0;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-head .subhead {
+      color: var(--text-dim);
+      font-size: 13.5px;
+    }
+    .venues-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .venue-spot-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .venue-spot-card:hover {
+      transform: translateY(-3px);
+      border-color: #4f3b6d;
+    }
+    .venue-spot-img {
+      height: 145px;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+    }
+    .venue-spot-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(10, 8, 18, 0.82);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 9px;
+      border-radius: 999px;
+    }
+    .venue-spot-body {
+      padding: 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .venue-spot-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+      margin: 0 0 4px;
+    }
+    .venue-spot-meta {
+      font-size: 12.5px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+    .venue-spot-desc {
+      font-size: 13px;
+      color: #c4b9d8;
+      line-height: 1.45;
+      margin: 0 0 14px;
+    }
+    .venue-spot-cta {
+      margin-top: auto;
+      font-size: 12.5px;
+      font-weight: 800;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .guides-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 14px;
+    }
+    .guide-box {
+      background: linear-gradient(135deg, #181224 0%, #0f0b18 100%);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 18px 20px;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .guide-box:hover {
+      transform: translateY(-2px);
+      border-color: var(--primary);
+    }
+    .guide-box-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    .guide-box-title {
+      font-size: 15.5px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 5px;
+    }
+    .guide-box-desc {
+      font-size: 12.5px;
+      color: var(--text-dim);
+      line-height: 1.45;
+      margin-bottom: 12px;
+    }
+    .guide-box-link {
+      margin-top: auto;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    .neighborhoods-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .neighborhood-chip {
+      background: #171124;
+      border: 1px solid var(--card-border);
+      color: #ded6ec;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .neighborhood-chip:hover {
+      background: #251c3a;
+      border-color: #554077;
+      color: #fff;
+    }
+
+    .host-cta-banner {
+      background: linear-gradient(135deg, rgba(255, 184, 107, 0.1) 0%, rgba(255, 46, 99, 0.08) 100%);
+      border: 1px solid rgba(255, 184, 107, 0.28);
+      border-radius: 18px;
+      padding: 22px 26px;
+      margin-top: 36px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .host-cta-text h3 {
+      margin: 0 0 4px;
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .host-cta-text p {
+      margin: 0;
+      font-size: 13.5px;
+      color: var(--text-dim);
+    }
+    .host-cta-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
 
     /* Worldwide Guides Footer */
     .city-guides-footer { margin-top: 50px; padding-top: 30px; border-top: 1px solid #1c1628; }
@@ -1104,6 +1296,154 @@ module.exports = (req, res) => {
     <main id="feed"><div class="empty">Finding events…</div></main>
     <div id="radar"></div>
 
+    <!-- 1. Local Stages, Clubs & Speedways Showcase -->
+    <section class="discovery-section">
+      <div class="section-head">
+        <h2>🏛️ Local Stages, Clubs &amp; Speedways</h2>
+        <span class="subhead">Verified official box offices, schedules &amp; tickets</span>
+      </div>
+      <div class="venues-grid">
+        <a class="venue-spot-card" href="/venue/comedy-works-downtown">
+          <div class="venue-spot-img" style="background-image: url('https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&auto=format&fit=crop');">
+            <span class="venue-spot-badge">🎤 Landmark Club</span>
+          </div>
+          <div class="venue-spot-body">
+            <h3 class="venue-spot-title">Comedy Works Downtown</h3>
+            <div class="venue-spot-meta">📍 Larimer Square · Denver, CO</div>
+            <p class="venue-spot-desc">Legendary underground comedy room renowned nationwide for low ceilings, intimate listening, and top touring comics.</p>
+            <span class="venue-spot-cta">View Live Shows &amp; Tickets →</span>
+          </div>
+        </a>
+
+        <a class="venue-spot-card" href="/track/colorado-national-speedway">
+          <div class="venue-spot-img" style="background-image: url('https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop');">
+            <span class="venue-spot-badge">🏁 NASCAR Short Track</span>
+          </div>
+          <div class="venue-spot-body">
+            <h3 class="venue-spot-title">Colorado National Speedway</h3>
+            <div class="venue-spot-meta">📍 Dacono, CO · High Plains</div>
+            <p class="venue-spot-desc">High-banked 3/8-mile asphalt oval hosting NASCAR Advance Auto Parts Weekly racing, Super Late Models, and Figure-8s.</p>
+            <span class="venue-spot-cta">View Race Schedule &amp; Weather →</span>
+          </div>
+        </a>
+
+        <a class="venue-spot-card" href="/venue/rise-comedy">
+          <div class="venue-spot-img" style="background-image: url('https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800&auto=format&fit=crop');">
+            <span class="venue-spot-badge">🎭 Improv &amp; Stand-Up</span>
+          </div>
+          <div class="venue-spot-body">
+            <h3 class="venue-spot-title">RISE Comedy</h3>
+            <div class="venue-spot-meta">📍 RiNo / Ballpark · Denver, CO</div>
+            <p class="venue-spot-desc">Artist-driven comedy theater and training hub hosting nightly showcases, improv troupes, open mics, and musical comedy.</p>
+            <span class="venue-spot-cta">View Live Shows &amp; Tickets →</span>
+          </div>
+        </a>
+
+        <a class="venue-spot-card" href="/track/i-76-speedway">
+          <div class="venue-spot-img" style="background-image: url('https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=800&auto=format&fit=crop');">
+            <span class="venue-spot-badge">🏁 Dirt Oval</span>
+          </div>
+          <div class="venue-spot-body">
+            <h3 class="venue-spot-title">I-76 Speedway</h3>
+            <div class="venue-spot-meta">📍 Fort Morgan, CO</div>
+            <p class="venue-spot-desc">Quarter-mile semi-banked dirt clay oval featuring IMCA Modifieds, 305 Sprint Cars, and Saturday night stock cars under the lights.</p>
+            <span class="venue-spot-cta">View Race Schedule &amp; Weather →</span>
+          </div>
+        </a>
+
+        <a class="venue-spot-card" href="/venue/denver-comedy-underground">
+          <div class="venue-spot-img" style="background-image: url('https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800&auto=format&fit=crop');">
+            <span class="venue-spot-badge">🎤 Indie Basement</span>
+          </div>
+          <div class="venue-spot-body">
+            <h3 class="venue-spot-title">Denver Comedy Underground</h3>
+            <div class="venue-spot-meta">📍 Capitol Hill · Denver, CO</div>
+            <p class="venue-spot-desc">Cap Hill subterranean independent comedy haven with national touring headliners, local comics, and intimate basement energy.</p>
+            <span class="venue-spot-cta">View Live Shows &amp; Tickets →</span>
+          </div>
+        </a>
+
+        <a class="venue-spot-card" href="/venue/comedy-works-south">
+          <div class="venue-spot-img" style="background-image: url('https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop');">
+            <span class="venue-spot-badge">🎤 Comedy Theater</span>
+          </div>
+          <div class="venue-spot-body">
+            <h3 class="venue-spot-title">Comedy Works South</h3>
+            <div class="venue-spot-meta">📍 Landmark · Greenwood Village, CO</div>
+            <p class="venue-spot-desc">Spacious stadium-style sister theater in the Denver Tech Center hosting major national headliners and full dinner service.</p>
+            <span class="venue-spot-cta">View Live Shows &amp; Tickets →</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- 2. Curated Guides & Special Radars -->
+    <section class="discovery-section">
+      <div class="section-head">
+        <h2>🧭 Curated Discovery Guides</h2>
+        <span class="subhead">Explore specialized local event directories</span>
+      </div>
+      <div class="guides-grid">
+        <a class="guide-box" href="/denver/comedy">
+          <div class="guide-box-icon">🎤</div>
+          <div class="guide-box-title">Stand-Up Comedy Radar</div>
+          <div class="guide-box-desc">Tonight's club headliners, indie showcases, and free open mic sign-up rooms.</div>
+          <div class="guide-box-link">Explore Comedy Guide →</div>
+        </a>
+
+        <a class="guide-box" href="/denver/racing">
+          <div class="guide-box-icon">🏁</div>
+          <div class="guide-box-title">Grassroots Motorsports</div>
+          <div class="guide-box-desc">Dirt ovals, asphalt short tracks, and drag strips with real-time weather &amp; rainout tracking.</div>
+          <div class="guide-box-link">Explore Track Guide →</div>
+        </a>
+
+        <a class="guide-box" href="/denver/music">
+          <div class="guide-box-icon">🎵</div>
+          <div class="guide-box-title">Live Music &amp; Concerts</div>
+          <div class="guide-box-desc">Indie rock stages, jazz sessions, acoustic gigs, and outdoor concert amphitheaters.</div>
+          <div class="guide-box-link">Explore Music Radar →</div>
+        </a>
+
+        <a class="guide-box" href="/denver/free">
+          <div class="guide-box-icon">🎟️</div>
+          <div class="guide-box-title">Free Things to Do</div>
+          <div class="guide-box-desc">Community markets, gallery walks, library programs, and open public gatherings.</div>
+          <div class="guide-box-link">Explore Free Events →</div>
+        </a>
+      </div>
+    </section>
+
+    <!-- 3. Hyperlocal Neighborhood Explorer -->
+    <section class="discovery-section">
+      <div class="section-head">
+        <h2>📍 Explore by Neighborhood</h2>
+        <span class="subhead">Find events within walking or transit distance</span>
+      </div>
+      <div class="neighborhoods-wrap" id="neighborhoodChips">
+        <button class="neighborhood-chip" onclick="filterNeighborhood('LoDo')">LoDo</button>
+        <button class="neighborhood-chip" onclick="filterNeighborhood('RiNo')">RiNo Arts District</button>
+        <button class="neighborhood-chip" onclick="filterNeighborhood('Capitol Hill')">Capitol Hill</button>
+        <button class="neighborhood-chip" onclick="filterNeighborhood('Highlands')">Highlands</button>
+        <button class="neighborhood-chip" onclick="filterNeighborhood('South Broadway')">South Broadway / Baker</button>
+        <button class="neighborhood-chip" onclick="filterNeighborhood('Cherry Creek')">Cherry Creek</button>
+        <button class="neighborhood-chip" onclick="filterNeighborhood('Boulder')">Boulder / Pearl St</button>
+        <button class="neighborhood-chip" onclick="filterNeighborhood('Golden')">Historic Golden</button>
+      </div>
+    </section>
+
+    <!-- 4. Host / Organizer Free Listing Callout -->
+    <div class="host-cta-banner">
+      <div class="host-cta-text">
+        <h3>📣 Hosting a show, open mic, or neighborhood gathering?</h3>
+        <p>Post on Brinkberry in 30 seconds for free. Instant hyperlocal reach and direct links with zero fees.</p>
+      </div>
+      <div class="host-cta-actions">
+        <a href="/post" class="btn-ticket-sm" style="background:var(--primary); color:var(--primary-dark); font-weight:800; font-size:13.5px; padding:9px 18px; text-decoration:none; border-radius:999px;">+ Post an Event</a>
+        <a href="/submit-comedy" class="btn-details-sm" style="font-size:13.5px; padding:9px 18px; text-decoration:none; border-radius:999px;">Submit Comedy Show →</a>
+      </div>
+    </div>
+
     <!-- Worldwide City Guides Indexable Footer -->
     <section class="city-guides-footer">
       <h3>Popular Worldwide Event Guides</h3>
@@ -1267,8 +1607,45 @@ module.exports = (req, res) => {
       weather: null,
       map: null,
       markers: [],
-      currentDetailEvent: null
+      currentDetailEvent: null,
+      neighborhood: ''
     };
+
+    const CATEGORY_FALLBACK_IMAGES = {
+      comedy: 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&auto=format&fit=crop',
+      racing: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop',
+      music: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop',
+      theater: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800&auto=format&fit=crop',
+      arts: 'https://images.unsplash.com/photo-1565008447742-97f6f38c985c?w=800&auto=format&fit=crop',
+      sports: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&auto=format&fit=crop',
+      civic: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=800&auto=format&fit=crop',
+      community: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=800&auto=format&fit=crop',
+      festival: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800&auto=format&fit=crop',
+      outdoor: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=800&auto=format&fit=crop',
+      food: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop',
+      family: 'https://images.unsplash.com/photo-1472653431158-6364773b2a56?w=800&auto=format&fit=crop',
+      other: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&auto=format&fit=crop'
+    };
+
+    function getCategoryFallback(cat) {
+      const c = String(cat || '').toLowerCase().trim();
+      return CATEGORY_FALLBACK_IMAGES[c] || CATEGORY_FALLBACK_IMAGES.other;
+    }
+
+    function filterNeighborhood(name) {
+      if (S.neighborhood === name) {
+        S.neighborhood = '';
+      } else {
+        S.neighborhood = name;
+      }
+      document.querySelectorAll('.neighborhood-chip').forEach(b => {
+        b.style.borderColor = (b.textContent.includes(S.neighborhood) && Boolean(S.neighborhood)) ? 'var(--primary)' : '';
+        b.style.color = (b.textContent.includes(S.neighborhood) && Boolean(S.neighborhood)) ? '#fff' : '';
+      });
+      const feedEl = $('feed');
+      if (feedEl) feedEl.scrollIntoView({ behavior: 'smooth' });
+      renderFeed();
+    }
 
     try {
       const sp = new URLSearchParams(window.location.search);
@@ -1762,19 +2139,12 @@ module.exports = (req, res) => {
 
       $('feed').innerHTML = '<div class="grid">' + visibleEvents.map(e => \`
         <article class="card \${e.onTheBrink ? 'brink' : ''}" data-id="\${e.id}">
-          \${e.image ? \`
-            <div class="card-img">
-              <img src="\${esc(e.image)}" alt="\${esc(e.title)}" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;" loading="lazy">
-              <span class="card-badge" style="position:relative; z-index:1;">\${esc(e.category)}</span>
-            </div>
-          \` : \`
-            <div class="card-no-img">
-              <span class="card-badge">\${esc(e.category)}</span>
-              \${e.onTheBrink ? '<span class="brinktag" style="margin:0">Starts Soon</span>' : ''}
-            </div>
-          \`}
+          <div class="card-img">
+            <img src="\${esc(e.image || getCategoryFallback(e.category))}" alt="\${esc(e.title)}" onerror="this.onerror=null; this.src=getCategoryFallback('\${esc(e.category)}');" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;" loading="lazy">
+            <span class="card-badge" style="position:relative; z-index:1;">\${esc(e.category)}</span>
+            \${e.onTheBrink ? '<span class="brinktag" style="position:relative; z-index:1; margin-left:auto;">Starts Soon</span>' : ''}
+          </div>
           <div class="card-body">
-            \${(e.onTheBrink && e.image) ? '<div class="brinktag">Starts Soon</div>' : ''}
             <div class="card-meta">\${e.neighborhood ? esc(e.neighborhood) : esc(e.city || 'Nearby')}</div>
             <div class="card-title">\${esc(e.title)}</div>
             <div class="card-meta">📍 \${esc(e.venue)}\${e.city ? ', ' + esc(e.city) : ''}</div>
@@ -1961,7 +2331,7 @@ module.exports = (req, res) => {
       const destUrl = e.detailsUrl || e.ticketUrl || '';
       const clickUrl = destUrl ? \`/api/click?url=\${encodeURIComponent(destUrl)}&eventId=\${encodeURIComponent(e.id)}&surface=detail_modal\` : \`/event/\${encodeURIComponent(e.id)}\`;
       $('detailBody').innerHTML = \`
-        \${e.image ? '<img src="' + esc(e.image) + '" alt="" style="width:100%; max-height:240px; object-fit:cover; border-radius:12px; margin-bottom:14px;">' : ''}
+        <img src="' + esc(e.image || getCategoryFallback(e.category)) + '" alt="" onerror="this.onerror=null; this.src=getCategoryFallback(\'' + esc(e.category) + '\');" style="width:100%; max-height:240px; object-fit:cover; border-radius:12px; margin-bottom:14px;">
         <h2 style="margin-top:0">\${esc(e.title)}</h2>
         <p style="color:var(--text-dim)">📍 \${esc(e.venue)}\${e.city ? ', ' + esc(e.city) : ''} \${e.distanceMiles != null ? ' · ' + e.distanceMiles.toFixed(1) + ' mi' : ''}</p>
         <p style="color:var(--text-dim)">⏰ \${esc(fmtTime(e.start))}</p>
