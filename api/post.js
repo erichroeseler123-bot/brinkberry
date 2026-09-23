@@ -17,6 +17,7 @@ const {
   deleteCommunityPost,
   verifyPostLevel,
   reportCommunityPost,
+  syncCommunityPostsFromDurableStore,
   BROADCAST_LEVELS
 } = require('../lib/community-posts/community-posts');
 
@@ -886,17 +887,56 @@ function renderManagePage(post, deletionKey) {
       <div id="stepUpContainer" class="step-up-form">
         <h3 style="margin:0 0 8px; font-size:16px; color:#fff;">Step-Up Verification</h3>
         <p style="color:var(--text-dim); font-size:13px; margin:0 0 12px;">
-          Unlock broader reach by providing contact or source details.
+          Unlock broader reach by providing and verifying contact or source details.
         </p>
         <form id="stepUpForm">
-          <label style="font-size:11px; text-transform:uppercase; font-weight:750; color:var(--text-dim);">Confirm Email Address (Unlocks Level 2 Hood Reach)</label>
-          <input type="email" id="stepEmail" placeholder="host@example.com" value="${esc(post.contact?.includes('@') ? post.contact : '')}">
+          <!-- Level 2: Email -->
+          <div style="margin-bottom:14px;">
+            <label style="font-size:11px; text-transform:uppercase; font-weight:750; color:var(--text-dim); display:block; margin-bottom:4px;">
+              Email Address (Unlocks Level 2 Hood Reach)
+            </label>
+            ${post.emailConfirmed ? `
+              <div style="padding:8px 12px; background:rgba(0,230,153,0.1); border:1px solid rgba(0,230,153,0.3); border-radius:8px; color:var(--radar-cyan); font-size:13px; font-weight:700;">
+                ✓ Email Confirmed: ${esc(post.email_provided || post.verifiedEmail || post.contact)}
+              </div>
+            ` : (post.emailStatus === 'email_provided' ? `
+              <div style="margin-bottom:6px; font-size:13px; color:#ffb86b;">
+                Provided: <b>${esc(post.email_provided || post.contact)}</b> (State: <code>email_provided</code> — Hood reach locked pending code)
+                ${post.emailVerificationCode ? `<div style="font-size:12px; color:var(--text-dim); margin-top:2px;">Confirmation Code: <b>${esc(post.emailVerificationCode)}</b></div>` : ''}
+              </div>
+              <input type="text" id="stepEmailCode" placeholder="Enter 6-digit email confirmation code" style="width:100%; margin-top:2px;">
+            ` : `
+              <input type="email" id="stepEmail" placeholder="host@example.com" value="${esc(post.contact?.includes('@') ? post.contact : '')}">
+            `)}
+          </div>
 
-          <label style="font-size:11px; text-transform:uppercase; font-weight:750; color:var(--text-dim);">Add Mobile Phone (Unlocks Level 3 Quadrant Reach)</label>
-          <input type="text" id="stepPhone" placeholder="555-0199">
+          <!-- Level 3: Phone -->
+          <div style="margin-bottom:14px;">
+            <label style="font-size:11px; text-transform:uppercase; font-weight:750; color:var(--text-dim); display:block; margin-bottom:4px;">
+              Mobile Phone (Unlocks Level 3 Quadrant Reach)
+            </label>
+            ${post.phoneConfirmed ? `
+              <div style="padding:8px 12px; background:rgba(0,230,153,0.1); border:1px solid rgba(0,230,153,0.3); border-radius:8px; color:var(--radar-cyan); font-size:13px; font-weight:700;">
+                ✓ Phone Verified: ${esc(post.phone_provided || post.verifiedPhone)}
+              </div>
+            ` : (post.phoneStatus === 'phone_provided' ? `
+              <div style="margin-bottom:6px; font-size:13px; color:#ffb86b;">
+                Provided: <b>${esc(post.phone_provided)}</b> (State: <code>phone_provided</code> — Quadrant reach locked pending code)
+                ${post.phoneVerificationCode ? `<div style="font-size:12px; color:var(--text-dim); margin-top:2px;">SMS Code: <b>${esc(post.phoneVerificationCode)}</b></div>` : ''}
+              </div>
+              <input type="text" id="stepPhoneCode" placeholder="Enter 6-digit SMS verification code" style="width:100%; margin-top:2px;">
+            ` : `
+              <input type="text" id="stepPhone" placeholder="555-0199">
+            `)}
+          </div>
 
-          <label style="font-size:11px; text-transform:uppercase; font-weight:750; color:var(--text-dim);">Public Event or Social Link (Unlocks Level 4 City Reach)</label>
-          <input type="text" id="stepUrl" placeholder="https://instagram.com/p/..." value="${esc(post.detailsUrl || '')}">
+          <!-- Level 4: Public Link -->
+          <div style="margin-bottom:14px;">
+            <label style="font-size:11px; text-transform:uppercase; font-weight:750; color:var(--text-dim); display:block; margin-bottom:4px;">
+              Public Event or Social Link (Unlocks Level 4 City Reach)
+            </label>
+            <input type="text" id="stepUrl" placeholder="https://instagram.com/p/..." value="${esc(post.detailsUrl || '')}">
+          </div>
 
           <button type="submit" class="btn-action">Verify &amp; Update Reach →</button>
         </form>
@@ -930,16 +970,20 @@ function renderManagePage(post, deletionKey) {
     document.getElementById('stepUpForm')?.addEventListener('submit', async e => {
       e.preventDefault();
       try {
+        const payload = {
+          id: postId,
+          deletionKey,
+          email: document.getElementById('stepEmail')?.value.trim() || null,
+          emailCode: document.getElementById('stepEmailCode')?.value.trim() || null,
+          phone: document.getElementById('stepPhone')?.value.trim() || null,
+          phoneCode: document.getElementById('stepPhoneCode')?.value.trim() || null,
+          detailsUrl: document.getElementById('stepUrl')?.value.trim() || null
+        };
+
         const res = await fetch('/api/post/verify-level', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: postId,
-            deletionKey,
-            email: document.getElementById('stepEmail').value.trim() || null,
-            phone: document.getElementById('stepPhone').value.trim() || null,
-            detailsUrl: document.getElementById('stepUrl').value.trim() || null
-          })
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.error || 'Failed to update level');
@@ -986,6 +1030,11 @@ module.exports = async (req, res) => {
   const u = new URL(req.url, 'https://brinkberry.local');
   const pathname = u.pathname;
 
+  // Sync with durable store before fulfilling request
+  try {
+    await syncCommunityPostsFromDurableStore();
+  } catch (_) {}
+
   // 1. GET /post/manage or GET /manage
   if (req.method === 'GET' && (pathname === '/post/manage' || pathname === '/manage')) {
     const id = u.searchParams.get('id');
@@ -996,10 +1045,16 @@ module.exports = async (req, res) => {
       return res.status(400).send(`<!doctype html><html><body style="background:#090714;color:#fff;font-family:sans-serif;padding:40px;text-align:center"><h2>Event ID required to manage post.</h2><p><a href="/" style="color:#ffb86b">← Return to Brinkberry</a></p></body></html>`);
     }
 
-    const post = getCommunityPostById(id);
+    const post = await getCommunityPostById(id);
     if (!post) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       return res.status(404).send(`<!doctype html><html><body style="background:#090714;color:#fff;font-family:sans-serif;padding:40px;text-align:center"><h2>Post not found or already deleted.</h2><p><a href="/" style="color:#ffb86b">← Explore live events</a></p></body></html>`);
+    }
+
+    // Support confirmation link parameter: ?confirmEmailCode=...
+    const confirmEmailCode = u.searchParams.get('confirmEmailCode');
+    if (confirmEmailCode && key) {
+      await verifyPostLevel(id, key, { emailCode: confirmEmailCode });
     }
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -1020,7 +1075,7 @@ module.exports = async (req, res) => {
     } catch (_) {}
 
     const { id, deletionKey, reason } = body;
-    const result = deleteCommunityPost(id, deletionKey, reason || 'user_deleted');
+    const result = await deleteCommunityPost(id, deletionKey, reason || 'user_deleted');
     return res.status(result.status || (result.success ? 200 : 400)).json(result);
   }
 
@@ -1031,15 +1086,18 @@ module.exports = async (req, res) => {
       body = typeof req.body === 'object' ? req.body : JSON.parse(req.body || '{}');
     } catch (_) {}
 
-    const { id, deletionKey, email, phone, detailsUrl } = body;
+    const { id, deletionKey, email, phone, detailsUrl, code, emailCode, phoneCode } = body;
     const stepData = {
       email,
       phone,
       detailsUrl,
-      emailConfirmed: Boolean(email),
-      phoneVerified: Boolean(phone)
+      code,
+      emailCode,
+      phoneCode,
+      emailConfirmed: Boolean(body.emailConfirmed),
+      phoneVerified: Boolean(body.phoneVerified)
     };
-    const result = verifyPostLevel(id, deletionKey, stepData);
+    const result = await verifyPostLevel(id, deletionKey, stepData);
     return res.status(result.status || (result.success ? 200 : 400)).json(result);
   }
 
@@ -1056,7 +1114,7 @@ module.exports = async (req, res) => {
     }
 
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1';
-    const repRes = reportCommunityPost(eventId, reason, ip);
+    const repRes = await reportCommunityPost(eventId, reason, '', ip);
     return res.status(repRes.success ? 200 : 400).json(repRes);
   }
 
@@ -1070,9 +1128,10 @@ module.exports = async (req, res) => {
     }
 
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1';
-    const result = createCommunityPost(body, { ip });
+    const result = await createCommunityPost(body, { ip });
     return res.status(result.status || (result.success ? 200 : 400)).json(result);
   }
 
   return res.status(405).json({ error: 'Method Not Allowed' });
 };
+
