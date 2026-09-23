@@ -1587,7 +1587,22 @@ module.exports = (req, res) => {
         try { localStorage.setItem('bb_hidden_events', JSON.stringify(hiddenMap)); } catch (_) {}
       }
 
-      const visibleEvents = (S.events || []).filter(e => !hiddenMap[e.id]);
+      let allEvents = [...(S.events || [])];
+      try {
+        const myPosts = JSON.parse(localStorage.getItem('bb_community_posts') || '[]');
+        const existingIds = new Set(allEvents.map(e => e.id));
+        for (const mp of myPosts) {
+          if (!existingIds.has(mp.id)) {
+            const st = new Date(mp.start_time).getTime();
+            if ((st - now) > -4 * 3600 * 1000 && (st - now) < 48.5 * 3600 * 1000) {
+              allEvents.unshift(mp);
+              existingIds.add(mp.id);
+            }
+          }
+        }
+      } catch (_) {}
+
+      const visibleEvents = allEvents.filter(e => !hiddenMap[e.id]);
 
       if (visibleEvents.length === 0) {
         $('feed').innerHTML = \`

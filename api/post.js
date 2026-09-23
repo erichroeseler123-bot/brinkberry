@@ -459,6 +459,9 @@ function renderPostPage() {
 
         try {
           localStorage.setItem('bb_last_city', payload.city);
+          const myPosts = JSON.parse(localStorage.getItem('bb_community_posts') || '[]');
+          myPosts.unshift(data.event);
+          localStorage.setItem('bb_community_posts', JSON.stringify(myPosts.slice(0, 20)));
         } catch (_) {}
 
         $('postFormWrapper').style.display = 'none';
