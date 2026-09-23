@@ -1352,7 +1352,7 @@ module.exports = (req, res) => {
       theater: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=800&auto=format&fit=crop',
       arts: 'https://images.unsplash.com/photo-1565008447742-97f6f38c985c?w=800&auto=format&fit=crop',
       sports: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&auto=format&fit=crop',
-      civic: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=800&auto=format&fit=crop',
+      civic: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?w=800&auto=format&fit=crop',
       community: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=800&auto=format&fit=crop',
       festival: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800&auto=format&fit=crop',
       outdoor: 'https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=800&auto=format&fit=crop',
@@ -1361,8 +1361,40 @@ module.exports = (req, res) => {
       other: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&auto=format&fit=crop'
     };
 
-    function getCategoryFallback(cat) {
+    const CATEGORY_FALLBACK_POOLS = {
+      civic: [
+        'https://images.unsplash.com/photo-1577495508048-b635879837f1?w=800&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=800&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&auto=format&fit=crop'
+      ],
+      music: [
+        'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800&auto=format&fit=crop'
+      ],
+      comedy: [
+        'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800&auto=format&fit=crop'
+      ],
+      racing: [
+        'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=800&auto=format&fit=crop'
+      ],
+      community: [
+        'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=800&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800&auto=format&fit=crop'
+      ]
+    };
+
+    function getCategoryFallback(cat, seed) {
       const c = String(cat || '').toLowerCase().trim();
+      const pool = CATEGORY_FALLBACK_POOLS[c];
+      if (pool && seed && typeof seed === 'string') {
+        let hash = 0;
+        for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+        const idx = Math.abs(hash) % pool.length;
+        return pool[idx];
+      }
       return CATEGORY_FALLBACK_IMAGES[c] || CATEGORY_FALLBACK_IMAGES.other;
     }
 
@@ -1899,7 +1931,7 @@ module.exports = (req, res) => {
       $('feed').innerHTML = '<div class="grid">' + visibleEvents.map(e => \`
         <article class="card \${e.onTheBrink ? 'brink' : ''}" data-id="\${e.id}">
           <div class="card-img">
-            <img src="\${esc(e.image || getCategoryFallback(e.category))}" alt="\${esc(e.title)}" onerror="this.onerror=null; this.src=getCategoryFallback('\${esc(e.category)}');" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;" loading="lazy">
+            <img src="\${esc(e.image || e.canonical_image_url || getCategoryFallback(e.category, e.id))}" alt="\${esc(e.title)}" onerror="this.onerror=null; this.src=getCategoryFallback('\${esc(e.category)}', '\${esc(e.id)}');" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;" loading="lazy">
             <span class="card-badge" style="position:relative; z-index:1;">\${esc(e.category)}</span>
             \${e.onTheBrink ? '<span class="brinktag" style="position:relative; z-index:1; margin-left:auto;">Starts Soon</span>' : ''}
           </div>
@@ -2100,7 +2132,7 @@ module.exports = (req, res) => {
       const destUrl = e.detailsUrl || e.ticketUrl || '';
       const clickUrl = destUrl ? \`/api/click?url=\${encodeURIComponent(destUrl)}&eventId=\${encodeURIComponent(e.id)}&surface=detail_modal\` : \`/event/\${encodeURIComponent(e.id)}\`;
       $('detailBody').innerHTML = \`
-        <img src="\${esc(e.image || getCategoryFallback(e.category))}" alt="" onerror="this.onerror=null; this.src=getCategoryFallback('\${esc(e.category)}');" style="width:100%; max-height:240px; object-fit:cover; border-radius:12px; margin-bottom:14px;">
+        <img src="\${esc(e.image || e.canonical_image_url || getCategoryFallback(e.category, e.id))}" alt="" onerror="this.onerror=null; this.src=getCategoryFallback('\${esc(e.category)}', '\${esc(e.id)}');" style="width:100%; max-height:240px; object-fit:cover; border-radius:12px; margin-bottom:14px;">
         <h2 style="margin-top:0">\${esc(e.title)}</h2>
         <p style="color:var(--text-dim)">📍 \${esc(e.venue)}\${e.city ? ', ' + esc(e.city) : ''} \${e.distanceMiles != null ? ' · ' + e.distanceMiles.toFixed(1) + ' mi' : ''}</p>
         <p style="color:var(--text-dim)">⏰ \${esc(fmtTime(e.start))}</p>
