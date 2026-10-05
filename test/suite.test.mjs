@@ -276,6 +276,79 @@ describe('Brinkberry Production Verification Suite', () => {
       assert.equal(statusCode, 400);
       assert.match(errorBody.error, /Missing target url/i);
     });
+
+    test('read_latest=1 rejects unauthenticated requests with 401', async () => {
+      const req = { url: '/api/click?read_latest=1', headers: {} };
+      let statusCode = null;
+      let errorBody = null;
+
+      const res = {
+        status(code) {
+          statusCode = code;
+          return this;
+        },
+        json(data) {
+          errorBody = data;
+          return this;
+        }
+      };
+
+      await clickHandler(req, res);
+      assert.equal(statusCode, 401);
+      assert.match(errorBody.error, /Admin authorization required/i);
+    });
+
+    test('verify=1 rejects unauthenticated requests with 401', async () => {
+      const validUrl = 'https://redrocksonline.com/events/concert-123';
+      const req = { url: `/api/click?verify=1&url=${encodeURIComponent(validUrl)}`, headers: {} };
+      let statusCode = null;
+      let errorBody = null;
+
+      const res = {
+        status(code) {
+          statusCode = code;
+          return this;
+        },
+        json(data) {
+          errorBody = data;
+          return this;
+        }
+      };
+
+      await clickHandler(req, res);
+      assert.equal(statusCode, 401);
+      assert.match(errorBody.error, /Admin authorization required/i);
+    });
+
+    test('read_latest=1 accepts valid admin token header or query parameter', async () => {
+      const originalToken = process.env.ADMIN_TOKEN;
+      process.env.ADMIN_TOKEN = 'test-secret-token-xyz';
+
+      const req = {
+        url: '/api/click?read_latest=1',
+        headers: { authorization: 'Bearer test-secret-token-xyz' }
+      };
+      let statusCode = null;
+      let body = null;
+
+      const res = {
+        status(code) {
+          statusCode = code;
+          return this;
+        },
+        json(data) {
+          body = data;
+          return this;
+        }
+      };
+
+      await clickHandler(req, res);
+      // Status must NOT be 401 (either 200 from Supabase or 500/503 if mock/network)
+      assert.notEqual(statusCode, 401, 'Should not return 401 with valid admin authorization');
+
+      if (originalToken) process.env.ADMIN_TOKEN = originalToken;
+      else delete process.env.ADMIN_TOKEN;
+    });
   });
 
   describe('Homepage & Event Detail Handlers', () => {

@@ -36,6 +36,24 @@ async function logClickTelemetry(eventId, targetUrl, surface, returnRow = false)
   }
 }
 
+function isAdminAuthorized(req, u) {
+  const authHeader = req.headers?.['authorization'] || '';
+  const adminKeyHeader = req.headers?.['x-admin-key'] || '';
+  const queryToken = u?.searchParams?.get('admin_token') || u?.searchParams?.get('token') || u?.searchParams?.get('key') || '';
+  const token = (authHeader.replace(/^Bearer\s+/i, '').trim()) || adminKeyHeader.trim() || queryToken.trim();
+  
+  if (!token) return false;
+  
+  const validTokens = [
+    process.env.ADMIN_TOKEN,
+    process.env.ADMIN_AUDIT_TOKEN,
+    process.env.BRINKBERRY_ADMIN_KEY,
+    process.env.CRON_SECRET
+  ].filter(Boolean);
+  
+  return validTokens.includes(token);
+}
+
 module.exports = async (req, res) => {
   if (!res.status) {
     res.status = function(code) { this.statusCode = code; return this; };
@@ -50,8 +68,11 @@ module.exports = async (req, res) => {
   try {
     const u = new URL(req.url, 'https://brinkberry.local');
 
-    // Read latest rows verification endpoint
+    // Read latest rows verification endpoint (Admin only)
     if (u.searchParams.get('read_latest') === '1') {
+      if (!isAdminAuthorized(req, u)) {
+        return res.status(401).json({ error: 'Admin authorization required' });
+      }
       if (!SERVICE_ROLE_KEY) {
         return res.status(500).json({ error: 'No SERVICE_ROLE_KEY' });
       }
@@ -80,6 +101,10 @@ module.exports = async (req, res) => {
     const surfaceParam = u.searchParams.get('surface');
     const surface = surfaceParam || (partner ? `widget_${partner}` : 'feed');
     const isVerify = u.searchParams.get('verify') === '1';
+
+    if (isVerify && !isAdminAuthorized(req, u)) {
+      return res.status(401).json({ error: 'Admin authorization required' });
+    }
 
     if (!target) {
       return res.status(400).json({ error: 'Missing target url parameter' });
