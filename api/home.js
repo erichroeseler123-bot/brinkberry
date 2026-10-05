@@ -971,6 +971,8 @@ module.exports = (req, res) => {
             <a id="navComedyGuide" href="/${initialCitySlug}/comedy" class="menu-item" role="menuitem">${esc(initialCityName)} Comedy Guide</a>
             <a id="navTrackGuide" href="/${initialCitySlug}/racing" class="menu-item" role="menuitem">${esc(initialCityName)} Track Guide</a>
             <a href="/admin/pilot-racing" class="menu-item" role="menuitem">Track Promoter Portal</a>
+            <div class="menu-divider"></div>
+            <a href="/embed" class="menu-item" role="menuitem">🔌 Partner Widget</a>
           </div>
         </div>
       </div>
@@ -1234,6 +1236,7 @@ module.exports = (req, res) => {
     <footer style="margin-top: 48px; padding: 24px 0 12px; border-top: 1px solid #1c1628; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 13px; color: var(--text-dim);">
       <div>© 2026 Brinkberry · Worldwide Hyperlocal Event Radar · Fun things to do near you · Live comedy, motorsports &amp; local events</div>
       <div style="display: flex; gap: 16px;">
+        <a href="/embed" style="color: var(--text-dim); text-decoration: none;">Partner Widget</a>
         <a href="/terms" style="color: var(--text-dim); text-decoration: none;">Terms of Service</a>
         <a href="/privacy" style="color: var(--text-dim); text-decoration: none;">Privacy Policy</a>
       </div>

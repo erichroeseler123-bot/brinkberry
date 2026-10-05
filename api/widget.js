@@ -327,7 +327,22 @@ module.exports = async (req, res) => {
           hour: 'numeric',
           minute: '2-digit'
         });
-        const clickUrl = `/api/click?url=${encodeURIComponent(e.ticketUrl)}&eventId=${encodeURIComponent(e.id)}&surface=widget_${encodeURIComponent(safePartner)}&partner=${encodeURIComponent(safePartner)}`;
+        const hasTicket = Boolean(e.hasTicket || e.ticketUrl);
+        let actionLabel = 'Get Tickets →';
+        if (!hasTicket) {
+          if (e.category === 'civic') {
+            actionLabel = 'Meeting Agenda →';
+          } else if (e.isFree || (e.priceDisplay && e.priceDisplay.toLowerCase().includes('free'))) {
+            actionLabel = 'Free Event →';
+          } else {
+            actionLabel = 'View Details →';
+          }
+        }
+
+        const rawDestUrl = e.ticketUrl || e.detailsUrl;
+        const clickUrl = rawDestUrl
+          ? `/api/click?url=${encodeURIComponent(rawDestUrl)}&eventId=${encodeURIComponent(e.id)}&surface=widget_${encodeURIComponent(safePartner)}&partner=${encodeURIComponent(safePartner)}`
+          : `${ORIGIN}/event/${encodeURIComponent(e.id)}?utm_source=${encodeURIComponent(safePartner)}&utm_medium=widget`;
 
         return `
           <article class="card">
@@ -346,9 +361,9 @@ module.exports = async (req, res) => {
               <div class="card-meta">📍 ${esc(e.venue)}${e.city ? `, ${esc(e.city)}` : ''}</div>
               <div class="card-meta">⏰ ${esc(timeStr)}${e.distanceMiles != null ? ` · <b>${e.distanceMiles.toFixed(1)} mi</b>` : ''}</div>
               <div class="card-footer">
-                <div class="card-price">${esc(e.priceDisplay || 'Details')}</div>
+                <div class="card-price">${esc(e.priceDisplay || (e.isFree ? 'Free' : 'Details'))}</div>
                 <a class="btn-ticket" href="${esc(clickUrl)}" target="_blank" rel="noopener noreferrer">
-                  Get Tickets →
+                  ${esc(actionLabel)}
                 </a>
               </div>
               ${(e.source === 'seatgeek' || e.provenance?.provider === 'seatgeek') ? `
@@ -366,7 +381,7 @@ module.exports = async (req, res) => {
   `}
 
   <div class="widget-footer">
-    <span>Powered by <b>Brinkberry</b> · <a href="${ORIGIN}/terms" target="_blank" rel="noopener noreferrer" style="color:${textDim}; text-decoration:none; font-size:11px;">Terms</a></span>
+    <span>Powered by <b>Brinkberry</b> · <a href="${ORIGIN}/embed" target="_blank" rel="noopener noreferrer" style="color:${textDim}; text-decoration:none; font-size:11px;">Embed this widget</a> · <a href="${ORIGIN}/terms" target="_blank" rel="noopener noreferrer" style="color:${textDim}; text-decoration:none; font-size:11px;">Terms</a></span>
     <a href="${esc(fullRadarUrl)}" target="_blank" rel="noopener noreferrer">
       Explore Full Live Radar →
     </a>

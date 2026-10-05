@@ -16,6 +16,7 @@ const sitemapHandler = require('./sitemap');
 const robotsHandler = require('./robots');
 const landingHandler = require('./landing');
 const widgetHandler = require('./widget');
+const widgetGeneratorHandler = require('./widget-generator');
 const termsHandler = require('./terms');
 const privacyHandler = require('./privacy');
 
@@ -99,6 +100,9 @@ module.exports = async (req, res) => {
     }
     if (p === '/widget') {
       return widgetHandler(req, res);
+    }
+    if (p === '/embed' || p === '/widget-generator' || p === '/for-partners') {
+      return widgetGeneratorHandler(req, res);
     }
     if (p === '/api/click') {
       return clickHandler(req, res);
@@ -214,7 +218,7 @@ module.exports = async (req, res) => {
 
     // City & category landing pages: /denver/this-weekend, /london/music, /paris/arts, /denver/comedy, /denver/racing, etc.
     const segments = p.split('/').filter(Boolean);
-    const systemPrefixes = ['api', 'event', 'shows', 'show', 'admin', 'widget', 'terms', 'privacy', 'sitemap.xml', 'sitemap', 'robots.txt', 'og', 'venue', 'comedian', 'track', 'series', 'racing', 'submit-comedy', 'door', 'ticket', 'show-ledger', 'card', 'post', 'submit', 'manage'];
+    const systemPrefixes = ['api', 'event', 'shows', 'show', 'admin', 'widget', 'embed', 'widget-generator', 'for-partners', 'terms', 'privacy', 'sitemap.xml', 'sitemap', 'robots.txt', 'og', 'venue', 'comedian', 'track', 'series', 'racing', 'submit-comedy', 'door', 'ticket', 'show-ledger', 'card', 'post', 'submit', 'manage'];
     if (segments.length >= 1 && segments.length <= 2 && !systemPrefixes.includes(segments[0].toLowerCase())) {
       return landingHandler(req, res);
     }
