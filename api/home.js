@@ -2205,6 +2205,7 @@ module.exports = (req, res) => {
 
       // Driving-time estimate via /api/route when location coordinates are available
       const driveEl = $('detailDriveTime');
+      const currentEventId = e.id;
       if (driveEl && S.lat != null && S.lon != null && e.lat != null && e.lon != null) {
         driveEl.innerHTML = ' · <span style="font-size:12px; color:var(--text-dim); opacity:0.8;">calculating drive time…</span>';
         const routeUrl = \`/api/route?fromLat=\${encodeURIComponent(S.lat)}&fromLon=\${encodeURIComponent(S.lon)}&toLat=\${encodeURIComponent(e.lat)}&toLon=\${encodeURIComponent(e.lon)}\`;
@@ -2214,14 +2215,21 @@ module.exports = (req, res) => {
             return r.json();
           })
           .then(d => {
+            if (S.currentDetailEvent?.id !== currentEventId) return;
+            const targetEl = $('detailDriveTime');
+            if (!targetEl) return;
             if (d && Number.isFinite(d.durationMinutes)) {
-              driveEl.innerHTML = \` · <span title="Standard driving duration without live traffic">🚗 <b>\${d.durationMinutes} min</b> Estimated drive time</span>\`;
+              targetEl.innerHTML = \` · <span title="Standard driving duration without live traffic">🚗 <b>\${d.durationMinutes} min</b> Estimated drive time</span>\`;
             } else {
-              driveEl.innerHTML = ' · <span style="font-size:12px; color:var(--text-dim); opacity:0.7;">Drive time unavailable</span>';
+              targetEl.innerHTML = ' · <span style="font-size:12px; color:var(--text-dim); opacity:0.7;">Drive time unavailable</span>';
             }
           })
           .catch(() => {
-            driveEl.innerHTML = ' · <span style="font-size:12px; color:var(--text-dim); opacity:0.7;">Drive time unavailable</span>';
+            if (S.currentDetailEvent?.id !== currentEventId) return;
+            const targetEl = $('detailDriveTime');
+            if (targetEl) {
+              targetEl.innerHTML = ' · <span style="font-size:12px; color:var(--text-dim); opacity:0.7;">Drive time unavailable</span>';
+            }
           });
       }
     }
