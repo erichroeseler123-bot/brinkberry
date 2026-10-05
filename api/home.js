@@ -2137,7 +2137,7 @@ module.exports = (req, res) => {
       $('detailBody').innerHTML = \`
         <img src="\${esc(e.image || e.canonical_image_url || getCategoryFallback(e.category, e.id))}" alt="" onerror="this.onerror=null; this.src=getCategoryFallback('\${esc(e.category)}', '\${esc(e.id)}');" style="width:100%; max-height:240px; object-fit:cover; border-radius:12px; margin-bottom:14px;">
         <h2 style="margin-top:0">\${esc(e.title)}</h2>
-        <p style="color:var(--text-dim)">📍 \${esc(e.venue)}\${e.city ? ', ' + esc(e.city) : ''} \${e.distanceMiles != null ? ' · ' + e.distanceMiles.toFixed(1) + ' mi' : ''}</p>
+        <p style="color:var(--text-dim)">📍 \${esc(e.venue)}\${e.city ? ', ' + esc(e.city) : ''} \${e.distanceMiles != null ? ' · ' + e.distanceMiles.toFixed(1) + ' mi' : ''}<span id="detailDriveTime"></span></p>
         <p style="color:var(--text-dim)">⏰ \${esc(fmtTime(e.start))}</p>
         <p><b>Admission:</b> \${esc(e.priceDisplay || (e.isFree ? 'Free Admission' : 'Details on official page'))}</p>
         \${e.sourceQualityLabel ? '<p style="font-size:12.5px; color:var(--text-dim); margin:4px 0 10px;"><b>Source Verification:</b> <span class="source-quality-tag">' + esc(e.sourceQualityLabel) + '</span></p>' : ''}
@@ -2202,6 +2202,28 @@ module.exports = (req, res) => {
         </div>
       \`;
       $('detailDlg').showModal();
+
+      // Driving-time estimate via /api/route when location coordinates are available
+      const driveEl = $('detailDriveTime');
+      if (driveEl && S.lat != null && S.lon != null && e.lat != null && e.lon != null) {
+        driveEl.innerHTML = ' · <span style="font-size:12px; color:var(--text-dim); opacity:0.8;">calculating drive time…</span>';
+        const routeUrl = \`/api/route?fromLat=\${encodeURIComponent(S.lat)}&fromLon=\${encodeURIComponent(S.lon)}&toLat=\${encodeURIComponent(e.lat)}&toLon=\${encodeURIComponent(e.lon)}\`;
+        fetch(routeUrl)
+          .then(r => {
+            if (!r.ok) throw new Error('Route estimate unavailable');
+            return r.json();
+          })
+          .then(d => {
+            if (d && Number.isFinite(d.durationMinutes)) {
+              driveEl.innerHTML = \` · <span title="Standard driving duration without live traffic">🚗 <b>\${d.durationMinutes} min</b> Estimated drive time</span>\`;
+            } else {
+              driveEl.innerHTML = ' · <span style="font-size:12px; color:var(--text-dim); opacity:0.7;">Drive time unavailable</span>';
+            }
+          })
+          .catch(() => {
+            driveEl.innerHTML = ' · <span style="font-size:12px; color:var(--text-dim); opacity:0.7;">Drive time unavailable</span>';
+          });
+      }
     }
 
     function renderRadar() {
