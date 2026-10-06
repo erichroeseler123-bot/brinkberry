@@ -320,31 +320,35 @@ describe('Brinkberry Production Verification Suite', () => {
       assert.match(errorBody.error, /Admin authorization required/i);
     });
 
-    test('read_latest=1 accepts valid admin token header or query parameter', async () => {
+    test('read_latest=1 accepts valid admin token header and rejects query parameter token', async () => {
       const originalToken = process.env.ADMIN_TOKEN;
       process.env.ADMIN_TOKEN = 'test-secret-token-xyz';
 
-      const req = {
+      // 1. Valid Authorization Bearer header -> accepted
+      const reqHeader = {
         url: '/api/click?read_latest=1',
         headers: { authorization: 'Bearer test-secret-token-xyz' }
       };
-      let statusCode = null;
-      let body = null;
+      let statusHeader = null;
+      await clickHandler(reqHeader, {
+        status(code) { statusHeader = code; return this; },
+        json() { return this; }
+      });
+      assert.notEqual(statusHeader, 401, 'Should not return 401 with valid Authorization header');
 
-      const res = {
-        status(code) {
-          statusCode = code;
-          return this;
-        },
-        json(data) {
-          body = data;
-          return this;
-        }
+      // 2. Query parameter token WITHOUT header -> REJECTED with 401 (no secrets in URLs)
+      const reqQuery = {
+        url: '/api/click?read_latest=1&token=test-secret-token-xyz',
+        headers: {}
       };
-
-      await clickHandler(req, res);
-      // Status must NOT be 401 (either 200 from Supabase or 500/503 if mock/network)
-      assert.notEqual(statusCode, 401, 'Should not return 401 with valid admin authorization');
+      let statusQuery = null;
+      let bodyQuery = null;
+      await clickHandler(reqQuery, {
+        status(code) { statusQuery = code; return this; },
+        json(data) { bodyQuery = data; return this; }
+      });
+      assert.equal(statusQuery, 401, 'Query parameter token must be rejected with 401');
+      assert.match(bodyQuery.error, /Admin authorization required/i);
 
       if (originalToken) process.env.ADMIN_TOKEN = originalToken;
       else delete process.env.ADMIN_TOKEN;

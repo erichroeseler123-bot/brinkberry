@@ -78,6 +78,10 @@ test('Widget Generator & Embedded Partner Workflow', async (t) => {
     assert.match(res.body, /Wix/);
     assert.match(res.body, /previewIframe/);
     assert.match(res.body, /embedCodeOutput/);
+    // Verify auto-resize script validates origin, source, and height
+    assert.match(res.body, /e\.origin !==/);
+    assert.match(res.body, /e\.source !==/);
+    assert.match(res.body, /brinkberry-widget-resize/);
   });
 
   await t.test('widget endpoint sets permissive iframe headers for cross-site embedding', async () => {

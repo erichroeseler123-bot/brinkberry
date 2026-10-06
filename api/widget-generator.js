@@ -613,7 +613,7 @@ module.exports = (req, res) => {
     function calculateRecommendedHeight(layout, limit) {
       const lim = parseInt(limit, 10) || 4;
       if (layout === 'compact') {
-        return Math.max(260, 110 + (lim * 85));
+        return Math.max(260, 110 + (lim * 105));
       }
       // Grid layout: 2 columns on desktop
       const rows = Math.ceil(lim / 2);
@@ -646,12 +646,15 @@ module.exports = (req, res) => {
       return \`${ORIGIN}/widget?\${query}\`;
     }
 
-    // Listen to auto-resize messages from widget preview
+    // Listen to auto-resize messages from widget preview with strict origin/source validation
     window.addEventListener('message', e => {
-      if (e.data && e.data.type === 'brinkberry-widget-resize' && Number.isFinite(e.data.height)) {
-        const previewIframe = document.getElementById('previewIframe');
-        if (previewIframe) {
-          previewIframe.style.height = e.data.height + 'px';
+      const previewIframe = document.getElementById('previewIframe');
+      if (!previewIframe || e.source !== previewIframe.contentWindow) return;
+      if (e.origin !== '${ORIGIN}' && e.origin !== window.location.origin) return;
+      if (e.data && e.data.type === 'brinkberry-widget-resize') {
+        const h = e.data.height;
+        if (typeof h === 'number' && Number.isFinite(h) && h >= 200 && h <= 5000) {
+          previewIframe.style.height = Math.ceil(h) + 'px';
         }
       }
     });
@@ -686,9 +689,14 @@ module.exports = (req, res) => {
           snippet += \`
 <script>
   window.addEventListener('message', function(e) {
+    var el = document.getElementById('brinkberry-radar-widget');
+    if (!el || e.source !== el.contentWindow) return;
+    if (e.origin !== '\${ORIGIN}' && e.origin !== 'https://brinkberry.com') return;
     if (e.data && e.data.type === 'brinkberry-widget-resize') {
-      var el = document.getElementById('brinkberry-radar-widget');
-      if (el) el.style.height = e.data.height + 'px';
+      var h = e.data.height;
+      if (typeof h === 'number' && Number.isFinite(h) && h >= 200 && h <= 5000) {
+        el.style.height = Math.ceil(h) + 'px';
+      }
     }
   });
 <\\/script>\`;

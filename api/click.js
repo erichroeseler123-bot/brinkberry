@@ -36,11 +36,10 @@ async function logClickTelemetry(eventId, targetUrl, surface, returnRow = false)
   }
 }
 
-function isAdminAuthorized(req, u) {
+function isAdminAuthorized(req) {
   const authHeader = req.headers?.['authorization'] || '';
   const adminKeyHeader = req.headers?.['x-admin-key'] || req.headers?.['x-admin-token'] || '';
-  const queryToken = u?.searchParams?.get('admin_token') || u?.searchParams?.get('token') || u?.searchParams?.get('key') || '';
-  const token = (authHeader.replace(/^Bearer\s+/i, '').trim()) || adminKeyHeader.trim() || queryToken.trim();
+  const token = (authHeader.replace(/^Bearer\s+/i, '').trim()) || adminKeyHeader.trim();
   
   if (!token) return false;
   
@@ -70,7 +69,7 @@ module.exports = async (req, res) => {
 
     // Read latest rows verification endpoint (Admin only)
     if (u.searchParams.get('read_latest') === '1') {
-      if (!isAdminAuthorized(req, u)) {
+      if (!isAdminAuthorized(req)) {
         return res.status(401).json({ error: 'Admin authorization required' });
       }
       if (!SERVICE_ROLE_KEY) {
@@ -97,7 +96,7 @@ module.exports = async (req, res) => {
 
     // Date-filtered partner engagement report (Admin only)
     if (u.searchParams.get('report') === '1' || u.searchParams.get('partner_report') === '1') {
-      if (!isAdminAuthorized(req, u)) {
+      if (!isAdminAuthorized(req)) {
         return res.status(401).json({ error: 'Admin authorization required' });
       }
       if (!SERVICE_ROLE_KEY) {
@@ -246,7 +245,7 @@ module.exports = async (req, res) => {
     const surface = surfaceParam || (partner ? `widget_${partner}` : 'feed');
     const isVerify = u.searchParams.get('verify') === '1';
 
-    if (isVerify && !isAdminAuthorized(req, u)) {
+    if (isVerify && !isAdminAuthorized(req)) {
       return res.status(401).json({ error: 'Admin authorization required' });
     }
 
