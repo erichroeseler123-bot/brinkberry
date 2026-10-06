@@ -349,6 +349,64 @@ describe('Brinkberry Production Verification Suite', () => {
       if (originalToken) process.env.ADMIN_TOKEN = originalToken;
       else delete process.env.ADMIN_TOKEN;
     });
+
+    test('report=1 rejects unauthenticated requests with 401', async () => {
+      const req = { url: '/api/click?report=1&days=7', headers: {} };
+      let statusCode = null;
+      let errorBody = null;
+
+      const res = {
+        status(code) {
+          statusCode = code;
+          return this;
+        },
+        json(data) {
+          errorBody = data;
+          return this;
+        }
+      };
+
+      await clickHandler(req, res);
+      assert.equal(statusCode, 401);
+      assert.match(errorBody.error, /Admin authorization required/i);
+    });
+
+    test('report=1 accepts authorized admin request and includes engagement disclaimer', async () => {
+      const originalToken = process.env.ADMIN_TOKEN;
+      process.env.ADMIN_TOKEN = 'test-secret-token-xyz';
+
+      const req = {
+        url: '/api/click?report=1&partner=pilot_partner&days=7',
+        headers: { authorization: 'Bearer test-secret-token-xyz' }
+      };
+      let statusCode = null;
+      let body = null;
+
+      const res = {
+        status(code) {
+          statusCode = code;
+          return this;
+        },
+        json(data) {
+          body = data;
+          return this;
+        }
+      };
+
+      await clickHandler(req, res);
+      assert.notEqual(statusCode, 401, 'Should not return 401 with valid admin authorization');
+      if (statusCode === 200) {
+        assert.equal(body.status, 'ok');
+        assert.equal(body.metricType, 'event_click_engagement');
+        assert.equal(body.partner, 'pilot_partner');
+        assert.ok(typeof body.totalClicks === 'number');
+        assert.ok(body.period && body.period.days === 7);
+        assert.match(body.note, /Clicks do not demonstrate or establish completed ticket purchases/i);
+      }
+
+      if (originalToken) process.env.ADMIN_TOKEN = originalToken;
+      else delete process.env.ADMIN_TOKEN;
+    });
   });
 
   describe('Homepage & Event Detail Handlers', () => {

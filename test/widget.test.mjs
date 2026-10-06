@@ -166,4 +166,26 @@ describe('Brinkberry Embeddable B2B Partner Widget Suite', () => {
     assert.match(privacyHtml, /Approximate Geolocation/);
   });
 
+  test('renders compact layout for mobile and sidebar embeds', async () => {
+    let responseHtml = '';
+    const req = {
+      url: '/widget?city=new-orleans&layout=compact&limit=6&partner=hotel_pilot',
+      headers: {}
+    };
+    const res = {
+      setHeader() {},
+      status() {
+        return {
+          send(body) { responseHtml = body; }
+        };
+      }
+    };
+
+    await widgetHandler(req, res);
+    assert.match(responseHtml, /compact-list/);
+    assert.match(responseHtml, /brinkberry-widget-resize/);
+    assert.match(responseHtml, /overflow-y: auto/);
+    assert.match(responseHtml, /-webkit-overflow-scrolling: touch/);
+  });
+
 });

@@ -49,6 +49,12 @@ function checkRateLimit(ip) {
 }
 
 module.exports = async (req, res) => {
+  if (!res.status) {
+    res.status = function(code) { this.statusCode = code; return this; };
+  }
+  if (!res.send) {
+    res.send = function(body) { this.end(body); return this; };
+  }
   const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '127.0.0.1';
   if (!checkRateLimit(clientIp)) {
     res.setHeader('Retry-After', '60');
@@ -60,6 +66,8 @@ module.exports = async (req, res) => {
   const cityParam = cityRaw ? cityRaw.toLowerCase().trim() : '';
   const rawPartner = u.searchParams.get('partner') || 'partner';
   const theme = (u.searchParams.get('theme') || 'dark').toLowerCase();
+  const layout = (u.searchParams.get('layout') || 'grid').toLowerCase();
+  const isCompact = layout === 'compact' || layout === 'list';
   const limit = Math.min(Math.max(Number(u.searchParams.get('limit')) || 4, 1), 8);
 
   // Validate partner ID format (safe alphanumeric and underscores/hyphens)
@@ -134,13 +142,15 @@ module.exports = async (req, res) => {
   <title>Happening in ${esc(cityInfo.name)} · Brinkberry Radar</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
+    html, body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: ${bg};
       color: ${text};
       padding: 12px;
       line-height: 1.4;
       font-size: 14px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .widget-header {
       display: flex;
@@ -277,6 +287,83 @@ module.exports = async (req, res) => {
     .btn-ticket:hover {
       background: #ffa84d;
     }
+
+    /* Compact List Layout */
+    .compact-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .card-compact {
+      background: ${cardBg};
+      border: 1px solid ${cardBorder};
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .card-compact:hover {
+      transform: translateY(-1px);
+      border-color: #554473;
+    }
+    .card-compact-img {
+      width: 72px;
+      height: 72px;
+      border-radius: 8px;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: #201730;
+      position: relative;
+    }
+    .card-compact-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .card-compact-body {
+      flex: 1;
+      min-width: 0;
+    }
+    .card-compact-title {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: ${text};
+      line-height: 1.25;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-compact-meta {
+      font-size: 11.5px;
+      color: ${textDim};
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    .card-compact-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    /* Responsive Mobile Adjustments */
+    @media (max-width: 480px) {
+      html, body { padding: 8px; }
+      .grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .card-img { height: 110px; }
+      .card-body { padding: 10px; }
+    }
+
     .widget-footer {
       margin-top: 12px;
       padding-top: 8px;
@@ -316,6 +403,49 @@ module.exports = async (req, res) => {
       <a href="${esc(fullRadarUrl)}" target="_blank" rel="noopener noreferrer" style="color:${primary}; font-weight:700; text-decoration:none;">
         Open Live Event Radar →
       </a>
+    </div>
+  ` : (isCompact ? `
+    <div class="compact-list">
+      ${events.map(e => {
+        const timeStr = new Date(e.start).toLocaleString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        });
+        const hasTicket = Boolean(e.hasTicket || e.ticketUrl);
+        let actionLabel = 'Tickets →';
+        if (!hasTicket) {
+          if (e.category === 'civic') actionLabel = 'Agenda →';
+          else if (e.isFree || (e.priceDisplay && e.priceDisplay.toLowerCase().includes('free'))) actionLabel = 'Free →';
+          else actionLabel = 'Details →';
+        }
+        const rawDestUrl = e.ticketUrl || e.detailsUrl;
+        const clickUrl = rawDestUrl
+          ? `/api/click?url=${encodeURIComponent(rawDestUrl)}&eventId=${encodeURIComponent(e.id)}&surface=widget_${encodeURIComponent(safePartner)}&partner=${encodeURIComponent(safePartner)}`
+          : `${ORIGIN}/event/${encodeURIComponent(e.id)}?utm_source=${encodeURIComponent(safePartner)}&utm_medium=widget`;
+
+        return `
+          <div class="card-compact">
+            ${e.image ? `
+              <div class="card-compact-img">
+                <img src="${esc(e.image)}" alt="${esc(e.title)}" loading="lazy">
+              </div>
+            ` : ''}
+            <div class="card-compact-body">
+              <div class="card-compact-title">${esc(e.title)}</div>
+              <div class="card-compact-meta">📍 ${esc(e.venue)}${e.city ? `, ${esc(e.city)}` : ''}</div>
+              <div class="card-compact-footer">
+                <span class="card-compact-meta" style="margin-bottom:0">⏰ ${esc(timeStr)}</span>
+                <a class="btn-ticket" href="${esc(clickUrl)}" target="_blank" rel="noopener noreferrer">
+                  ${esc(actionLabel)}
+                </a>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
     </div>
   ` : `
     <div class="grid">
@@ -378,7 +508,7 @@ module.exports = async (req, res) => {
         `;
       }).join('')}
     </div>
-  `}
+  `)}
 
   <div class="widget-footer">
     <span>Powered by <b>Brinkberry</b> · <a href="${ORIGIN}/embed" target="_blank" rel="noopener noreferrer" style="color:${textDim}; text-decoration:none; font-size:11px;">Embed this widget</a> · <a href="${ORIGIN}/terms" target="_blank" rel="noopener noreferrer" style="color:${textDim}; text-decoration:none; font-size:11px;">Terms</a></span>
@@ -386,6 +516,24 @@ module.exports = async (req, res) => {
       Explore Full Live Radar →
     </a>
   </div>
+
+  <script>
+    function reportHeight() {
+      try {
+        const h = Math.ceil(document.documentElement.scrollHeight || document.body.scrollHeight || 0);
+        if (h > 0) {
+          window.parent?.postMessage({ type: 'brinkberry-widget-resize', height: h }, '*');
+        }
+      } catch (_) {}
+    }
+    window.addEventListener('load', reportHeight);
+    window.addEventListener('resize', reportHeight);
+    if (window.ResizeObserver) {
+      new ResizeObserver(reportHeight).observe(document.body);
+    }
+    setTimeout(reportHeight, 300);
+    setTimeout(reportHeight, 1200);
+  </script>
 </body>
 </html>`);
 };

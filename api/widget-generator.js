@@ -466,9 +466,23 @@ module.exports = (req, res) => {
           </div>
 
           <div class="form-group">
+            <label>Card Presentation</label>
+            <div class="theme-toggle-row">
+              <div class="theme-card-btn active" id="layoutGridBtn" onclick="setLayout('grid')">
+                <strong>🖼️ Visual Cards</strong>
+                <span>Best for main content &amp; wide sections</span>
+              </div>
+              <div class="theme-card-btn" id="layoutCompactBtn" onclick="setLayout('compact')">
+                <strong>📋 Compact List</strong>
+                <span>Best for mobile &amp; "Things to do" sidebars</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
             <label for="eventLimit">Events to Show</label>
             <select id="eventLimit" onchange="updateWidget()">
-              <option value="2">2 Events (Compact)</option>
+              <option value="2">2 Events (Ultra-compact)</option>
               <option value="4" selected>4 Events (Standard)</option>
               <option value="6">6 Events (Extended)</option>
               <option value="8">8 Events (Full Grid)</option>
@@ -479,6 +493,14 @@ module.exports = (req, res) => {
             <label for="partnerId">Partner / Website Tag</label>
             <input type="text" id="partnerId" placeholder="e.g. royal-sonesta-hotel" value="partner" oninput="updateWidget()">
             <p class="helper-text">Alphanumeric identifier. Outbound ticket clicks will carry this attribution tag for analytics.</p>
+          </div>
+
+          <div class="form-group" style="display:flex; align-items:flex-start; gap:10px; background:#181226; padding:12px; border-radius:10px; border:1px solid var(--card-border); margin-top:14px;">
+            <input type="checkbox" id="autoResizeToggle" checked onchange="updateWidget()" style="width:18px; height:18px; margin-top:2px; accent-color:var(--primary); cursor:pointer;">
+            <div>
+              <label for="autoResizeToggle" style="margin-bottom:2px; cursor:pointer;"><b>Include Responsive Auto-Resize Script</b> (Recommended)</label>
+              <p class="helper-text" style="margin-top:0;">Automatically adapts iframe height on mobile and desktop so all events fit seamlessly with zero cutoffs and zero double scrollbars.</p>
+            </div>
           </div>
         </div>
 
@@ -540,6 +562,7 @@ module.exports = (req, res) => {
   <script>
     let currentCity = 'denver';
     let currentTheme = 'dark';
+    let currentLayout = 'grid';
 
     // Preset Pill Click Handlers
     document.querySelectorAll('#cityPills .pill-btn').forEach(btn => {
@@ -574,10 +597,27 @@ module.exports = (req, res) => {
       updateWidget();
     }
 
+    function setLayout(ly) {
+      currentLayout = ly;
+      document.getElementById('layoutGridBtn').classList.toggle('active', ly === 'grid');
+      document.getElementById('layoutCompactBtn').classList.toggle('active', ly === 'compact');
+      updateWidget();
+    }
+
     function setDeviceWidth(w, btn) {
       document.querySelectorAll('.device-switcher .device-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('previewIframe').style.maxWidth = w;
+    }
+
+    function calculateRecommendedHeight(layout, limit) {
+      const lim = parseInt(limit, 10) || 4;
+      if (layout === 'compact') {
+        return Math.max(260, 110 + (lim * 85));
+      }
+      // Grid layout: 2 columns on desktop
+      const rows = Math.ceil(lim / 2);
+      return Math.max(380, 110 + (rows * 270));
     }
 
     function getWidgetUrl() {
@@ -586,6 +626,9 @@ module.exports = (req, res) => {
       const partner = rawPartner || 'partner';
 
       let query = \`theme=\${encodeURIComponent(currentTheme)}&limit=\${encodeURIComponent(limit)}&partner=\${encodeURIComponent(partner)}\`;
+      if (currentLayout === 'compact') {
+        query += '&layout=compact';
+      }
 
       if (currentCity === 'custom') {
         const name = (document.getElementById('customCityName').value || 'Nearby').trim();
@@ -603,26 +646,53 @@ module.exports = (req, res) => {
       return \`${ORIGIN}/widget?\${query}\`;
     }
 
+    // Listen to auto-resize messages from widget preview
+    window.addEventListener('message', e => {
+      if (e.data && e.data.type === 'brinkberry-widget-resize' && Number.isFinite(e.data.height)) {
+        const previewIframe = document.getElementById('previewIframe');
+        if (previewIframe) {
+          previewIframe.style.height = e.data.height + 'px';
+        }
+      }
+    });
+
     let updateTimeout;
     function updateWidget() {
       clearTimeout(updateTimeout);
       updateTimeout = setTimeout(() => {
         const url = getWidgetUrl();
+        const limit = document.getElementById('eventLimit').value || '4';
         const iframe = document.getElementById('previewIframe');
         if (iframe.src !== url) {
           iframe.src = url;
         }
 
-        const snippet = \`<!-- Brinkberry Hyperlocal Event Radar Widget -->
+        const isAutoResize = document.getElementById('autoResizeToggle')?.checked ?? true;
+        const defaultHeight = calculateRecommendedHeight(currentLayout, limit);
+
+        let snippet = \`<!-- Brinkberry Hyperlocal Event Radar Widget -->
 <iframe
+  id="brinkberry-radar-widget"
   src="\${url}"
   width="100%"
-  height="600"
+  height="\${defaultHeight}"
   frameborder="0"
-  style="border:0; width:100%; max-width:680px; border-radius:14px; display:block; overflow:hidden;"
+  style="border:0; width:100%; max-width:680px; border-radius:14px; display:block;"
   loading="lazy"
   title="What's happening nearby in the next 48 hours"
 ></iframe>\`;
+
+        if (isAutoResize) {
+          snippet += \`
+<script>
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'brinkberry-widget-resize') {
+      var el = document.getElementById('brinkberry-radar-widget');
+      if (el) el.style.height = e.data.height + 'px';
+    }
+  });
+<\\/script>\`;
+        }
 
         document.getElementById('embedCodeOutput').textContent = snippet;
       }, 150);

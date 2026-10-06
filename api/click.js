@@ -95,6 +95,150 @@ module.exports = async (req, res) => {
       }
     }
 
+    // Date-filtered partner engagement report (Admin only)
+    if (u.searchParams.get('report') === '1' || u.searchParams.get('partner_report') === '1') {
+      if (!isAdminAuthorized(req, u)) {
+        return res.status(401).json({ error: 'Admin authorization required' });
+      }
+      if (!SERVICE_ROLE_KEY) {
+        return res.status(500).json({ error: 'No SERVICE_ROLE_KEY' });
+      }
+      try {
+        const partnerFilter = u.searchParams.get('partner')?.trim().toLowerCase() || null;
+        const days = Math.max(1, Math.min(Number(u.searchParams.get('days')) || 7, 90));
+
+        let sinceIso = u.searchParams.get('since') || u.searchParams.get('start_date');
+        if (!sinceIso) {
+          const d = new Date();
+          d.setUTCDate(d.getUTCDate() - days);
+          sinceIso = d.toISOString();
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(sinceIso)) {
+          sinceIso = `${sinceIso}T00:00:00.000Z`;
+        }
+
+        let untilIso = u.searchParams.get('until') || u.searchParams.get('end_date');
+        if (!untilIso) {
+          untilIso = new Date().toISOString();
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(untilIso)) {
+          untilIso = `${untilIso}T23:59:59.999Z`;
+        }
+
+        const limit = Math.max(1, Math.min(Number(u.searchParams.get('limit')) || 1000, 5000));
+
+        let queryUrl = `${SUPABASE_URL}/rest/v1/outbound_clicks?select=*&created_at=gte.${encodeURIComponent(sinceIso)}&created_at=lte.${encodeURIComponent(untilIso)}&order=created_at.desc&limit=${limit}`;
+        if (partnerFilter && partnerFilter !== 'all') {
+          queryUrl += `&surface=eq.widget_${encodeURIComponent(partnerFilter)}`;
+        }
+
+        const queryRes = await fetch(queryUrl, {
+          headers: {
+            apikey: SERVICE_ROLE_KEY,
+            authorization: `Bearer ${SERVICE_ROLE_KEY}`
+          },
+          signal: AbortSignal.timeout(4000)
+        });
+
+        if (!queryRes.ok) {
+          return res.status(queryRes.status).json({ error: 'Failed to fetch report from Supabase', details: await queryRes.text() });
+        }
+
+        const rows = await queryRes.json();
+        const records = Array.isArray(rows) ? rows : [];
+
+        const dailyEngagement = {};
+        const clicksByPartner = {};
+        const clicksByTarget = {};
+
+        for (const r of records) {
+          const day = (r.created_at || '').slice(0, 10) || 'unknown';
+          dailyEngagement[day] = (dailyEngagement[day] || 0) + 1;
+
+          const surf = r.surface || 'unspecified';
+          clicksByPartner[surf] = (clicksByPartner[surf] || 0) + 1;
+
+          const targetDomain = (() => {
+            try { return new URL(r.target_url).hostname; } catch { return r.target_url || 'unknown'; }
+          })();
+          clicksByTarget[targetDomain] = (clicksByTarget[targetDomain] || 0) + 1;
+        }
+
+        const reportData = {
+          status: 'ok',
+          metricType: 'event_click_engagement',
+          partner: partnerFilter || 'all',
+          period: {
+            start: sinceIso,
+            end: untilIso,
+            days
+          },
+          totalClicks: records.length,
+          dailyEngagement,
+          clicksByPartner,
+          clicksByTargetDomain: clicksByTarget,
+          note: 'Event click counts measure outbound visitor engagement and referral interest from the partner site. Clicks do not demonstrate or establish completed ticket purchases, conversions, or commission revenue.',
+          recordsCount: records.length,
+          records: records.slice(0, 200)
+        };
+
+        if (u.searchParams.get('format') === 'html') {
+          const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          return res.status(200).send(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Partner Click Engagement Report · Brinkberry</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0e0b17; color: #f4eff8; padding: 24px; max-width: 900px; margin: 0 auto; line-height: 1.5; }
+    h1 { font-size: 22px; margin-bottom: 8px; color: #ffb86b; }
+    .meta { color: #9b90aa; font-size: 13.5px; margin-bottom: 24px; }
+    .card { background: #171224; border: 1px solid #281f38; border-radius: 12px; padding: 18px; margin-bottom: 18px; }
+    .stat-val { font-size: 36px; font-weight: 900; color: #ff2e63; }
+    .stat-label { font-size: 12px; text-transform: uppercase; color: #9b90aa; letter-spacing: 0.05em; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #281f38; }
+    th { color: #9b90aa; font-size: 11.5px; text-transform: uppercase; }
+    .disclaimer { background: rgba(255, 184, 107, 0.08); border: 1px solid rgba(255, 184, 107, 0.25); border-radius: 8px; padding: 12px; font-size: 12.5px; color: #e0d8f0; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Partner Click Engagement Report</h1>
+  <div class="meta">Partner: <b>${esc(reportData.partner)}</b> · Period: ${esc(reportData.period.start.slice(0, 10))} to ${esc(reportData.period.end.slice(0, 10))} (${reportData.period.days} days)</div>
+  <div class="card">
+    <div class="stat-label">Total Outbound Event Clicks</div>
+    <div class="stat-val">${reportData.totalClicks}</div>
+  </div>
+  <div class="card">
+    <h3>Daily Engagement Trend</h3>
+    <table>
+      <thead><tr><th>Date</th><th>Clicks</th></tr></thead>
+      <tbody>
+        ${Object.entries(reportData.dailyEngagement).map(([d, c]) => `<tr><td>${esc(d)}</td><td><b>${c}</b></td></tr>`).join('') || '<tr><td colspan="2">No clicks in period</td></tr>'}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h3>Breakdown by Partner Surface</h3>
+    <table>
+      <thead><tr><th>Surface</th><th>Clicks</th></tr></thead>
+      <tbody>
+        ${Object.entries(reportData.clicksByPartner).map(([p, c]) => `<tr><td>${esc(p)}</td><td><b>${c}</b></td></tr>`).join('') || '<tr><td colspan="2">No clicks in period</td></tr>'}
+      </tbody>
+    </table>
+  </div>
+  <div class="disclaimer">
+    ⚠️ <b>Reporting Note:</b> ${esc(reportData.note)}
+  </div>
+</body>
+</html>`);
+        }
+
+        return res.status(200).json(reportData);
+      } catch (e) {
+        return res.status(503).json({ error: e.message });
+      }
+    }
+
     const target = u.searchParams.get('url') || u.searchParams.get('dest');
     const eventId = u.searchParams.get('eventId');
     const partner = u.searchParams.get('partner');
