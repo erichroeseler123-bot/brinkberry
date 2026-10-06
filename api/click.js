@@ -38,7 +38,7 @@ async function logClickTelemetry(eventId, targetUrl, surface, returnRow = false)
 
 function isAdminAuthorized(req, u) {
   const authHeader = req.headers?.['authorization'] || '';
-  const adminKeyHeader = req.headers?.['x-admin-key'] || '';
+  const adminKeyHeader = req.headers?.['x-admin-key'] || req.headers?.['x-admin-token'] || '';
   const queryToken = u?.searchParams?.get('admin_token') || u?.searchParams?.get('token') || u?.searchParams?.get('key') || '';
   const token = (authHeader.replace(/^Bearer\s+/i, '').trim()) || adminKeyHeader.trim() || queryToken.trim();
   
