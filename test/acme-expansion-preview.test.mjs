@@ -13,11 +13,31 @@ const {
 } = require('../lib/comedy/expansion-ingestion.js');
 const { evaluateEventFreshness } = require('../lib/freshness.js');
 const { LocalFileCanonicalStorage } = require('../lib/storage/canonical-event-storage.js');
+const { defaultRawStorage, LocalRawSourceStorage } = require('../lib/storage/raw-source-storage.js');
 const os = require('node:os');
 const path = require('node:path');
 const fs = require('node:fs');
 
 const SKIP_LIVE = process.env.BRINKBERRY_TEST_MODE === 'unit';
+
+async function withIsolatedRawStorage(fn) {
+  const tmpRawDir = path.join(os.tmpdir(), `test_acme_raw_iso_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+  const unitRaw = new LocalRawSourceStorage({ baseDir: tmpRawDir });
+  const origSave = defaultRawStorage.saveRawEvidence;
+  const origLatest = defaultRawStorage.getLatestRawEvidence;
+  const origHistory = defaultRawStorage.listEvidenceHistory;
+  defaultRawStorage.saveRawEvidence = unitRaw.saveRawEvidence.bind(unitRaw);
+  defaultRawStorage.getLatestRawEvidence = unitRaw.getLatestRawEvidence.bind(unitRaw);
+  defaultRawStorage.listEvidenceHistory = unitRaw.listEvidenceHistory.bind(unitRaw);
+  try {
+    return await fn(unitRaw);
+  } finally {
+    defaultRawStorage.saveRawEvidence = origSave;
+    defaultRawStorage.getLatestRawEvidence = origLatest;
+    defaultRawStorage.listEvidenceHistory = origHistory;
+    try { fs.rmSync(tmpRawDir, { recursive: true, force: true }); } catch (_) {}
+  }
+}
 
 function buildAcmeFixtureHtml(totalEvents = 107) {
   const events = [];
@@ -76,12 +96,12 @@ test('Acme Comedy Company Preview Ingestion & Isolation Suite', async (t) => {
   });
 
   await t.test('2a. Deterministic Unit: 107 Canonical Events with Central Time Handling (Fixture)', async () => {
-    const rep = await ingestAcme({
+    const rep = await withIsolatedRawStorage(() => ingestAcme({
       persist: false,
       environment: 'preview',
       namespace: 'preview_expansion',
       fetchFn: createDeterministicAcmeFetch(107)
-    });
+    }));
 
     assert.equal(rep.venue.name, 'Acme Comedy Company');
     assert.equal(rep.count, 107, 'Should ingest exactly 107 fixture Acme performances');
@@ -145,12 +165,12 @@ test('Acme Comedy Company Preview Ingestion & Isolation Suite', async (t) => {
     const testStorage = new LocalFileCanonicalStorage(tmpFile);
     const fetchFn = createDeterministicAcmeFetch(107);
 
-    const rep1 = await ingestAcme({
+    const rep1 = await withIsolatedRawStorage(() => ingestAcme({
       persist: false,
       environment: 'preview',
       namespace: 'preview_expansion',
       fetchFn
-    });
+    }));
     await testStorage.upsertEvents(rep1.events);
 
     const afterFirst = await testStorage.queryEvents({
@@ -165,12 +185,12 @@ test('Acme Comedy Company Preview Ingestion & Isolation Suite', async (t) => {
     });
     assert.equal(afterFirst.length, 107, 'First deterministic ingestion stores exactly 107 records');
 
-    const rep2 = await ingestAcme({
+    const rep2 = await withIsolatedRawStorage(() => ingestAcme({
       persist: false,
       environment: 'preview',
       namespace: 'preview_expansion',
       fetchFn
-    });
+    }));
     await testStorage.upsertEvents(rep2.events);
 
     const afterSecond = await testStorage.queryEvents({

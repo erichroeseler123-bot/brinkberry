@@ -13,11 +13,34 @@ import {
   defaultCanonicalStorage,
   LocalFileCanonicalStorage
 } from '../lib/storage/canonical-event-storage.js';
+import {
+  defaultRawStorage,
+  LocalRawSourceStorage
+} from '../lib/storage/raw-source-storage.js';
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
 const feedHandler = require('../api/feed.js');
 const { AUDIT_MILESTONE } = require('../lib/audit/coverage-auditor.js');
+
+async function withIsolatedRawStorage(fn) {
+  const tmpRawDir = path.join(os.tmpdir(), `test_raw_iso_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+  const unitRaw = new LocalRawSourceStorage({ baseDir: tmpRawDir });
+  const origSave = defaultRawStorage.saveRawEvidence;
+  const origLatest = defaultRawStorage.getLatestRawEvidence;
+  const origHistory = defaultRawStorage.listEvidenceHistory;
+  defaultRawStorage.saveRawEvidence = unitRaw.saveRawEvidence.bind(unitRaw);
+  defaultRawStorage.getLatestRawEvidence = unitRaw.getLatestRawEvidence.bind(unitRaw);
+  defaultRawStorage.listEvidenceHistory = unitRaw.listEvidenceHistory.bind(unitRaw);
+  try {
+    return await fn(unitRaw);
+  } finally {
+    defaultRawStorage.saveRawEvidence = origSave;
+    defaultRawStorage.getLatestRawEvidence = origLatest;
+    defaultRawStorage.listEvidenceHistory = origHistory;
+    try { fs.rmSync(tmpRawDir, { recursive: true, force: true }); } catch (_) {}
+  }
+}
 
 function createMockReqRes({ method = 'GET', url = '/' } = {}) {
   const req = {
@@ -98,12 +121,12 @@ test('Preview Gate 1a (Deterministic Unit): Strict Environment & Namespace Isola
   const unitStorage = new LocalFileCanonicalStorage(tmpFile);
 
   try {
-    const result = await ingestExpansionComedy({
+    const result = await withIsolatedRawStorage(() => ingestExpansionComedy({
       persist: false,
       environment: 'preview',
       namespace: 'preview_expansion',
       fetchFn: createDeterministicExpansionFetch()
-    });
+    }));
 
     assert.equal(result.count, 404, 'Deterministic fixture must ingest exactly 404 expansion performances (136 + 161 + 107)');
 
@@ -236,21 +259,21 @@ test('Preview Gate 4a (Deterministic Unit): Second Ingestion Run Proving Zero Du
   const fetchFn = createDeterministicExpansionFetch();
 
   try {
-    const run1 = await ingestExpansionComedy({
+    const run1 = await withIsolatedRawStorage(() => ingestExpansionComedy({
       persist: false,
       environment: 'preview',
       namespace: 'preview_expansion',
       fetchFn
-    });
+    }));
     assert.equal(run1.count, 404);
     await unitStorage.upsertEvents(run1.events);
 
-    const run2 = await ingestExpansionComedy({
+    const run2 = await withIsolatedRawStorage(() => ingestExpansionComedy({
       persist: false,
       environment: 'preview',
       namespace: 'preview_expansion',
       fetchFn
-    });
+    }));
     assert.equal(run2.count, 404, 'Second deterministic run must have identical unique canonical count (404)');
     await unitStorage.upsertEvents(run2.events);
 
@@ -324,15 +347,40 @@ test('Preview Gate 5: Honest Failure & Freshness Decay Test', async () => {
   try { fs.unlinkSync(decayStoreFile); } catch (_) {}
 });
 
-test('Preview Gate 6: Complete Cleanup / Purge of Preview Records', async () => {
-  if (SKIP_LIVE) {
-    await ingestExpansionComedy({
-      persist: true,
+test('Preview Gate 6a (Deterministic Unit): Complete Cleanup / Purge of Preview Records (404 Fixture Events)', async () => {
+  const tmpFile = path.join(os.tmpdir(), `test_exp_gate6_unit_${Date.now()}_${Math.random().toString(36).slice(2)}.json`);
+  const unitStorage = new LocalFileCanonicalStorage(tmpFile);
+  const origPurge = defaultCanonicalStorage.purgePreviewRecords;
+  const origQuery = defaultCanonicalStorage.queryEvents;
+  defaultCanonicalStorage.purgePreviewRecords = unitStorage.purgePreviewRecords.bind(unitStorage);
+  defaultCanonicalStorage.queryEvents = unitStorage.queryEvents.bind(unitStorage);
+  try {
+    const seeded = await withIsolatedRawStorage(() => ingestExpansionComedy({
+      persist: false,
       environment: 'preview',
       namespace: 'preview_expansion',
       fetchFn: createDeterministicExpansionFetch()
+    }));
+    await unitStorage.upsertEvents(seeded.events);
+
+    const purgeResult = await purgeExpansionPreviewRecords({ namespace: 'preview_expansion' });
+    assert.equal(purgeResult.purgedCount, 404, `Must purge all 404 isolated fixture preview records (purged ${purgeResult.purgedCount})`);
+
+    const afterPurge = await defaultCanonicalStorage.queryEvents({
+      includePreview: true,
+      environment: 'preview',
+      windowStart: '2026-01-01T00:00:00.000Z',
+      windowEnd: '2099-01-01T00:00:00.000Z'
     });
+    assert.equal(afterPurge.length, 0, 'Zero preview records must remain after purge');
+  } finally {
+    defaultCanonicalStorage.purgePreviewRecords = origPurge;
+    defaultCanonicalStorage.queryEvents = origQuery;
+    try { fs.unlinkSync(tmpFile); } catch (_) {}
   }
+});
+
+test('Preview Gate 6b (Live Integration): Complete Cleanup / Purge of Live Preview Records', { skip: SKIP_LIVE }, async () => {
   const purgeResult = await purgeExpansionPreviewRecords({ namespace: 'preview_expansion' });
   assert.ok(purgeResult.purgedCount > 0, `Must purge preview records (purged ${purgeResult.purgedCount})`);
 

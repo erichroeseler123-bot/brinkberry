@@ -104,6 +104,10 @@ describe('Step 1 Final Verification: Atlanta Canonical Comedy Pioneer Market', (
   });
 
   test('5a. Deterministic Unit: Duplicate performances remain separate (Tee Sanders 2026-09-25 9:30 PM & 11:30 PM fixture)', async () => {
+    const path = require('node:path');
+    const os = require('node:os');
+    const fs = require('node:fs');
+    const { defaultRawStorage, LocalRawSourceStorage } = require('../lib/storage/raw-source-storage.js');
     const { ingestPunchline, deduplicateAtlantaEvents } = require('../lib/comedy/atlanta-ingestion.js');
     const punchlineIcsFixture = [
       'BEGIN:VCALENDAR',
@@ -128,13 +132,23 @@ describe('Step 1 Final Verification: Atlanta Canonical Comedy Pioneer Market', (
       'END:VCALENDAR'
     ].join('\r\n');
 
-    const rep = await ingestPunchline({
-      fetchFn: async () => ({
-        ok: true,
-        status: 200,
-        text: async () => punchlineIcsFixture
-      })
-    });
+    const tmpRawDir = path.join(os.tmpdir(), `test_raw_step1_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+    const unitRaw = new LocalRawSourceStorage({ baseDir: tmpRawDir });
+    const origSave = defaultRawStorage.saveRawEvidence;
+    defaultRawStorage.saveRawEvidence = unitRaw.saveRawEvidence.bind(unitRaw);
+    let rep;
+    try {
+      rep = await ingestPunchline({
+        fetchFn: async () => ({
+          ok: true,
+          status: 200,
+          text: async () => punchlineIcsFixture
+        })
+      });
+    } finally {
+      defaultRawStorage.saveRawEvidence = origSave;
+      try { fs.rmSync(tmpRawDir, { recursive: true, force: true }); } catch (_) {}
+    }
     const canonical = deduplicateAtlantaEvents(rep.events);
 
     // Test Friday Tee Sanders at Punchline (has 2 separate showtimes: 9:30 PM and 11:30 PM)

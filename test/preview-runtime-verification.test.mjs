@@ -30,7 +30,30 @@ import {
   defaultCanonicalStorage,
   LocalFileCanonicalStorage
 } from '../lib/storage/canonical-event-storage.js';
+import {
+  defaultRawStorage,
+  LocalRawSourceStorage
+} from '../lib/storage/raw-source-storage.js';
 import { createRequire } from 'module';
+
+async function withIsolatedRawStorage(fn) {
+  const tmpRawDir = path.join(os.tmpdir(), `test_raw_rt_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+  const unitRaw = new LocalRawSourceStorage({ baseDir: tmpRawDir });
+  const origSave = defaultRawStorage.saveRawEvidence;
+  const origGetLatest = defaultRawStorage.getLatestRawEvidence;
+  const origListHistory = defaultRawStorage.listEvidenceHistory;
+  defaultRawStorage.saveRawEvidence = unitRaw.saveRawEvidence.bind(unitRaw);
+  defaultRawStorage.getLatestRawEvidence = unitRaw.getLatestRawEvidence.bind(unitRaw);
+  defaultRawStorage.listEvidenceHistory = unitRaw.listEvidenceHistory.bind(unitRaw);
+  try {
+    return await fn(unitRaw);
+  } finally {
+    defaultRawStorage.saveRawEvidence = origSave;
+    defaultRawStorage.getLatestRawEvidence = origGetLatest;
+    defaultRawStorage.listEvidenceHistory = origListHistory;
+    try { fs.rmSync(tmpRawDir, { recursive: true, force: true }); } catch (_) {}
+  }
+}
 
 const require = createRequire(import.meta.url);
 const feedHandler = require('../api/feed.js');
@@ -249,23 +272,25 @@ test('Second Ingestion Idempotency (Deterministic Unit): Exactly 0 duplicates cr
   const fetchFn = createDeterministicExpansionFetch();
 
   try {
-    const run1 = await ingestExpansionComedy({
-      persist: false,
-      environment: 'preview',
-      namespace: 'preview_expansion',
-      fetchFn
-    });
-    assert.equal(run1.count, 404);
-    await unitStorage.upsertEvents(run1.events);
+    await withIsolatedRawStorage(async () => {
+      const run1 = await ingestExpansionComedy({
+        persist: false,
+        environment: 'preview',
+        namespace: 'preview_expansion',
+        fetchFn
+      });
+      assert.equal(run1.count, 404);
+      await unitStorage.upsertEvents(run1.events);
 
-    const run2 = await ingestExpansionComedy({
-      persist: false,
-      environment: 'preview',
-      namespace: 'preview_expansion',
-      fetchFn
+      const run2 = await ingestExpansionComedy({
+        persist: false,
+        environment: 'preview',
+        namespace: 'preview_expansion',
+        fetchFn
+      });
+      assert.equal(run2.count, 404);
+      await unitStorage.upsertEvents(run2.events);
     });
-    assert.equal(run2.count, 404);
-    await unitStorage.upsertEvents(run2.events);
 
     const allPreview = await unitStorage.queryEvents({
       includePreview: true,
