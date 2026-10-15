@@ -220,7 +220,58 @@ test('Preview Gate 2: Full HTTP GET Ticket URL Verification with Redirect Chains
   }
 });
 
-test('Preview Gate 3: Direct /api/feed API Contract Verification', { skip: SKIP_LIVE }, async () => {
+test('Preview Gate 3a (Deterministic Unit): Direct /api/feed API Contract Verification (Fixture)', async () => {
+  process.env.ENABLE_EXPANSION_PILOT = 'true';
+  process.env.VERCEL_ENV = 'preview';
+
+  const tmpFile = path.join(os.tmpdir(), `test_exp_gate3_unit_${Date.now()}_${Math.random().toString(36).slice(2)}.json`);
+  const unitStorage = new LocalFileCanonicalStorage(tmpFile);
+  const origQuery = defaultCanonicalStorage.queryEvents;
+  defaultCanonicalStorage.queryEvents = unitStorage.queryEvents.bind(unitStorage);
+
+  try {
+    const seeded = await withIsolatedRawStorage(() => ingestExpansionComedy({
+      persist: false,
+      environment: 'preview',
+      namespace: 'preview_expansion',
+      fetchFn: createDeterministicExpansionFetch()
+    }));
+    await unitStorage.upsertEvents(seeded.events);
+
+    // 1. Direct Birmingham /api/feed check
+    const bhmUrl = `/api/feed?lat=${EXPANSION_VENUES.stardome.lat}&lon=${EXPANSION_VENUES.stardome.lon}&mode=comedy&window=all`;
+    const { req: bhmReq, res: bhmRes, getStatus: getBhmStatus, getJson: getBhmJson } = createMockReqRes({
+      url: bhmUrl
+    });
+    await feedHandler(bhmReq, bhmRes);
+    assert.equal(getBhmStatus(), 200, '/api/feed for Birmingham must return HTTP 200');
+    const bhmData = getBhmJson();
+    assert.ok(Array.isArray(bhmData.events), 'Response must have events array');
+    const bhmEvents = bhmData.events.filter(e => e.venue_name === 'Stardome Comedy Club');
+    assert.ok(bhmEvents.length >= 20, `Expected at least 20 Stardome events in feed, got ${bhmEvents.length}`);
+    assert.equal(bhmEvents[0].city, 'Birmingham');
+    assert.equal(bhmEvents[0].confirmationStatus, 'confirmed_by_official_calendar');
+
+    // 2. Direct Charlotte /api/feed check
+    const cltUrl = `/api/feed?lat=${EXPANSION_VENUES.comedyZone.lat}&lon=${EXPANSION_VENUES.comedyZone.lon}&mode=comedy&window=all`;
+    const { req: cltReq, res: cltRes, getStatus: getCltStatus, getJson: getCltJson } = createMockReqRes({
+      url: cltUrl
+    });
+    await feedHandler(cltReq, cltRes);
+    assert.equal(getCltStatus(), 200, '/api/feed for Charlotte must return HTTP 200');
+    const cltData = getCltJson();
+    assert.ok(Array.isArray(cltData.events), 'Response must have events array');
+    const cltEvents = cltData.events.filter(e => e.venue_name === 'The Comedy Zone Charlotte');
+    assert.ok(cltEvents.length >= 20, `Expected at least 20 Comedy Zone events in feed, got ${cltEvents.length}`);
+    assert.equal(cltEvents[0].city, 'Charlotte');
+    assert.equal(cltEvents[0].confirmationStatus, 'confirmed_by_official_calendar');
+  } finally {
+    defaultCanonicalStorage.queryEvents = origQuery;
+    try { fs.unlinkSync(tmpFile); } catch (_) {}
+  }
+});
+
+test('Preview Gate 3b (Live Integration): Direct /api/feed API Contract Verification', { skip: SKIP_LIVE }, async () => {
   // Ensure preview flag is set for test
   process.env.ENABLE_EXPANSION_PILOT = 'true';
 

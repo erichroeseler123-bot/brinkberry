@@ -158,7 +158,50 @@ function createDeterministicExpansionFetch() {
   };
 }
 
-test('Security Gate: Public requests in production cannot toggle includePreview', { skip: SKIP_LIVE }, async () => {
+test('Security Gate (Deterministic Unit): Public requests in production cannot toggle includePreview', async () => {
+  process.env.VERCEL_ENV = 'production';
+  process.env.ENABLE_EXPANSION_PILOT = 'false';
+
+  const tmpFile = path.join(os.tmpdir(), `test_runtime_sec_unit_${Date.now()}_${Math.random().toString(36).slice(2)}.json`);
+  const unitStorage = new LocalFileCanonicalStorage(tmpFile);
+  const origQuery = defaultCanonicalStorage.queryEvents;
+  defaultCanonicalStorage.queryEvents = unitStorage.queryEvents.bind(unitStorage);
+
+  try {
+    const seeded = await withIsolatedRawStorage(() => ingestExpansionComedy({
+      persist: false,
+      environment: 'preview',
+      namespace: 'preview_expansion',
+      fetchFn: createDeterministicExpansionFetch()
+    }));
+    await unitStorage.upsertEvents(seeded.events);
+
+    // 1. Ordinary public request with ?includePreview=true
+    const pubUrl = `/api/feed?lat=${EXPANSION_VENUES.stardome.lat}&lon=${EXPANSION_VENUES.stardome.lon}&mode=comedy&window=all&includePreview=true`;
+    const { req: pubReq, res: pubRes, getJson: getPubJson } = createMockReqRes({ url: pubUrl });
+    await feedHandler(pubReq, pubRes);
+    const pubData = getPubJson();
+    const pubExpansionEvents = (pubData.events || []).filter(e => (e.venue_name || e.venue) === 'Stardome Comedy Club');
+    assert.equal(pubExpansionEvents.length, 0, 'Public request with ?includePreview=true must NEVER receive preview events');
+
+    // 2. Admin authenticated request with ?includePreview=true IS honored
+    process.env.ADMIN_TOKEN = 'test-secure-admin-token-12345';
+    const adminUrl = `/api/feed?lat=${EXPANSION_VENUES.stardome.lat}&lon=${EXPANSION_VENUES.stardome.lon}&mode=comedy&window=all&includePreview=true`;
+    const { req: adminReq, res: adminRes, getJson: getAdminJson } = createMockReqRes({
+      url: adminUrl,
+      headers: { authorization: 'Bearer test-secure-admin-token-12345' }
+    });
+    await feedHandler(adminReq, adminRes);
+    const adminData = getAdminJson();
+    const adminExpansionEvents = (adminData.events || []).filter(e => (e.venue_name || e.venue) === 'Stardome Comedy Club');
+    assert.ok(adminExpansionEvents.length >= 20, 'Admin request with valid bearer token must receive preview events');
+  } finally {
+    defaultCanonicalStorage.queryEvents = origQuery;
+    try { fs.unlinkSync(tmpFile); } catch (_) {}
+  }
+});
+
+test('Security Gate (Live Integration): Public requests in production cannot toggle includePreview', { skip: SKIP_LIVE }, async () => {
   process.env.VERCEL_ENV = 'production';
   process.env.ENABLE_EXPANSION_PILOT = 'false';
 
@@ -241,7 +284,50 @@ test('Production Namespace Isolation: Exactly 0 expansion records in production 
   assert.equal(expansionInProd.length, 0, 'Production query must return strictly 0 expansion records');
 });
 
-test('Birmingham & Charlotte Serverless Feeds: Return real upcoming events in preview', { skip: SKIP_LIVE }, async () => {
+test('Birmingham & Charlotte Serverless Feeds (Deterministic Unit): Return upcoming events in preview', async () => {
+  process.env.ENABLE_EXPANSION_PILOT = 'true';
+  process.env.VERCEL_ENV = 'preview';
+
+  const tmpFile = path.join(os.tmpdir(), `test_runtime_feeds_unit_${Date.now()}_${Math.random().toString(36).slice(2)}.json`);
+  const unitStorage = new LocalFileCanonicalStorage(tmpFile);
+  const origQuery = defaultCanonicalStorage.queryEvents;
+  defaultCanonicalStorage.queryEvents = unitStorage.queryEvents.bind(unitStorage);
+
+  try {
+    const seeded = await withIsolatedRawStorage(() => ingestExpansionComedy({
+      persist: false,
+      environment: 'preview',
+      namespace: 'preview_expansion',
+      fetchFn: createDeterministicExpansionFetch()
+    }));
+    await unitStorage.upsertEvents(seeded.events);
+
+    // Birmingham
+    const bhmUrl = `/api/feed?lat=${EXPANSION_VENUES.stardome.lat}&lon=${EXPANSION_VENUES.stardome.lon}&mode=comedy&window=all`;
+    const { req: bhmReq, res: bhmRes, getJson: getBhmJson } = createMockReqRes({ url: bhmUrl });
+    await feedHandler(bhmReq, bhmRes);
+    const bhmData = getBhmJson();
+    const bhmShows = (bhmData.events || []).filter(e => (e.venue_name || e.venue) === 'Stardome Comedy Club');
+    assert.ok(bhmShows.length >= 20, `Expected >= 20 Stardome events, got ${bhmShows.length}`);
+    assert.equal(bhmShows[0].city, 'Birmingham');
+    assert.equal(bhmShows[0].confirmationStatus, 'confirmed_by_official_calendar');
+
+    // Charlotte
+    const cltUrl = `/api/feed?lat=${EXPANSION_VENUES.comedyZone.lat}&lon=${EXPANSION_VENUES.comedyZone.lon}&mode=comedy&window=all`;
+    const { req: cltReq, res: cltRes, getJson: getCltJson } = createMockReqRes({ url: cltUrl });
+    await feedHandler(cltReq, cltRes);
+    const cltData = getCltJson();
+    const cltShows = (cltData.events || []).filter(e => (e.venue_name || e.venue) === 'The Comedy Zone Charlotte');
+    assert.ok(cltShows.length >= 20, `Expected >= 20 Comedy Zone events, got ${cltShows.length}`);
+    assert.equal(cltShows[0].city, 'Charlotte');
+    assert.equal(cltShows[0].confirmationStatus, 'confirmed_by_official_calendar');
+  } finally {
+    defaultCanonicalStorage.queryEvents = origQuery;
+    try { fs.unlinkSync(tmpFile); } catch (_) {}
+  }
+});
+
+test('Birmingham & Charlotte Serverless Feeds (Live Integration): Return real upcoming events in preview', { skip: SKIP_LIVE }, async () => {
   process.env.ENABLE_EXPANSION_PILOT = 'true';
   process.env.VERCEL_ENV = 'preview';
 

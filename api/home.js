@@ -1018,12 +1018,9 @@ module.exports = (req, res) => {
           <button id="presetTokyo" class="preset-btn${initialCityName === 'Tokyo' ? ' active' : ''}" aria-pressed="${initialCityName === 'Tokyo' ? 'true' : 'false'}">Tokyo</button>
           <button id="presetNewYork" class="preset-btn${initialCityName === 'New York' ? ' active' : ''}" aria-pressed="${initialCityName === 'New York' ? 'true' : 'false'}">New York</button>
 
-          <!-- Preserved Colorado preset buttons for regression test coverage -->
-          <span style="display:none">
-            <button id="presetBoulder" class="${initialCityName === 'Boulder' ? 'active' : ''}" aria-pressed="${initialCityName === 'Boulder' ? 'true' : 'false'}">Boulder</button>
-            <button id="presetGolden" class="${initialCityName === 'Golden' ? 'active' : ''}" aria-pressed="${initialCityName === 'Golden' ? 'true' : 'false'}">Golden</button>
-            <button id="presetAurora" class="${initialCityName === 'Aurora' ? 'active' : ''}" aria-pressed="${initialCityName === 'Aurora' ? 'true' : 'false'}">Aurora</button>
-          </span>
+          <button id="presetBoulder" class="preset-btn${initialCityName === 'Boulder' ? ' active' : ''}" aria-pressed="${initialCityName === 'Boulder' ? 'true' : 'false'}">Boulder</button>
+          <button id="presetGolden" class="preset-btn${initialCityName === 'Golden' ? ' active' : ''}" aria-pressed="${initialCityName === 'Golden' ? 'true' : 'false'}">Golden</button>
+          <button id="presetAurora" class="preset-btn${initialCityName === 'Aurora' ? ' active' : ''}" aria-pressed="${initialCityName === 'Aurora' ? 'true' : 'false'}">Aurora</button>
         </div>
       </div>
 

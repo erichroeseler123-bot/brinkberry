@@ -340,6 +340,11 @@ describe('Home Discovery Controls Programmatic State (WCAG 4.1.2)', () => {
     });
     assert.match(milwaukeeHtml, /<button id="customLocChip" class="active" aria-pressed="true">📍 Milwaukee, WI<\/button>/);
     assert.match(milwaukeeHtml, /<button id="presetDenver" class="preset-btn" aria-pressed="false">Denver, CO<\/button>/);
+
+    // Colorado preset cities (?city=boulder, ?city=golden, ?city=aurora) render visible .preset-btn controls with aria-pressed="true"
+    const boulderHtml = renderHomeHtml({ url: '/?city=boulder' });
+    assert.match(boulderHtml, /<button id="presetBoulder" class="preset-btn active" aria-pressed="true">Boulder<\/button>/);
+    assert.match(boulderHtml, /<button id="presetDenver" class="preset-btn" aria-pressed="false">Denver, CO<\/button>/);
   });
 
   test('hydrated defaults and state updates keep aria-pressed synchronized across all mutually exclusive groups and sub-filters', () => {
@@ -381,9 +386,11 @@ describe('Home Discovery Controls Programmatic State (WCAG 4.1.2)', () => {
     h.document.getElementById('presetDenver').onclick();
     h.assertGroupSync(getPresetGroup(), b => b.id === 'presetDenver', 'Location Presets after activating Denver');
 
-    // 3. Activate London preset -> London becomes aria-pressed="true", Denver becomes aria-pressed="false"
+    // 3. Activate London and Boulder presets -> active preset becomes aria-pressed="true", peers aria-pressed="false"
     h.document.getElementById('presetLondon').onclick();
     h.assertGroupSync(getPresetGroup(), b => b.id === 'presetLondon', 'Location Presets after activating London');
+    h.document.getElementById('presetBoulder').onclick();
+    h.assertGroupSync(getPresetGroup(), b => b.id === 'presetBoulder', 'Location Presets after activating Boulder');
 
     // 4. Activate Comedy category -> Comedy becomes active + aria-pressed="true", All Events becomes aria-pressed="false"
     const comedyBtn = h.getButtonsByAttr('data-cat').find(b => b.dataset.cat === 'comedy');
