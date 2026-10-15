@@ -126,6 +126,8 @@ module.exports = (req, res) => {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
       padding-bottom: 14px;
       border-bottom: 1px solid #1c152a;
       position: relative;
