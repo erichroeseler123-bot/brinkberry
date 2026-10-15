@@ -103,30 +103,79 @@ describe('Step 1 Final Verification: Atlanta Canonical Comedy Pioneer Market', (
     }
   });
 
-  test('5. Duplicate performances remain separate (distinct showtimes preserved)', async () => {
-    const shows = await getAtlantaCanonicalShows({ includePast: true });
-    
+  test('5a. Deterministic Unit: Duplicate performances remain separate (Tee Sanders 2026-09-25 9:30 PM & 11:30 PM fixture)', async () => {
+    const { ingestPunchline, deduplicateAtlantaEvents } = require('../lib/comedy/atlanta-ingestion.js');
+    const punchlineIcsFixture = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//The Punchline Comedy Club//NONSGML v1.0//EN',
+      'BEGIN:VEVENT',
+      'UID:punchline-tee-sanders-20260925-1930',
+      'DTSTART:20260925T233000Z',
+      'DTEND:20260926T010000Z',
+      'SUMMARY:Tee Sanders',
+      'LOCATION:The Punchline Comedy Club',
+      'URL:https://www.punchline.com/shows/tee-sanders-1930',
+      'END:VEVENT',
+      'BEGIN:VEVENT',
+      'UID:punchline-tee-sanders-20260925-2145',
+      'DTSTART:20260926T014500Z',
+      'DTEND:20260926T031500Z',
+      'SUMMARY:Tee Sanders',
+      'LOCATION:The Punchline Comedy Club',
+      'URL:https://www.punchline.com/shows/tee-sanders-2145',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    const rep = await ingestPunchline({
+      fetchFn: async () => ({
+        ok: true,
+        status: 200,
+        text: async () => punchlineIcsFixture
+      })
+    });
+    const canonical = deduplicateAtlantaEvents(rep.events);
+
     // Test Friday Tee Sanders at Punchline (has 2 separate showtimes: 9:30 PM and 11:30 PM)
-    const teeSandersFriday = shows.filter(s => 
-      s.venue_name && s.venue_name.includes('Punchline') && 
-      s.title === 'Tee Sanders' && 
+    const teeSandersFriday = canonical.filter(s =>
+      s.venue_name && s.venue_name.includes('Punchline') &&
+      s.title === 'Tee Sanders' &&
       s.civilDate === '2026-09-25'
     );
     assert.equal(
-      teeSandersFriday.length, 
-      2, 
+      teeSandersFriday.length,
+      2,
       `Friday Tee Sanders should have exactly 2 distinct showtimes, got ${teeSandersFriday.length}`
     );
     assert.notEqual(
-      teeSandersFriday[0].civilTime, 
-      teeSandersFriday[1].civilTime, 
+      teeSandersFriday[0].civilTime,
+      teeSandersFriday[1].civilTime,
       'Showtimes must be distinct'
     );
     assert.notEqual(
-      teeSandersFriday[0].slug, 
-      teeSandersFriday[1].slug, 
+      teeSandersFriday[0].slug,
+      teeSandersFriday[1].slug,
       'Slugs must be distinct'
     );
+  });
+
+  test('5b. Live Integration: Multi-showtime performances on the same date remain separate on live rolling calendar', { skip: process.env.BRINKBERRY_TEST_MODE === 'unit' }, async () => {
+    const shows = await getAtlantaCanonicalShows({ includePast: false });
+    const byVenueTitleDate = new Map();
+    for (const s of shows) {
+      const key = `${s.venue_slug}__${s.title}__${s.civilDate}`;
+      if (!byVenueTitleDate.has(key)) byVenueTitleDate.set(key, []);
+      byVenueTitleDate.get(key).push(s);
+    }
+    const multiShowGroups = Array.from(byVenueTitleDate.values()).filter(group => group.length >= 2);
+    assert.ok(multiShowGroups.length >= 1, 'Live Atlanta calendar must preserve at least one multi-showtime same-day performance group');
+    for (const group of multiShowGroups) {
+      const uniqueTimes = new Set(group.map(s => s.civilTime));
+      const uniqueSlugs = new Set(group.map(s => s.slug));
+      assert.equal(uniqueTimes.size, group.length, `Expected distinct civilTime values for ${group[0].title} on ${group[0].civilDate}`);
+      assert.equal(uniqueSlugs.size, group.length, `Expected distinct slugs for ${group[0].title} on ${group[0].civilDate}`);
+    }
   });
 
   test('6. No recurring text became a concrete date (timestamp strictly from source feed)', async () => {
@@ -138,8 +187,8 @@ describe('Step 1 Final Verification: Atlanta Canonical Comedy Pioneer Market', (
       assert.ok(ev.start, `Event "${ev.title}" must have exact start ISO from feed`);
       const parsedDate = new Date(ev.start);
       assert.ok(!isNaN(parsedDate.getTime()), `Event start must be valid ISO date`);
-      // Year must match feed year (2026)
-      assert.equal(parsedDate.getFullYear(), 2026);
+      // Year must match valid current/upcoming feed year (>= 2026)
+      assert.ok(parsedDate.getFullYear() >= 2026 && parsedDate.getFullYear() <= new Date().getFullYear() + 2);
     }
   });
 

@@ -1009,18 +1009,18 @@ module.exports = (req, res) => {
 
         <div class="presets-row" id="locationRow">
           <span class="presets-label">Popular Hubs</span>
-          <span id="customLocWrap"></span>
-          <button id="presetDenver" class="preset-btn">Denver, CO</button>
-          <button id="presetParis" class="preset-btn">Paris</button>
-          <button id="presetLondon" class="preset-btn">London</button>
-          <button id="presetTokyo" class="preset-btn">Tokyo</button>
-          <button id="presetNewYork" class="preset-btn">New York</button>
+          <span id="customLocWrap">${!['Denver', 'London', 'New York', 'Tokyo', 'Paris', 'Boulder', 'Golden', 'Aurora'].includes(initialCityName) ? `<button id="customLocChip" class="active" aria-pressed="true">📍 ${esc(initialCityLabel)}</button>` : ''}</span>
+          <button id="presetDenver" class="preset-btn${initialCityName === 'Denver' ? ' active' : ''}" aria-pressed="${initialCityName === 'Denver' ? 'true' : 'false'}">Denver, CO</button>
+          <button id="presetParis" class="preset-btn${initialCityName === 'Paris' ? ' active' : ''}" aria-pressed="${initialCityName === 'Paris' ? 'true' : 'false'}">Paris</button>
+          <button id="presetLondon" class="preset-btn${initialCityName === 'London' ? ' active' : ''}" aria-pressed="${initialCityName === 'London' ? 'true' : 'false'}">London</button>
+          <button id="presetTokyo" class="preset-btn${initialCityName === 'Tokyo' ? ' active' : ''}" aria-pressed="${initialCityName === 'Tokyo' ? 'true' : 'false'}">Tokyo</button>
+          <button id="presetNewYork" class="preset-btn${initialCityName === 'New York' ? ' active' : ''}" aria-pressed="${initialCityName === 'New York' ? 'true' : 'false'}">New York</button>
 
           <!-- Preserved Colorado preset buttons for regression test coverage -->
           <span style="display:none">
-            <button id="presetBoulder">Boulder</button>
-            <button id="presetGolden">Golden</button>
-            <button id="presetAurora">Aurora</button>
+            <button id="presetBoulder" class="${initialCityName === 'Boulder' ? 'active' : ''}" aria-pressed="${initialCityName === 'Boulder' ? 'true' : 'false'}">Boulder</button>
+            <button id="presetGolden" class="${initialCityName === 'Golden' ? 'active' : ''}" aria-pressed="${initialCityName === 'Golden' ? 'true' : 'false'}">Golden</button>
+            <button id="presetAurora" class="${initialCityName === 'Aurora' ? 'active' : ''}" aria-pressed="${initialCityName === 'Aurora' ? 'true' : 'false'}">Aurora</button>
           </span>
         </div>
       </div>
@@ -1033,21 +1033,21 @@ module.exports = (req, res) => {
       <div id="contextualControls" class="contextual-controls-panel">
         <!-- Compact Category Row (Primary 5 + More button) -->
         <div id="everythingSubRow">
-          <div class="category-pills-row" id="categoryRow" role="tablist" aria-label="Event Categories">
+          <div class="category-pills-row" id="categoryRow" role="group" aria-label="Event Categories">
             <div class="primary-categories-row">
-              <button class="cat-btn active" data-cat="">All Events</button>
-              <button class="cat-btn comedy-btn" data-cat="comedy" data-label="Comedy Radar">🎤 Comedy</button>
-              <button class="cat-btn racing-btn" data-cat="racing">🏁 Motorsports</button>
-              <button class="cat-btn community-btn" data-cat="community" data-label="Community & Libraries">📚 Community</button>
-              <button class="cat-btn" data-cat="music">🎵 Music</button>
+              <button class="cat-btn active" data-cat="" aria-pressed="true">All Events</button>
+              <button class="cat-btn comedy-btn" data-cat="comedy" data-label="Comedy Radar" aria-pressed="false">🎤 Comedy</button>
+              <button class="cat-btn racing-btn" data-cat="racing" aria-pressed="false">🏁 Motorsports</button>
+              <button class="cat-btn community-btn" data-cat="community" data-label="Community & Libraries" aria-pressed="false">📚 Community</button>
+              <button class="cat-btn" data-cat="music" aria-pressed="false">🎵 Music</button>
               <button id="moreCategoriesBtn" class="cat-btn more-cat-btn" type="button" aria-expanded="false">More ▾</button>
             </div>
             <div id="moreCategoriesRow" class="more-categories-row" style="display:none;">
-              <button class="cat-btn civic-btn" data-cat="civic">🏛️ Civic &amp; Politics</button>
-              <button class="cat-btn" data-cat="arts">🎭 Arts &amp; Culture</button>
-              <button class="cat-btn" data-cat="festival">🎡 Seasonal &amp; Fairs</button>
-              <button class="cat-btn" data-cat="outdoor">🏃 Outdoors</button>
-              <button class="cat-btn" data-cat="free">🎟️ Free Tonight</button>
+              <button class="cat-btn civic-btn" data-cat="civic" aria-pressed="false">🏛️ Civic &amp; Politics</button>
+              <button class="cat-btn" data-cat="arts" aria-pressed="false">🎭 Arts &amp; Culture</button>
+              <button class="cat-btn" data-cat="festival" aria-pressed="false">🎡 Seasonal &amp; Fairs</button>
+              <button class="cat-btn" data-cat="outdoor" aria-pressed="false">🏃 Outdoors</button>
+              <button class="cat-btn" data-cat="free" aria-pressed="false">🎟️ Free Tonight</button>
             </div>
           </div>
         </div>
@@ -1055,8 +1055,8 @@ module.exports = (req, res) => {
         <!-- Primary Action Strip: Quick Time Selection & Filters Button -->
         <div class="hero-actions-bar">
           <div class="quick-time-toggle" id="quickTimeToggle" role="group" aria-label="Quick time selection">
-            <button type="button" class="quick-time-btn" data-time="tonight">Tonight</button>
-            <button type="button" class="quick-time-btn active" data-time="48h">Next 48 Hours</button>
+            <button type="button" class="quick-time-btn" data-time="tonight" aria-pressed="false">Tonight</button>
+            <button type="button" class="quick-time-btn active" data-time="48h" aria-pressed="true">Next 48 Hours</button>
           </div>
           <button id="filtersToggleBtn" class="filters-toggle-btn" type="button" aria-expanded="false" aria-controls="advancedFiltersDrawer">
             <span>⚙️ Filters</span>
@@ -1160,8 +1160,8 @@ module.exports = (req, res) => {
 
     <!-- View Switcher -->
     <div class="row" style="justify-content: flex-end; margin-top: 14px;">
-      <button id="viewFeed" class="active">Feed View</button>
-      <button id="viewRadar">Radar Map</button>
+      <button id="viewFeed" class="active" aria-pressed="true">Feed View</button>
+      <button id="viewRadar" aria-pressed="false">Radar Map</button>
     </div>
 
     <!-- Main Feed & Map -->
@@ -1541,8 +1541,9 @@ module.exports = (req, res) => {
         const primHtml = primaryCategories.map(function(item) {
           var k = item[0], l = item[1], extra = item[2] ? ' data-label="' + item[2] + '"' : '';
           var cls = k === 'comedy' ? 'comedy-btn' : (k === 'racing' ? 'racing-btn' : (k === 'community' ? 'community-btn' : ''));
-          var act = S.category === k ? 'active' : '';
-          return '<button class="cat-btn ' + cls + ' ' + act + '" data-cat="' + k + '"' + extra + '>' + l + '</button>';
+          var isAct = S.category === k;
+          var act = isAct ? 'active' : '';
+          return '<button class="cat-btn ' + cls + ' ' + act + '" data-cat="' + k + '"' + extra + ' aria-pressed="' + (isAct ? 'true' : 'false') + '">' + l + '</button>';
         }).join('');
 
         const moreBtnHtml = '<button id="moreCategoriesBtn" class="cat-btn more-cat-btn ' + (isSecondaryActive ? 'active' : '') + '" type="button" aria-expanded="' + showSecondary + '">More ' + (showSecondary ? '▴' : '▾') + '</button>';
@@ -1550,8 +1551,9 @@ module.exports = (req, res) => {
         const secHtml = secondaryCategories.map(function(item) {
           var k = item[0], l = item[1];
           var cls = k === 'civic' ? 'civic-btn' : '';
-          var act = S.category === k ? 'active' : '';
-          return '<button class="cat-btn ' + cls + ' ' + act + '" data-cat="' + k + '">' + l + '</button>';
+          var isAct = S.category === k;
+          var act = isAct ? 'active' : '';
+          return '<button class="cat-btn ' + cls + ' ' + act + '" data-cat="' + k + '" aria-pressed="' + (isAct ? 'true' : 'false') + '">' + l + '</button>';
         }).join('');
 
         catRow.innerHTML = '<div class="primary-categories-row">' + primHtml + moreBtnHtml + '</div>' +
@@ -1589,7 +1591,9 @@ module.exports = (req, res) => {
         quickTimeEl.querySelectorAll('[data-time]').forEach(b => {
           const isTonight = b.dataset.time === 'tonight' && S.window === 'tonight';
           const is48h = b.dataset.time === '48h' && (S.window === '48h' || S.window === 'weekend');
-          b.className = 'quick-time-btn ' + ((isTonight || is48h) ? 'active' : '');
+          const isAct = Boolean(isTonight || is48h);
+          b.className = 'quick-time-btn ' + (isAct ? 'active' : '');
+          b.setAttribute('aria-pressed', String(isAct));
           b.onclick = () => {
             S.window = b.dataset.time;
             initControls();
@@ -1635,12 +1639,15 @@ module.exports = (req, res) => {
 
       // 4. Radius Filters
       const radii = [5, 10, 25, 50];
-      $('radiusFilters').innerHTML = radii.map(r => \`<button class="\${S.radius === r ? 'active' : ''}" data-r="\${r}">\${r} mi</button>\`).join('');
+      $('radiusFilters').innerHTML = radii.map(r => \`<button class="\${S.radius === r ? 'active' : ''}" data-r="\${r}" aria-pressed="\${S.radius === r ? 'true' : 'false'}">\${r} mi</button>\`).join('');
       document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { S.radius = Number(b.dataset.r); initControls(); loadFeed(); });
 
       // 5. Time Windows
       const windows = [['now', 'Now'], ['tonight', 'Tonight'], ['tomorrow', 'Tomorrow'], ['48h', 'Next 48 Hours']];
-      $('timeWindows').innerHTML = windows.map(([k, l]) => \`<button class="\${(S.window === k || (k === '48h' && S.window === 'weekend')) ? 'active' : ''}" data-w="\${k}">\${l}</button>\`).join('');
+      $('timeWindows').innerHTML = windows.map(([k, l]) => {
+        const isAct = S.window === k || (k === '48h' && S.window === 'weekend');
+        return \`<button class="\${isAct ? 'active' : ''}" data-w="\${k}" aria-pressed="\${isAct ? 'true' : 'false'}">\${l}</button>\`;
+      }).join('');
       document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { S.window = b.dataset.w; initControls(); loadFeed(); });
 
       // 6. Modes (Vibe)
@@ -1656,7 +1663,7 @@ module.exports = (req, res) => {
         ['outside', 'Outside'],
         ['kids', 'Kids']
       ];
-      $('modeFilters').innerHTML = modes.map(([k, l]) => \`<button class="mode-btn \${S.mode === k ? 'active' : ''}" data-m="\${k}">\${l}</button>\`).join('');
+      $('modeFilters').innerHTML = modes.map(([k, l]) => \`<button class="mode-btn \${S.mode === k ? 'active' : ''}" data-m="\${k}" aria-pressed="\${S.mode === k ? 'true' : 'false'}">\${l}</button>\`).join('');
       document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { S.mode = b.dataset.m; initControls(); loadFeed(); });
 
       // 7. Source Filters (All, Official, Community)
@@ -1667,7 +1674,10 @@ module.exports = (req, res) => {
       ];
       const srcEl = $('sourceFilters');
       if (srcEl) {
-        srcEl.innerHTML = sources.map(([k, l]) => \`<button class="\${(S.sourceFilter || 'all') === k ? 'active' : ''}" data-src="\${k}">\${l}</button>\`).join('');
+        srcEl.innerHTML = sources.map(([k, l]) => {
+          const isAct = (S.sourceFilter || 'all') === k;
+          return \`<button class="\${isAct ? 'active' : ''}" data-src="\${k}" aria-pressed="\${isAct ? 'true' : 'false'}">\${l}</button>\`;
+        }).join('');
         document.querySelectorAll('[data-src]').forEach(b => b.onclick = () => { S.sourceFilter = b.dataset.src; initControls(); loadFeed(); });
       }
     }
@@ -1685,7 +1695,7 @@ module.exports = (req, res) => {
       const typeEl = $('comedyTypeFilters');
       if (typeEl) {
         typeEl.innerHTML = types.map(([t, l]) =>
-          \`<button class="sub-filter-btn \${S.showType === t ? 'active' : ''}" data-st="\${t}">\${l}</button>\`
+          \`<button class="sub-filter-btn \${S.showType === t ? 'active' : ''}" data-st="\${t}" aria-pressed="\${S.showType === t ? 'true' : 'false'}">\${l}</button>\`
         ).join('');
         document.querySelectorAll('[data-st]').forEach(b => b.onclick = () => {
           S.showType = b.dataset.st;
@@ -1704,7 +1714,7 @@ module.exports = (req, res) => {
       const ageEl = $('comedyAgeFilters');
       if (ageEl) {
         ageEl.innerHTML = ages.map(([a, l]) =>
-          \`<button class="sub-filter-btn \${S.ageLimit === a ? 'active' : ''}" data-al="\${a}">\${l}</button>\`
+          \`<button class="sub-filter-btn \${S.ageLimit === a ? 'active' : ''}" data-al="\${a}" aria-pressed="\${S.ageLimit === a ? 'true' : 'false'}">\${l}</button>\`
         ).join('');
         document.querySelectorAll('[data-al]').forEach(b => b.onclick = () => {
           S.ageLimit = b.dataset.al;
@@ -1723,7 +1733,7 @@ module.exports = (req, res) => {
       const priceEl = $('comedyPriceFilters');
       if (priceEl) {
         priceEl.innerHTML = prices.map(([p, l]) =>
-          \`<button class="sub-filter-btn \${S.priceFilter === p ? 'active' : ''}" data-pf="\${p}">\${l}</button>\`
+          \`<button class="sub-filter-btn \${S.priceFilter === p ? 'active' : ''}" data-pf="\${p}" aria-pressed="\${S.priceFilter === p ? 'true' : 'false'}">\${l}</button>\`
         ).join('');
         document.querySelectorAll('[data-pf]').forEach(b => b.onclick = () => {
           S.priceFilter = b.dataset.pf;
@@ -1736,8 +1746,8 @@ module.exports = (req, res) => {
       const urgEl = $('comedyUrgencyFilters');
       if (urgEl) {
         urgEl.innerHTML = \`
-          <button class="sub-filter-btn \${S.startingSoon ? 'active' : ''}" id="btnStartingSoon">⚡ Starting Soon (&lt;4h)</button>
-          <button class="sub-filter-btn \${S.recurring ? 'active' : ''}" id="btnRecurring">🔄 Recurring Shows</button>
+          <button class="sub-filter-btn \${S.startingSoon ? 'active' : ''}" id="btnStartingSoon" aria-pressed="\${S.startingSoon ? 'true' : 'false'}">⚡ Starting Soon (&lt;4h)</button>
+          <button class="sub-filter-btn \${S.recurring ? 'active' : ''}" id="btnRecurring" aria-pressed="\${S.recurring ? 'true' : 'false'}">🔄 Recurring Shows</button>
         \`;
         const bSoon = $('btnStartingSoon');
         if (bSoon) bSoon.onclick = () => {
@@ -1766,7 +1776,7 @@ module.exports = (req, res) => {
       const discEl = $('racingDisciplineFilters');
       if (discEl) {
         discEl.innerHTML = disciplines.map(([d, l]) =>
-          \`<button class="sub-filter-btn \${S.racingDiscipline === d ? 'active' : ''}" data-rd="\${d}">\${l}</button>\`
+          \`<button class="sub-filter-btn \${S.racingDiscipline === d ? 'active' : ''}" data-rd="\${d}" aria-pressed="\${S.racingDiscipline === d ? 'true' : 'false'}">\${l}</button>\`
         ).join('');
         document.querySelectorAll('[data-rd]').forEach(b => b.onclick = () => {
           S.racingDiscipline = b.dataset.rd;
@@ -1784,9 +1794,10 @@ module.exports = (req, res) => {
       ];
       const planEl = $('racingPlanningFilters');
       if (planEl) {
-        planEl.innerHTML = windows.map(([w, l]) =>
-          \`<button class="sub-filter-btn \${(S.window === w || (w === '48h' && S.window === 'tonight')) ? 'active' : ''}" data-rw="\${w}">\${l}</button>\`
-        ).join('');
+        planEl.innerHTML = windows.map(([w, l]) => {
+          const isAct = S.window === w || (w === '48h' && S.window === 'tonight');
+          return \`<button class="sub-filter-btn \${isAct ? 'active' : ''}" data-rw="\${w}" aria-pressed="\${isAct ? 'true' : 'false'}">\${l}</button>\`;
+        }).join('');
         document.querySelectorAll('[data-rw]').forEach(b => b.onclick = () => {
           S.window = b.dataset.rw;
           renderRacingSubConsole();
@@ -2261,8 +2272,23 @@ module.exports = (req, res) => {
     }
 
     // View toggles
-    $('viewFeed').onclick = () => { $('viewFeed').classList.add('active'); $('viewRadar').classList.remove('active'); $('feed').style.display = 'block'; $('radar').style.display = 'none'; };
-    $('viewRadar').onclick = () => { $('viewRadar').classList.add('active'); $('viewFeed').classList.remove('active'); $('feed').style.display = 'none'; $('radar').style.display = 'block'; renderRadar(); };
+    $('viewFeed').onclick = () => {
+      $('viewFeed').classList.add('active');
+      $('viewFeed').setAttribute('aria-pressed', 'true');
+      $('viewRadar').classList.remove('active');
+      $('viewRadar').setAttribute('aria-pressed', 'false');
+      $('feed').style.display = 'block';
+      $('radar').style.display = 'none';
+    };
+    $('viewRadar').onclick = () => {
+      $('viewRadar').classList.add('active');
+      $('viewRadar').setAttribute('aria-pressed', 'true');
+      $('viewFeed').classList.remove('active');
+      $('viewFeed').setAttribute('aria-pressed', 'false');
+      $('feed').style.display = 'none';
+      $('radar').style.display = 'block';
+      renderRadar();
+    };
 
     function updateUrlState(city) {
       try {
@@ -2288,7 +2314,10 @@ module.exports = (req, res) => {
       // Unselect standard preset buttons
       ['presetDenver', 'presetLondon', 'presetNewYork', 'presetTokyo', 'presetParis', 'presetBoulder', 'presetGolden', 'presetAurora'].forEach(id => {
         const b = $(id);
-        if (b) b.classList.remove('active');
+        if (b) {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        }
       });
 
       const wrap = $('customLocWrap');
@@ -2306,10 +2335,13 @@ module.exports = (req, res) => {
       if (standardMap[loc.city]) {
         if (wrap) wrap.innerHTML = '';
         const standardBtn = $(standardMap[loc.city]);
-        if (standardBtn) standardBtn.classList.add('active');
+        if (standardBtn) {
+          standardBtn.classList.add('active');
+          standardBtn.setAttribute('aria-pressed', 'true');
+        }
       } else {
         if (wrap) {
-          wrap.innerHTML = '<button id="customLocChip" class="active">📍 ' + esc(S.locationName) + '</button>';
+          wrap.innerHTML = '<button id="customLocChip" class="active" aria-pressed="true">📍 ' + esc(S.locationName) + '</button>';
           $('customLocChip').onclick = () => applyLocation(loc, false);
         }
       }
