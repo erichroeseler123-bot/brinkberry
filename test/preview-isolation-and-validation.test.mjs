@@ -225,6 +225,8 @@ test('Preview Gate 2: Full HTTP GET Ticket URL Verification with Redirect Chains
 });
 
 test('Preview Gate 3a (Deterministic Unit): Direct /api/feed API Contract Verification (Fixture)', async () => {
+  const prevPilot = process.env.ENABLE_EXPANSION_PILOT;
+  const prevVercelEnv = process.env.VERCEL_ENV;
   process.env.ENABLE_EXPANSION_PILOT = 'true';
   process.env.VERCEL_ENV = 'preview';
 
@@ -286,6 +288,10 @@ test('Preview Gate 3a (Deterministic Unit): Direct /api/feed API Contract Verifi
     mock.timers.reset();
     globalThis.fetch = origFetch;
     defaultCanonicalStorage.queryEvents = origQuery;
+    if (prevPilot === undefined) delete process.env.ENABLE_EXPANSION_PILOT;
+    else process.env.ENABLE_EXPANSION_PILOT = prevPilot;
+    if (prevVercelEnv === undefined) delete process.env.VERCEL_ENV;
+    else process.env.VERCEL_ENV = prevVercelEnv;
     try { fs.unlinkSync(tmpFile); } catch (_) {}
   }
 });

@@ -313,12 +313,12 @@ test('Acme Comedy Company Preview Ingestion & Isolation Suite', async (t) => {
     const tmpFile = path.join(os.tmpdir(), `test_acme_storage_${Date.now()}_isolation.json`);
     const testStorage = new LocalFileCanonicalStorage(tmpFile);
 
-    const rep = await ingestAcme({
+    const rep = await withIsolatedRawStorage(() => ingestAcme({
       persist: false,
       environment: 'preview',
       namespace: 'preview_expansion',
       fetchFn: createDeterministicAcmeFetch(107)
-    });
+    }));
     await testStorage.upsertEvents(rep.events);
 
     // Production queries with includePreview: false MUST return 0 events
