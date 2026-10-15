@@ -325,6 +325,14 @@ test('Preview Gate 5: Honest Failure & Freshness Decay Test', async () => {
 });
 
 test('Preview Gate 6: Complete Cleanup / Purge of Preview Records', async () => {
+  if (SKIP_LIVE) {
+    await ingestExpansionComedy({
+      persist: true,
+      environment: 'preview',
+      namespace: 'preview_expansion',
+      fetchFn: createDeterministicExpansionFetch()
+    });
+  }
   const purgeResult = await purgeExpansionPreviewRecords({ namespace: 'preview_expansion' });
   assert.ok(purgeResult.purgedCount > 0, `Must purge preview records (purged ${purgeResult.purgedCount})`);
 
