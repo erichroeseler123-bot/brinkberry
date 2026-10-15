@@ -15,7 +15,7 @@
  * 11. Production Flag: ENABLE_EXPANSION_PILOT defaults to false.
  */
 
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   EXPANSION_VENUES,
@@ -23,10 +23,78 @@ import {
   verifyTicketUrlResolution,
   purgeExpansionPreviewRecords
 } from '../lib/comedy/expansion-ingestion.js';
+import path from 'node:path';
+import os from 'node:os';
+import fs from 'node:fs';
 import {
-  defaultCanonicalStorage
+  defaultCanonicalStorage,
+  LocalFileCanonicalStorage
 } from '../lib/storage/canonical-event-storage.js';
+import {
+  defaultRawStorage,
+  LocalRawSourceStorage
+} from '../lib/storage/raw-source-storage.js';
 import { createRequire } from 'module';
+
+const FIXED_UNIT_NOW = new Date('2026-10-15T12:00:00.000Z');
+
+async function withIsolatedRawStorage(fn) {
+  const tmpRawDir = path.join(os.tmpdir(), `test_raw_rt_${Math.random().toString(36).slice(2)}`);
+  const unitRaw = new LocalRawSourceStorage({ baseDir: tmpRawDir });
+  const origSave = defaultRawStorage.saveRawEvidence;
+  const origGetLatest = defaultRawStorage.getLatestRawEvidence;
+  const origListHistory = defaultRawStorage.listEvidenceHistory;
+  defaultRawStorage.saveRawEvidence = unitRaw.saveRawEvidence.bind(unitRaw);
+  defaultRawStorage.getLatestRawEvidence = unitRaw.getLatestRawEvidence.bind(unitRaw);
+  defaultRawStorage.listEvidenceHistory = unitRaw.listEvidenceHistory.bind(unitRaw);
+  mock.timers.enable({ apis: ['Date'], now: FIXED_UNIT_NOW });
+  try {
+    return await fn(unitRaw);
+  } finally {
+    mock.timers.reset();
+    defaultRawStorage.saveRawEvidence = origSave;
+    defaultRawStorage.getLatestRawEvidence = origGetLatest;
+    defaultRawStorage.listEvidenceHistory = origListHistory;
+    try { fs.rmSync(tmpRawDir, { recursive: true, force: true }); } catch (_) {}
+  }
+}
+
+async function withIsolatedUnitFeedEnv(seedFetchFn, fn) {
+  const tmpFile = path.join(os.tmpdir(), `test_runtime_feed_unit_${Math.random().toString(36).slice(2)}.json`);
+  const unitStorage = new LocalFileCanonicalStorage(tmpFile);
+  const origQuery = defaultCanonicalStorage.queryEvents;
+  const origFetch = globalThis.fetch;
+  defaultCanonicalStorage.queryEvents = unitStorage.queryEvents.bind(unitStorage);
+
+  try {
+    const seeded = await withIsolatedRawStorage(() => ingestExpansionComedy({
+      persist: false,
+      environment: 'preview',
+      namespace: 'preview_expansion',
+      fetchFn: seedFetchFn
+    }));
+    await unitStorage.upsertEvents(seeded.events);
+
+    mock.timers.enable({ apis: ['Date'], now: FIXED_UNIT_NOW });
+    globalThis.fetch = async (url) => {
+      const target = String(url);
+      if (target.includes('/rest/v1/rpc/')) {
+        return { ok: true, status: 200, text: async () => '[]', json: async () => [] };
+      }
+      if (target.includes('api.weather.gov')) {
+        return { ok: true, status: 200, text: async () => '{}', json: async () => ({}) };
+      }
+      throw new Error(`Unexpected live network fetch in deterministic unit test: ${target}`);
+    };
+
+    return await fn(unitStorage);
+  } finally {
+    mock.timers.reset();
+    globalThis.fetch = origFetch;
+    defaultCanonicalStorage.queryEvents = origQuery;
+    try { fs.unlinkSync(tmpFile); } catch (_) {}
+  }
+}
 
 const require = createRequire(import.meta.url);
 const feedHandler = require('../api/feed.js');
@@ -68,8 +136,97 @@ function createMockReqRes({ method = 'GET', url = '/', headers = {} } = {}) {
   return { req, res, getBody: () => body, getStatus: () => statusCode, getJson: () => JSON.parse(body) };
 }
 
-test('Security Gate: Public requests in production cannot toggle includePreview', async () => {
-  // Setup: Ingest preview records, but set production environment
+const SKIP_LIVE = process.env.BRINKBERRY_TEST_MODE === 'unit';
+
+function buildVenueFixtureHtml({ venueName, baseUrl, count, lat, lon, city, state }) {
+  const events = [];
+  for (let i = 0; i < count; i++) {
+    const showId = 600000 + i;
+    const dayOffset = 1 + Math.floor(i / 2);
+    const startDate = new Date(Date.UTC(2026, 10, 1 + dayOffset, i % 2 === 0 ? 1 : 3, i % 2 === 0 ? 0 : 30, 0)).toISOString();
+    events.push({
+      '@context': 'https://schema.org',
+      '@type': 'ComedyEvent',
+      '@id': `${baseUrl}/shows/${showId}`,
+      name: `${venueName} Showcase #${i + 1}`,
+      startDate,
+      url: `${baseUrl}/shows/${showId}`,
+      location: { '@type': 'ComedyClub', name: venueName, address: { addressLocality: city, addressRegion: state }, geo: { latitude: lat, longitude: lon } },
+      offers: { '@type': 'Offer', price: '25', url: `${baseUrl}/shows/${showId}` }
+    });
+  }
+  return `<!doctype html><html><head><script type="application/ld+json">${JSON.stringify(events)}</script></head><body>${venueName}</body></html>`;
+}
+
+function createDeterministicExpansionFetch() {
+  const stardomeHtml = buildVenueFixtureHtml({
+    venueName: 'Stardome Comedy Club',
+    baseUrl: 'https://www.stardome.com',
+    count: 136,
+    lat: EXPANSION_VENUES.stardome.lat,
+    lon: EXPANSION_VENUES.stardome.lon,
+    city: 'Birmingham',
+    state: 'AL'
+  });
+  const comedyZoneHtml = buildVenueFixtureHtml({
+    venueName: 'The Comedy Zone Charlotte',
+    baseUrl: 'https://www.cltcomedyzone.com',
+    count: 161,
+    lat: EXPANSION_VENUES.comedyZone.lat,
+    lon: EXPANSION_VENUES.comedyZone.lon,
+    city: 'Charlotte',
+    state: 'NC'
+  });
+  const acmeHtml = buildVenueFixtureHtml({
+    venueName: 'Acme Comedy Company',
+    baseUrl: 'https://acmecomedy.seatengine.com',
+    count: 107,
+    lat: EXPANSION_VENUES.acme.lat,
+    lon: EXPANSION_VENUES.acme.lon,
+    city: 'Minneapolis',
+    state: 'MN'
+  });
+  return async (url) => {
+    const target = String(url);
+    let html = acmeHtml;
+    if (target.includes('stardome.com')) html = stardomeHtml;
+    else if (target.includes('cltcomedyzone.com')) html = comedyZoneHtml;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => html
+    };
+  };
+}
+
+test('Security Gate (Deterministic Unit): Public requests in production cannot toggle includePreview', async () => {
+  process.env.VERCEL_ENV = 'production';
+  process.env.ENABLE_EXPANSION_PILOT = 'false';
+
+  await withIsolatedUnitFeedEnv(createDeterministicExpansionFetch(), async () => {
+    // 1. Ordinary public request with ?includePreview=true
+    const pubUrl = `/api/feed?lat=${EXPANSION_VENUES.stardome.lat}&lon=${EXPANSION_VENUES.stardome.lon}&mode=comedy&window=all&dynamic=false&includePreview=true`;
+    const { req: pubReq, res: pubRes, getJson: getPubJson } = createMockReqRes({ url: pubUrl });
+    await feedHandler(pubReq, pubRes);
+    const pubData = getPubJson();
+    const pubExpansionEvents = (pubData.events || []).filter(e => (e.venue_name || e.venue) === 'Stardome Comedy Club');
+    assert.equal(pubExpansionEvents.length, 0, 'Public request with ?includePreview=true must NEVER receive preview events');
+
+    // 2. Admin authenticated request with ?includePreview=true IS honored
+    process.env.ADMIN_TOKEN = 'test-secure-admin-token-12345';
+    const adminUrl = `/api/feed?lat=${EXPANSION_VENUES.stardome.lat}&lon=${EXPANSION_VENUES.stardome.lon}&mode=comedy&window=all&dynamic=false&includePreview=true`;
+    const { req: adminReq, res: adminRes, getJson: getAdminJson } = createMockReqRes({
+      url: adminUrl,
+      headers: { authorization: 'Bearer test-secure-admin-token-12345' }
+    });
+    await feedHandler(adminReq, adminRes);
+    const adminData = getAdminJson();
+    const adminExpansionEvents = (adminData.events || []).filter(e => (e.venue_name || e.venue) === 'Stardome Comedy Club');
+    assert.ok(adminExpansionEvents.length >= 20, 'Admin request with valid bearer token must receive preview events');
+  });
+});
+
+test('Security Gate (Live Integration): Public requests in production cannot toggle includePreview', { skip: SKIP_LIVE }, async () => {
   process.env.VERCEL_ENV = 'production';
   process.env.ENABLE_EXPANSION_PILOT = 'false';
 
@@ -101,10 +258,8 @@ test('Security Gate: Public requests in production cannot toggle includePreview'
   assert.ok(adminExpansionEvents.length >= 20, 'Admin request with valid bearer token must receive preview events');
 });
 
-test('Preview Cron Ingestion: Refreshes into preview namespace and blocks in production', async () => {
+test('Preview Cron Ingestion (Production Guardrail): Blocks expansion cron in production', async () => {
   process.env.CRON_SECRET = 'test-secure-cron-token-12345';
-
-  // 1. In production, expansion cron MUST be blocked
   process.env.VERCEL_ENV = 'production';
   process.env.ENABLE_EXPANSION_PILOT = 'false';
   const { req: prodCronReq, res: prodCronRes, getJson: getProdCronJson } = createMockReqRes({
@@ -117,8 +272,10 @@ test('Preview Cron Ingestion: Refreshes into preview namespace and blocks in pro
   assert.equal(prodCronData.success, false);
   assert.equal(prodCronData.expansionRecordsWritten, 0);
   assert.ok(prodCronData.error.includes('disabled in production'));
+});
 
-  // 2. In preview, expansion cron runs and writes to preview namespace
+test('Preview Cron Ingestion (Live Integration): Refreshes into preview namespace on live feeds', { skip: SKIP_LIVE }, async () => {
+  process.env.CRON_SECRET = 'test-secure-cron-token-12345';
   process.env.VERCEL_ENV = 'preview';
   process.env.ENABLE_EXPANSION_PILOT = 'true';
   const { req: prevCronReq, res: prevCronRes, getJson: getPrevCronJson } = createMockReqRes({
@@ -129,7 +286,10 @@ test('Preview Cron Ingestion: Refreshes into preview namespace and blocks in pro
   await cronIngestHandler(prevCronReq, prevCronRes);
   const prevCronData = getPrevCronJson();
   assert.equal(prevCronData.success, true);
-  assert.ok(prevCronData.expansionRecordsWritten >= 400 && prevCronData.expansionRecordsWritten <= 410);
+  assert.equal(prevCronData.failedRefreshes, 0);
+  assert.ok(prevCronData.expansionRecordsWritten >= 250, `Expected >= 250 live expansion records written, got ${prevCronData.expansionRecordsWritten}`);
+  const reportedTotal = (prevCronData.reports || []).reduce((acc, r) => acc + (r.count || 0), 0);
+  assert.equal(prevCronData.expansionRecordsWritten, reportedTotal);
   assert.equal(prevCronData.namespace, 'preview_expansion');
   assert.equal(prevCronData.environment, 'preview');
 });
@@ -149,7 +309,34 @@ test('Production Namespace Isolation: Exactly 0 expansion records in production 
   assert.equal(expansionInProd.length, 0, 'Production query must return strictly 0 expansion records');
 });
 
-test('Birmingham & Charlotte Serverless Feeds: Return real upcoming events in preview', async () => {
+test('Birmingham & Charlotte Serverless Feeds (Deterministic Unit): Return upcoming events in preview', async () => {
+  process.env.ENABLE_EXPANSION_PILOT = 'true';
+  process.env.VERCEL_ENV = 'preview';
+
+  await withIsolatedUnitFeedEnv(createDeterministicExpansionFetch(), async () => {
+    // Birmingham
+    const bhmUrl = `/api/feed?lat=${EXPANSION_VENUES.stardome.lat}&lon=${EXPANSION_VENUES.stardome.lon}&mode=comedy&window=all&dynamic=false`;
+    const { req: bhmReq, res: bhmRes, getJson: getBhmJson } = createMockReqRes({ url: bhmUrl });
+    await feedHandler(bhmReq, bhmRes);
+    const bhmData = getBhmJson();
+    const bhmShows = (bhmData.events || []).filter(e => (e.venue_name || e.venue) === 'Stardome Comedy Club');
+    assert.ok(bhmShows.length >= 20, `Expected >= 20 Stardome events, got ${bhmShows.length}`);
+    assert.equal(bhmShows[0].city, 'Birmingham');
+    assert.equal(bhmShows[0].confirmationStatus, 'confirmed_by_official_calendar');
+
+    // Charlotte
+    const cltUrl = `/api/feed?lat=${EXPANSION_VENUES.comedyZone.lat}&lon=${EXPANSION_VENUES.comedyZone.lon}&mode=comedy&window=all&dynamic=false`;
+    const { req: cltReq, res: cltRes, getJson: getCltJson } = createMockReqRes({ url: cltUrl });
+    await feedHandler(cltReq, cltRes);
+    const cltData = getCltJson();
+    const cltShows = (cltData.events || []).filter(e => (e.venue_name || e.venue) === 'The Comedy Zone Charlotte');
+    assert.ok(cltShows.length >= 20, `Expected >= 20 Comedy Zone events, got ${cltShows.length}`);
+    assert.equal(cltShows[0].city, 'Charlotte');
+    assert.equal(cltShows[0].confirmationStatus, 'confirmed_by_official_calendar');
+  });
+});
+
+test('Birmingham & Charlotte Serverless Feeds (Live Integration): Return real upcoming events in preview', { skip: SKIP_LIVE }, async () => {
   process.env.ENABLE_EXPANSION_PILOT = 'true';
   process.env.VERCEL_ENV = 'preview';
 
@@ -174,16 +361,54 @@ test('Birmingham & Charlotte Serverless Feeds: Return real upcoming events in pr
   assert.equal(cltShows[0].confirmationStatus, 'confirmed_by_official_calendar');
 });
 
-test('Second Ingestion Idempotency: Exactly 0 duplicates created', async () => {
-  // Ingest run 1
+test('Second Ingestion Idempotency (Deterministic Unit): Exactly 0 duplicates created across 404 fixture events', async () => {
+  const tmpFile = path.join(os.tmpdir(), `test_runtime_unit_idem_${Date.now()}_${Math.random().toString(36).slice(2)}.json`);
+  const unitStorage = new LocalFileCanonicalStorage(tmpFile);
+  const fetchFn = createDeterministicExpansionFetch();
+
+  try {
+    await withIsolatedRawStorage(async () => {
+      const run1 = await ingestExpansionComedy({
+        persist: false,
+        environment: 'preview',
+        namespace: 'preview_expansion',
+        fetchFn
+      });
+      assert.equal(run1.count, 404);
+      await unitStorage.upsertEvents(run1.events);
+
+      const run2 = await ingestExpansionComedy({
+        persist: false,
+        environment: 'preview',
+        namespace: 'preview_expansion',
+        fetchFn
+      });
+      assert.equal(run2.count, 404);
+      await unitStorage.upsertEvents(run2.events);
+    });
+
+    const allPreview = await unitStorage.queryEvents({
+      includePreview: true,
+      namespace: 'preview_expansion',
+      windowStart: '2026-01-01T00:00:00.000Z',
+      windowEnd: '2099-01-01T00:00:00.000Z'
+    });
+    assert.equal(allPreview.length, 404, `Expected exactly 404 records after second deterministic ingestion, got ${allPreview.length}`);
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch (_) {}
+  }
+});
+
+test('Second Ingestion Idempotency (Live Integration): Exactly 0 duplicates created on live rolling feeds', { skip: SKIP_LIVE }, async () => {
+  await purgeExpansionPreviewRecords();
+
   const run1 = await ingestExpansionComedy({
     persist: true,
     environment: 'preview',
     namespace: 'preview_expansion'
   });
-  assert.ok(run1.count >= 400 && run1.count <= 410);
+  assert.ok(run1.count >= 250, `Expected >= 250 live expansion records, got ${run1.count}`);
 
-  // Ingest run 2 immediately following
   const run2 = await ingestExpansionComedy({
     persist: true,
     environment: 'preview',
@@ -200,7 +425,7 @@ test('Second Ingestion Idempotency: Exactly 0 duplicates created', async () => {
   assert.equal(allPreview.length, run1.count, `Expected exactly ${run1.count} records after second ingestion, got ${allPreview.length}`);
 });
 
-test('Ticket URLs: Full GET resolution to official checkout with markers', async () => {
+test('Ticket URLs: Full GET resolution to official checkout with markers', { skip: SKIP_LIVE }, async () => {
   const sampleUrls = [
     'https://www.stardome.com/shows/383690',
     'https://www.cltcomedyzone.com/shows/382369'

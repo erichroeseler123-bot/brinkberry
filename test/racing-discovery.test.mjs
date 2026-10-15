@@ -247,12 +247,26 @@ describe('Grassroots Motorsports & Short Track Discovery Engine', () => {
       assert.ok(rfrSeason.length >= 3);
       assert.ok(rfrSeason.some(r => r.classes.includes('Super Pro')));
 
-      // Freshness check
-      const freshness = verifyScheduleFreshness('race_seed_cns_01');
-      assert.equal(freshness.found, true);
-      assert.equal(freshness.isFresh, true);
-      assert.equal(freshness.isStale, false);
-      assert.ok(freshness.officialSourceUrl.startsWith('https://'));
+      // Deterministic freshness check at reference time within 7-day window of seed lastVerifiedAt (2026-09-18T12:00:00.000Z)
+      const realDateNow = Date.now;
+      try {
+        Date.now = () => Date.parse('2026-09-20T12:00:00.000Z');
+        const freshness = verifyScheduleFreshness('race_seed_cns_01');
+        assert.equal(freshness.found, true);
+        assert.equal(freshness.isFresh, true);
+        assert.equal(freshness.isStale, false);
+        assert.ok(freshness.officialSourceUrl.startsWith('https://'));
+
+        // Also verify honest decay past the 7-day freshness boundary
+        Date.now = () => Date.parse('2026-10-15T12:00:00.000Z');
+        const decayed = verifyScheduleFreshness('race_seed_cns_01');
+        assert.equal(decayed.found, true);
+        assert.equal(decayed.isFresh, false);
+        assert.equal(decayed.isStale, true);
+        assert.ok(decayed.officialSourceUrl.startsWith('https://'));
+      } finally {
+        Date.now = realDateNow;
+      }
     });
 
     it('contains touring series with fan-demand metadata', () => {
