@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import os from 'node:os';
@@ -23,8 +23,10 @@ const require = createRequire(import.meta.url);
 const feedHandler = require('../api/feed.js');
 const { AUDIT_MILESTONE } = require('../lib/audit/coverage-auditor.js');
 
+const FIXED_UNIT_NOW = new Date('2026-10-15T12:00:00.000Z');
+
 async function withIsolatedRawStorage(fn) {
-  const tmpRawDir = path.join(os.tmpdir(), `test_raw_iso_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+  const tmpRawDir = path.join(os.tmpdir(), `test_raw_iso_${Math.random().toString(36).slice(2)}`);
   const unitRaw = new LocalRawSourceStorage({ baseDir: tmpRawDir });
   const origSave = defaultRawStorage.saveRawEvidence;
   const origLatest = defaultRawStorage.getLatestRawEvidence;
@@ -32,9 +34,11 @@ async function withIsolatedRawStorage(fn) {
   defaultRawStorage.saveRawEvidence = unitRaw.saveRawEvidence.bind(unitRaw);
   defaultRawStorage.getLatestRawEvidence = unitRaw.getLatestRawEvidence.bind(unitRaw);
   defaultRawStorage.listEvidenceHistory = unitRaw.listEvidenceHistory.bind(unitRaw);
+  mock.timers.enable({ apis: ['Date'], now: FIXED_UNIT_NOW });
   try {
     return await fn(unitRaw);
   } finally {
+    mock.timers.reset();
     defaultRawStorage.saveRawEvidence = origSave;
     defaultRawStorage.getLatestRawEvidence = origLatest;
     defaultRawStorage.listEvidenceHistory = origHistory;
@@ -224,9 +228,10 @@ test('Preview Gate 3a (Deterministic Unit): Direct /api/feed API Contract Verifi
   process.env.ENABLE_EXPANSION_PILOT = 'true';
   process.env.VERCEL_ENV = 'preview';
 
-  const tmpFile = path.join(os.tmpdir(), `test_exp_gate3_unit_${Date.now()}_${Math.random().toString(36).slice(2)}.json`);
+  const tmpFile = path.join(os.tmpdir(), `test_exp_gate3_unit_${Math.random().toString(36).slice(2)}.json`);
   const unitStorage = new LocalFileCanonicalStorage(tmpFile);
   const origQuery = defaultCanonicalStorage.queryEvents;
+  const origFetch = globalThis.fetch;
   defaultCanonicalStorage.queryEvents = unitStorage.queryEvents.bind(unitStorage);
 
   try {
@@ -238,8 +243,20 @@ test('Preview Gate 3a (Deterministic Unit): Direct /api/feed API Contract Verifi
     }));
     await unitStorage.upsertEvents(seeded.events);
 
+    mock.timers.enable({ apis: ['Date'], now: FIXED_UNIT_NOW });
+    globalThis.fetch = async (url) => {
+      const target = String(url);
+      if (target.includes('/rest/v1/rpc/')) {
+        return { ok: true, status: 200, text: async () => '[]', json: async () => [] };
+      }
+      if (target.includes('api.weather.gov')) {
+        return { ok: true, status: 200, text: async () => '{}', json: async () => ({}) };
+      }
+      throw new Error(`Unexpected live network fetch in deterministic unit test: ${target}`);
+    };
+
     // 1. Direct Birmingham /api/feed check
-    const bhmUrl = `/api/feed?lat=${EXPANSION_VENUES.stardome.lat}&lon=${EXPANSION_VENUES.stardome.lon}&mode=comedy&window=all`;
+    const bhmUrl = `/api/feed?lat=${EXPANSION_VENUES.stardome.lat}&lon=${EXPANSION_VENUES.stardome.lon}&mode=comedy&window=all&dynamic=false`;
     const { req: bhmReq, res: bhmRes, getStatus: getBhmStatus, getJson: getBhmJson } = createMockReqRes({
       url: bhmUrl
     });
@@ -253,7 +270,7 @@ test('Preview Gate 3a (Deterministic Unit): Direct /api/feed API Contract Verifi
     assert.equal(bhmEvents[0].confirmationStatus, 'confirmed_by_official_calendar');
 
     // 2. Direct Charlotte /api/feed check
-    const cltUrl = `/api/feed?lat=${EXPANSION_VENUES.comedyZone.lat}&lon=${EXPANSION_VENUES.comedyZone.lon}&mode=comedy&window=all`;
+    const cltUrl = `/api/feed?lat=${EXPANSION_VENUES.comedyZone.lat}&lon=${EXPANSION_VENUES.comedyZone.lon}&mode=comedy&window=all&dynamic=false`;
     const { req: cltReq, res: cltRes, getStatus: getCltStatus, getJson: getCltJson } = createMockReqRes({
       url: cltUrl
     });
@@ -266,6 +283,8 @@ test('Preview Gate 3a (Deterministic Unit): Direct /api/feed API Contract Verifi
     assert.equal(cltEvents[0].city, 'Charlotte');
     assert.equal(cltEvents[0].confirmationStatus, 'confirmed_by_official_calendar');
   } finally {
+    mock.timers.reset();
+    globalThis.fetch = origFetch;
     defaultCanonicalStorage.queryEvents = origQuery;
     try { fs.unlinkSync(tmpFile); } catch (_) {}
   }

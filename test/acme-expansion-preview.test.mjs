@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'module';
 
@@ -19,9 +19,10 @@ const path = require('node:path');
 const fs = require('node:fs');
 
 const SKIP_LIVE = process.env.BRINKBERRY_TEST_MODE === 'unit';
+const FIXED_UNIT_NOW = new Date('2026-10-15T12:00:00.000Z');
 
 async function withIsolatedRawStorage(fn) {
-  const tmpRawDir = path.join(os.tmpdir(), `test_acme_raw_iso_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+  const tmpRawDir = path.join(os.tmpdir(), `test_acme_raw_iso_${Math.random().toString(36).slice(2)}`);
   const unitRaw = new LocalRawSourceStorage({ baseDir: tmpRawDir });
   const origSave = defaultRawStorage.saveRawEvidence;
   const origLatest = defaultRawStorage.getLatestRawEvidence;
@@ -29,9 +30,11 @@ async function withIsolatedRawStorage(fn) {
   defaultRawStorage.saveRawEvidence = unitRaw.saveRawEvidence.bind(unitRaw);
   defaultRawStorage.getLatestRawEvidence = unitRaw.getLatestRawEvidence.bind(unitRaw);
   defaultRawStorage.listEvidenceHistory = unitRaw.listEvidenceHistory.bind(unitRaw);
+  mock.timers.enable({ apis: ['Date'], now: FIXED_UNIT_NOW });
   try {
     return await fn(unitRaw);
   } finally {
+    mock.timers.reset();
     defaultRawStorage.saveRawEvidence = origSave;
     defaultRawStorage.getLatestRawEvidence = origLatest;
     defaultRawStorage.listEvidenceHistory = origHistory;
