@@ -220,18 +220,27 @@ END:VCALENDAR`;
 
   describe('5. Cancellation & Schedule Change Reconciliation', () => {
     it('identifies explicit cancellations, disappeared events, and schedule shifts', () => {
+      const now = new Date();
+      const baseUtcMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 10);
+      const keepStart = new Date(baseUtcMs + 19 * 3600e3).toISOString();
+      const cancelStart = new Date(baseUtcMs + 86400e3 + 18 * 3600e3).toISOString();
+      const shiftOldStart = new Date(baseUtcMs + 86400e3 + 21 * 3600e3).toISOString();
+      const shiftNewStart = new Date(baseUtcMs + 86400e3 + 21 * 3600e3 + 1800e3).toISOString();
+      const rainoutStart = new Date(baseUtcMs + 2 * 86400e3 + 17 * 3600e3).toISOString();
+      const brandNewStart = new Date(baseUtcMs + 2 * 86400e3 + 20 * 3600e3).toISOString();
+
       const priorEvents = [
-        { id: 'evt_keep', title: 'Friday Feature', start: '2026-10-16T19:00:00Z' },
-        { id: 'evt_cancel', title: 'Saturday Early', start: '2026-10-17T18:00:00Z' },
-        { id: 'evt_rainout', title: 'Sunday Dirt Nationals', start: '2026-10-18T17:00:00Z' },
-        { id: 'evt_shift', title: 'Late Show Shift', start: '2026-10-17T21:00:00Z' }
+        { id: 'evt_keep', title: 'Friday Feature', start: keepStart },
+        { id: 'evt_cancel', title: 'Saturday Early', start: cancelStart },
+        { id: 'evt_rainout', title: 'Sunday Dirt Nationals', start: rainoutStart },
+        { id: 'evt_shift', title: 'Late Show Shift', start: shiftOldStart }
       ];
 
       const incomingCycle = {
         events: [
-          { id: 'evt_keep', title: 'Friday Feature', start: '2026-10-16T19:00:00Z' },
-          { id: 'evt_shift', title: 'Late Show Shift', start: '2026-10-17T21:30:00Z' }, // 30 min shift
-          { id: 'evt_brand_new', title: 'Sunday Added Show', start: '2026-10-18T20:00:00Z' }
+          { id: 'evt_keep', title: 'Friday Feature', start: keepStart },
+          { id: 'evt_shift', title: 'Late Show Shift', start: shiftNewStart }, // 30 min shift
+          { id: 'evt_brand_new', title: 'Sunday Added Show', start: brandNewStart }
         ],
         cancelledUids: ['evt_cancel'] // Explicit cancellation
         // evt_rainout disappeared from feed
@@ -250,7 +259,7 @@ END:VCALENDAR`;
       assert.equal(disappearedCancel.cancellationReason, 'disappeared_from_official_calendar');
 
       assert.equal(reconciled.scheduleChanges[0].id, 'evt_shift');
-      assert.equal(reconciled.scheduleChanges[0].newStart, '2026-10-17T21:30:00Z');
+      assert.equal(reconciled.scheduleChanges[0].newStart, shiftNewStart);
     });
   });
 

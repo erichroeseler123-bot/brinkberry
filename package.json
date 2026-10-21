@@ -6,7 +6,7 @@
     "node": "24.x"
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs",
+    "test": "node --import ./lib/test-isolation-harness.js --test test/*.test.mjs",
     "probe:nightly": "node scripts/run-pilot-onboarding.mjs"
   },
   "dependencies": {

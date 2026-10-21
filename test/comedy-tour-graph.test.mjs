@@ -274,7 +274,7 @@ describe('Two-Way Discovery Graph & Cross-Source Confirmation Engine Suite', () 
         city: 'Atlanta',
         state: 'GA',
         timezone: 'America/New_York',
-        start_time: '2026-10-17T20:00:00-04:00',
+        start_time: new Date(Date.now() + 24 * 3600e3).toISOString(),
         ticket_url: 'https://punchline.com/tickets/sam-tallent',
         price_display: '$30',
         confirmationStatus: CONFIRMATION_STATUSES.CONFIRMED_BY_DUAL_OFFICIAL_SOURCES,

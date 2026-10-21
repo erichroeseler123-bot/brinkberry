@@ -123,7 +123,8 @@ describe('Automated Batch Onboarding Engine Suite', () => {
       const parseRes = await probeAndParseVenues([testVenue], {
         fetchFn: mockFetch,
         environment: 'preview',
-        namespace: 'preview_expansion'
+        namespace: 'preview_expansion',
+        nowMs: new Date('2026-10-10T12:00:00.000Z').getTime()
       });
 
       assert.equal(parseRes.passingVenues.length, 1);
