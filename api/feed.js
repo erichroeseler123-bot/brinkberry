@@ -1,4 +1,3 @@
-require('../lib/test-isolation-harness');
 const { buildSafeAffiliateUrl } = require('../lib/affiliate');
 const { executeHybridFeed, distMiles } = require('../lib/providers/engine');
 const { defaultCanonicalStorage } = require('../lib/storage/canonical-event-storage');

@@ -530,6 +530,15 @@ describe('Home Discovery Controls Programmatic State (WCAG 4.1.2)', () => {
       h.document.getElementById('feed').innerHTML,
       /<button type="button"[^>]*>Show All Categories &amp; Reset Filters<\/button>/
     );
+
+    // 4. Narrowed radius or time window also renders Show All Categories & Reset Filters and resets radius=25 & window='48h'
+    S.sourceFilter = 'all';
+    S.radius = 5;
+    S.window = 'now';
+    renderFeed();
+    const feedHtml = h.document.getElementById('feed').innerHTML;
+    assert.match(feedHtml, /id="resetAllFiltersBtn"/);
+    assert.match(feedHtml, /S\.radius=25;\s*S\.window='48h';/);
   });
 
   test('openDetail renders sourceQualityTooltip as visible helper text next to Source Verification', () => {

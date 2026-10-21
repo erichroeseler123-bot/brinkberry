@@ -1861,7 +1861,7 @@ module.exports = (req, res) => {
         const isRacing = S.category === 'racing';
         const emptyLabel = isComedy ? 'comedy shows' : (isRacing ? 'grassroots races' : 'qualifying events');
         const hasActiveSubFilters = Boolean(S.mode || S.showType || S.ageLimit || S.priceFilter || S.startingSoon || S.recurring || S.racingDiscipline);
-        const hasNarrowFilters = Boolean(S.category || S.mode || (S.sourceFilter && S.sourceFilter !== 'all') || hasActiveSubFilters);
+        const hasNarrowFilters = Boolean(S.category || S.mode || (S.sourceFilter && S.sourceFilter !== 'all') || S.radius !== 25 || (S.window && S.window !== '48h') || hasActiveSubFilters);
 
         $('feed').innerHTML = \`
           <div class="empty">
@@ -1882,7 +1882,7 @@ module.exports = (req, res) => {
               </div>
             \` : ''}
             <div class="row" style="justify-content:center; margin-top:14px; gap:8px; flex-wrap:wrap;">
-              \${hasNarrowFilters ? '<button type="button" id="resetAllFiltersBtn" onclick="S.category=\\'\\'; S.mode=\\'\\'; S.sourceFilter=\\'all\\'; S.showType=\\'\\'; S.ageLimit=\\'\\'; S.priceFilter=\\'\\'; S.startingSoon=false; S.recurring=false; S.racingDiscipline=\\'\\'; initControls(); loadFeed();" style="background:#261f36; border-color:var(--primary); color:#fff; font-weight:700">Show All Categories &amp; Reset Filters</button>' : ''}
+              \${hasNarrowFilters ? '<button type="button" id="resetAllFiltersBtn" onclick="S.category=\\'\\'; S.mode=\\'\\'; S.sourceFilter=\\'all\\'; S.radius=25; S.window=\\'48h\\'; S.showType=\\'\\'; S.ageLimit=\\'\\'; S.priceFilter=\\'\\'; S.startingSoon=false; S.recurring=false; S.racingDiscipline=\\'\\'; initControls(); loadFeed();" style="background:#261f36; border-color:var(--primary); color:#fff; font-weight:700">Show All Categories &amp; Reset Filters</button>' : ''}
               \${hasActiveSubFilters ? '<button type="button" onclick="S.mode=\\'\\'; S.showType=\\'\\'; S.ageLimit=\\'\\'; S.priceFilter=\\'\\'; S.startingSoon=false; S.recurring=false; S.racingDiscipline=\\'\\'; initControls(); loadFeed();" style="background:#191424; color:#fff">Clear Sub-Filters</button>' : ''}
               <button type="button" onclick="S.radius=50; S.window='48h'; S.mode=''; initControls(); loadFeed();" style="background:var(--primary); color:var(--primary-dark); font-weight:800">
                 Search 50 Miles / Next 48 Hours →

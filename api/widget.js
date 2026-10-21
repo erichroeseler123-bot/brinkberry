@@ -9,7 +9,6 @@
  * partner attribution, and permissive frame headers for iframe embedding.
  */
 
-require('../lib/test-isolation-harness');
 const { executeHybridFeed } = require('../lib/providers/engine');
 
 const ORIGIN = process.env.BRINKBERRY_ORIGIN || 'https://brinkberry.com';
