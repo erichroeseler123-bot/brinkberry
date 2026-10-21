@@ -13,6 +13,8 @@
  * - Never invents estimates on error
  */
 
+require('../lib/test-isolation-harness');
+
 module.exports = async (req, res) => {
   if (!res.status) {
     res.status = function(c) { this.statusCode = c; return this; };

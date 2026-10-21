@@ -1001,7 +1001,7 @@ module.exports = (req, res) => {
           <div id="citySearchContainer" style="flex: 1; min-width: 250px; display: flex;">
             <div id="citySearchForm" class="search-input-wrap">
               <span class="search-icon">🔍</span>
-              <input type="text" id="citySearchInput" placeholder="Search any city or postal code worldwide..." autocomplete="off">
+              <input type="text" id="citySearchInput" aria-label="City or neighborhood" placeholder="Search any city or postal code worldwide..." autocomplete="off">
               <button id="citySearchGo" class="btn-go">Find Events</button>
               <button id="citySearchClose" style="display:none"></button>
             </div>
@@ -1056,7 +1056,7 @@ module.exports = (req, res) => {
           <div class="quick-time-toggle" id="quickTimeToggle" role="group" aria-label="Quick time selection">
             <button type="button" class="quick-time-btn" data-time="tonight" aria-pressed="false">Tonight</button>
             <button type="button" class="quick-time-btn active" data-time="48h" aria-pressed="true">Next 48 Hours</button>
-            <button type="button" class="quick-time-btn" data-time="weekend" aria-pressed="false">This Weekend</button>
+            <button type="button" class="quick-time-btn" data-time="this_weekend" aria-pressed="false">This Weekend</button>
           </div>
           <button id="filtersToggleBtn" class="filters-toggle-btn" type="button" aria-expanded="false" aria-controls="advancedFiltersDrawer">
             <span>⚙️ Filters</span>
@@ -1115,7 +1115,7 @@ module.exports = (req, res) => {
             <!-- When Group -->
             <div class="filter-group">
               <span class="filter-label">When</span>
-              <div id="timeWindows" class="pills-wrap"></div>
+              <div id="timeWindows" class="pills-wrap" role="group" aria-label="Time window"></div>
             </div>
 
             <div class="filter-divider"></div>
@@ -1123,7 +1123,7 @@ module.exports = (req, res) => {
             <!-- Radius Group -->
             <div class="filter-group">
               <span class="filter-label">Radius</span>
-              <div id="radiusFilters" class="pills-wrap"></div>
+              <div id="radiusFilters" class="pills-wrap" role="group" aria-label="Search radius"></div>
             </div>
 
             <div class="filter-divider" id="vibeDivider"></div>
@@ -1591,7 +1591,7 @@ module.exports = (req, res) => {
         quickTimeEl.querySelectorAll('[data-time]').forEach(b => {
           const isTonight = b.dataset.time === 'tonight' && S.window === 'tonight';
           const is48h = b.dataset.time === '48h' && S.window === '48h';
-          const isWeekend = b.dataset.time === 'weekend' && (S.window === 'weekend' || S.window === 'this_weekend');
+          const isWeekend = (b.dataset.time === 'this_weekend' || b.dataset.time === 'weekend') && (S.window === 'weekend' || S.window === 'this_weekend');
           const isAct = Boolean(isTonight || is48h || isWeekend);
           b.className = 'quick-time-btn ' + (isAct ? 'active' : '');
           b.setAttribute('aria-pressed', String(isAct));
@@ -1644,9 +1644,9 @@ module.exports = (req, res) => {
       document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { S.radius = Number(b.dataset.r); initControls(); loadFeed(); });
 
       // 5. Time Windows
-      const windows = [['now', 'Now'], ['tonight', 'Tonight'], ['tomorrow', 'Tomorrow'], ['48h', 'Next 48 Hours'], ['weekend', 'This Weekend']];
+      const windows = [['now', 'Now'], ['tonight', 'Tonight'], ['tomorrow', 'Tomorrow'], ['48h', 'Next 48 Hours'], ['this_weekend', 'This Weekend']];
       $('timeWindows').innerHTML = windows.map(([k, l]) => {
-        const isAct = S.window === k || (k === 'weekend' && S.window === 'this_weekend');
+        const isAct = S.window === k || ((k === 'this_weekend' || k === 'weekend') && (S.window === 'this_weekend' || S.window === 'weekend'));
         return \`<button class="\${isAct ? 'active' : ''}" data-w="\${k}" aria-pressed="\${isAct ? 'true' : 'false'}">\${l}</button>\`;
       }).join('');
       document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { S.window = b.dataset.w; initControls(); loadFeed(); });

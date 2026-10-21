@@ -324,7 +324,12 @@ describe('Home Discovery Controls Programmatic State (WCAG 4.1.2)', () => {
     // Quick-time choices: Next 48 Hours is active + aria-pressed="true", Tonight and This Weekend are aria-pressed="false"
     assert.match(denverHtml, /<button type="button" class="quick-time-btn" data-time="tonight" aria-pressed="false">Tonight<\/button>/);
     assert.match(denverHtml, /<button type="button" class="quick-time-btn active" data-time="48h" aria-pressed="true">Next 48 Hours<\/button>/);
-    assert.match(denverHtml, /<button type="button" class="quick-time-btn" data-time="weekend" aria-pressed="false">This Weekend<\/button>/);
+    assert.match(denverHtml, /<button type="button" class="quick-time-btn" data-time="this_weekend" aria-pressed="false">This Weekend<\/button>/);
+
+    // Accessible labels on city search input and filter groups
+    assert.match(denverHtml, /<input[^>]*id="citySearchInput"[^>]*aria-label="City or neighborhood"/);
+    assert.match(denverHtml, /<div id="timeWindows" class="pills-wrap" role="group" aria-label="Time window">/);
+    assert.match(denverHtml, /<div id="radiusFilters" class="pills-wrap" role="group" aria-label="Search radius">/);
 
     // Live status region exposes role="status" and aria-live="polite"
     assert.match(denverHtml, /<div id="status" class="status" role="status" aria-live="polite">/);
@@ -438,10 +443,10 @@ describe('Home Discovery Controls Programmatic State (WCAG 4.1.2)', () => {
     h.assertGroupSync(h.getButtonsByAttr('data-w'), b => b.dataset.w === 'tonight', 'Expanded Time Windows after activating Tonight');
 
     // 5b. Activate Quick-Time choice ("This Weekend") -> synchronizes both Quick-Time and Expanded Time Windows
-    const weekendQuickBtn = h.getButtonsByAttr('data-time').find(b => b.dataset.time === 'weekend');
+    const weekendQuickBtn = h.getButtonsByAttr('data-time').find(b => b.dataset.time === 'this_weekend');
     weekendQuickBtn.onclick();
-    h.assertGroupSync(h.getButtonsByAttr('data-time'), b => b.dataset.time === 'weekend', 'Quick Time after activating This Weekend');
-    h.assertGroupSync(h.getButtonsByAttr('data-w'), b => b.dataset.w === 'weekend', 'Expanded Time Windows after activating This Weekend');
+    h.assertGroupSync(h.getButtonsByAttr('data-time'), b => b.dataset.time === 'this_weekend', 'Quick Time after activating This Weekend');
+    h.assertGroupSync(h.getButtonsByAttr('data-w'), b => b.dataset.w === 'this_weekend', 'Expanded Time Windows after activating This Weekend');
 
     // 6. Activate Expanded Time Window ("Tomorrow") -> Tomorrow is active + aria-pressed="true", Quick-Time buttons all false
     const tomorrowWinBtn = h.getButtonsByAttr('data-w').find(b => b.dataset.w === 'tomorrow');
