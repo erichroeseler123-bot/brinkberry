@@ -1,3 +1,4 @@
+require('../lib/test-isolation-harness');
 function wmoToForecast(code) {
   if (code === 0) return 'Clear';
   if (code === 1) return 'Mostly Sunny';

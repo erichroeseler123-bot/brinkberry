@@ -1,3 +1,4 @@
+require('../lib/test-isolation-harness');
 const { buildSafeAffiliateUrl } = require('../lib/affiliate');
 const { executeHybridFeed } = require('../lib/providers/engine');
 const { getCategoryFallbackImage } = require('../lib/providers/normalizer');

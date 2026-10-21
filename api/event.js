@@ -1,3 +1,4 @@
+require('../lib/test-isolation-harness');
 const { buildSafeAffiliateUrl, isValidTicketUrl } = require('../lib/affiliate');
 const { getComedyShowById } = require('../lib/comedy/registry');
 

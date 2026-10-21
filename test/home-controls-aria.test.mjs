@@ -270,7 +270,7 @@ function createHomeDomHarness(html, urlSearch = '') {
   };
 
   vm.createContext(sandbox);
-  vm.runInContext(`${mainScript}\n;globalThis.__S = S; globalThis.__applyLocation = applyLocation; globalThis.__initControls = initControls;`, sandbox);
+  vm.runInContext(`${mainScript}\n;globalThis.__S = S; globalThis.__applyLocation = applyLocation; globalThis.__initControls = initControls; globalThis.__renderFeed = renderFeed; globalThis.__openDetail = openDetail;`, sandbox);
 
   return {
     document,
@@ -321,9 +321,13 @@ describe('Home Discovery Controls Programmatic State (WCAG 4.1.2)', () => {
     assert.match(denverHtml, /<button class="cat-btn comedy-btn" data-cat="comedy" data-label="Comedy Radar" aria-pressed="false">🎤 Comedy<\/button>/);
     assert.match(denverHtml, /<button class="cat-btn racing-btn" data-cat="racing" aria-pressed="false">🏁 Motorsports<\/button>/);
 
-    // Quick-time choices: Next 48 Hours is active + aria-pressed="true", Tonight is aria-pressed="false"
+    // Quick-time choices: Next 48 Hours is active + aria-pressed="true", Tonight and This Weekend are aria-pressed="false"
     assert.match(denverHtml, /<button type="button" class="quick-time-btn" data-time="tonight" aria-pressed="false">Tonight<\/button>/);
     assert.match(denverHtml, /<button type="button" class="quick-time-btn active" data-time="48h" aria-pressed="true">Next 48 Hours<\/button>/);
+    assert.match(denverHtml, /<button type="button" class="quick-time-btn" data-time="weekend" aria-pressed="false">This Weekend<\/button>/);
+
+    // Live status region exposes role="status" and aria-live="polite"
+    assert.match(denverHtml, /<div id="status" class="status" role="status" aria-live="polite">/);
 
     // View toggles: Feed View is active + aria-pressed="true", Radar Map is aria-pressed="false"
     assert.match(denverHtml, /<button id="viewFeed" class="active" aria-pressed="true">Feed View<\/button>/);
@@ -433,7 +437,13 @@ describe('Home Discovery Controls Programmatic State (WCAG 4.1.2)', () => {
     h.assertGroupSync(h.getButtonsByAttr('data-time'), b => b.dataset.time === 'tonight', 'Quick Time after activating Tonight');
     h.assertGroupSync(h.getButtonsByAttr('data-w'), b => b.dataset.w === 'tonight', 'Expanded Time Windows after activating Tonight');
 
-    // 6. Activate Expanded Time Window ("Tomorrow") -> Tomorrow is active + aria-pressed="true", Quick-Time buttons both false
+    // 5b. Activate Quick-Time choice ("This Weekend") -> synchronizes both Quick-Time and Expanded Time Windows
+    const weekendQuickBtn = h.getButtonsByAttr('data-time').find(b => b.dataset.time === 'weekend');
+    weekendQuickBtn.onclick();
+    h.assertGroupSync(h.getButtonsByAttr('data-time'), b => b.dataset.time === 'weekend', 'Quick Time after activating This Weekend');
+    h.assertGroupSync(h.getButtonsByAttr('data-w'), b => b.dataset.w === 'weekend', 'Expanded Time Windows after activating This Weekend');
+
+    // 6. Activate Expanded Time Window ("Tomorrow") -> Tomorrow is active + aria-pressed="true", Quick-Time buttons all false
     const tomorrowWinBtn = h.getButtonsByAttr('data-w').find(b => b.dataset.w === 'tomorrow');
     tomorrowWinBtn.onclick();
     h.assertGroupSync(h.getButtonsByAttr('data-w'), b => b.dataset.w === 'tomorrow', 'Expanded Time Windows after activating Tomorrow');
@@ -484,4 +494,64 @@ describe('Home Discovery Controls Programmatic State (WCAG 4.1.2)', () => {
     viewFeedBtn.onclick();
     h.assertGroupSync([viewFeedBtn, viewRadarBtn], b => b.id === 'viewFeed', 'View Switcher after returning to Feed View');
   });
+
+  test('empty state renders one-tap "Show All Categories & Reset Filters" button when category, mode, sourceFilter, or sub-filters are active', () => {
+    const html = renderHomeHtml();
+    const h = createHomeDomHarness(html);
+    const S = h.sandbox.__S;
+    const renderFeed = h.sandbox.__renderFeed;
+
+    // 1. Default unfiltered empty state: does not render resetAllFiltersBtn
+    S.events = [];
+    S.category = '';
+    S.mode = '';
+    S.sourceFilter = 'all';
+    renderFeed();
+    assert.doesNotMatch(h.document.getElementById('feed').innerHTML, /Show All Categories &amp; Reset Filters/);
+
+    // 2. Narrow category filter active: renders Show All Categories & Reset Filters button with type="button"
+    S.category = 'comedy';
+    renderFeed();
+    assert.match(
+      h.document.getElementById('feed').innerHTML,
+      /<button type="button"[^>]*>Show All Categories &amp; Reset Filters<\/button>/
+    );
+
+    // 3. Source filter active: renders Show All Categories & Reset Filters button
+    S.category = '';
+    S.sourceFilter = 'community';
+    renderFeed();
+    assert.match(
+      h.document.getElementById('feed').innerHTML,
+      /<button type="button"[^>]*>Show All Categories &amp; Reset Filters<\/button>/
+    );
+  });
+
+  test('openDetail renders sourceQualityTooltip as visible helper text next to Source Verification', () => {
+    const html = renderHomeHtml();
+    const h = createHomeDomHarness(html);
+    const S = h.sandbox.__S;
+    const openDetail = h.sandbox.__openDetail;
+
+    S.events = [
+      {
+        id: 'evt_verified_1',
+        title: 'Saturday Headliner Showcase',
+        venue: 'Comedy Works Downtown',
+        city: 'Denver',
+        start: '2026-10-17T20:00:00.000Z',
+        category: 'comedy',
+        priceDisplay: '$25',
+        sourceQualityLabel: 'Confirmed by official venue calendar',
+        sourceQualityTooltip: 'Verified directly against the official venue box office schedule.'
+      }
+    ];
+
+    openDetail('evt_verified_1');
+    const detailHtml = h.document.getElementById('detailBody').innerHTML;
+    assert.match(detailHtml, /Source Verification:/);
+    assert.match(detailHtml, /Confirmed by official venue calendar/);
+    assert.match(detailHtml, /Verified directly against the official venue box office schedule\./);
+  });
 });
+

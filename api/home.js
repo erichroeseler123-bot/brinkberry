@@ -1056,6 +1056,7 @@ module.exports = (req, res) => {
           <div class="quick-time-toggle" id="quickTimeToggle" role="group" aria-label="Quick time selection">
             <button type="button" class="quick-time-btn" data-time="tonight" aria-pressed="false">Tonight</button>
             <button type="button" class="quick-time-btn active" data-time="48h" aria-pressed="true">Next 48 Hours</button>
+            <button type="button" class="quick-time-btn" data-time="weekend" aria-pressed="false">This Weekend</button>
           </div>
           <button id="filtersToggleBtn" class="filters-toggle-btn" type="button" aria-expanded="false" aria-controls="advancedFiltersDrawer">
             <span>⚙️ Filters</span>
@@ -1152,7 +1153,7 @@ module.exports = (req, res) => {
     </div>
 
     <!-- Live Status & Weather Alerts -->
-    <div id="status" class="status">Loading nearby events…</div>
+    <div id="status" class="status" role="status" aria-live="polite">Loading nearby events…</div>
     <div id="weather" class="weather"></div>
     <div id="planb" class="planb"></div>
     <div id="brinkAlert"></div>
@@ -1584,13 +1585,14 @@ module.exports = (req, res) => {
         });
       }
 
-      // 3. Quick Time Choice: Tonight vs Next 48 Hours
+      // 3. Quick Time Choice: Tonight vs Next 48 Hours vs This Weekend
       const quickTimeEl = $('quickTimeToggle');
       if (quickTimeEl) {
         quickTimeEl.querySelectorAll('[data-time]').forEach(b => {
           const isTonight = b.dataset.time === 'tonight' && S.window === 'tonight';
-          const is48h = b.dataset.time === '48h' && (S.window === '48h' || S.window === 'weekend');
-          const isAct = Boolean(isTonight || is48h);
+          const is48h = b.dataset.time === '48h' && S.window === '48h';
+          const isWeekend = b.dataset.time === 'weekend' && (S.window === 'weekend' || S.window === 'this_weekend');
+          const isAct = Boolean(isTonight || is48h || isWeekend);
           b.className = 'quick-time-btn ' + (isAct ? 'active' : '');
           b.setAttribute('aria-pressed', String(isAct));
           b.onclick = () => {
@@ -1619,7 +1621,7 @@ module.exports = (req, res) => {
       if (S.radius && S.radius !== 25) activeFilterCount++;
       if (S.mode) activeFilterCount++;
       if (S.sourceFilter && S.sourceFilter !== 'all') activeFilterCount++;
-      if (S.window && S.window !== 'tonight' && S.window !== '48h' && S.window !== 'weekend') activeFilterCount++;
+      if (S.window && S.window !== 'tonight' && S.window !== '48h' && S.window !== 'weekend' && S.window !== 'this_weekend') activeFilterCount++;
       if (S.category === 'comedy') {
         if (S.showType) activeFilterCount++;
         if (S.ageLimit) activeFilterCount++;
@@ -1642,9 +1644,9 @@ module.exports = (req, res) => {
       document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { S.radius = Number(b.dataset.r); initControls(); loadFeed(); });
 
       // 5. Time Windows
-      const windows = [['now', 'Now'], ['tonight', 'Tonight'], ['tomorrow', 'Tomorrow'], ['48h', 'Next 48 Hours']];
+      const windows = [['now', 'Now'], ['tonight', 'Tonight'], ['tomorrow', 'Tomorrow'], ['48h', 'Next 48 Hours'], ['weekend', 'This Weekend']];
       $('timeWindows').innerHTML = windows.map(([k, l]) => {
-        const isAct = S.window === k || (k === '48h' && S.window === 'weekend');
+        const isAct = S.window === k || (k === 'weekend' && S.window === 'this_weekend');
         return \`<button class="\${isAct ? 'active' : ''}" data-w="\${k}" aria-pressed="\${isAct ? 'true' : 'false'}">\${l}</button>\`;
       }).join('');
       document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { S.window = b.dataset.w; initControls(); loadFeed(); });
@@ -1794,7 +1796,7 @@ module.exports = (req, res) => {
       const planEl = $('racingPlanningFilters');
       if (planEl) {
         planEl.innerHTML = windows.map(([w, l]) => {
-          const isAct = S.window === w || (w === '48h' && S.window === 'tonight');
+          const isAct = S.window === w || (w === '48h' && S.window === 'tonight') || (w === 'this_weekend' && S.window === 'weekend');
           return \`<button class="sub-filter-btn \${isAct ? 'active' : ''}" data-rw="\${w}" aria-pressed="\${isAct ? 'true' : 'false'}">\${l}</button>\`;
         }).join('');
         document.querySelectorAll('[data-rw]').forEach(b => b.onclick = () => {
@@ -1853,11 +1855,13 @@ module.exports = (req, res) => {
       if (!S.events.length) {
         const modeLabels = { cheap: 'Cheap / Free', date: 'Date Night', outside: 'Outside', kids: 'Kids' };
         const modeText = S.mode && modeLabels[S.mode] ? ' for "' + modeLabels[S.mode] + '"' : '';
-        const windowLabels = { now: 'happening right now', tonight: 'tonight', tomorrow: 'tomorrow', '48h': 'in the next 48 hours', weekend: 'this weekend' };
+        const windowLabels = { now: 'happening right now', tonight: 'tonight', tomorrow: 'tomorrow', '48h': 'in the next 48 hours', weekend: 'this weekend', this_weekend: 'this weekend' };
         const winText = windowLabels[S.window] || 'in the next 48 hours';
         const isComedy = S.category === 'comedy';
         const isRacing = S.category === 'racing';
         const emptyLabel = isComedy ? 'comedy shows' : (isRacing ? 'grassroots races' : 'qualifying events');
+        const hasActiveSubFilters = Boolean(S.mode || S.showType || S.ageLimit || S.priceFilter || S.startingSoon || S.recurring || S.racingDiscipline);
+        const hasNarrowFilters = Boolean(S.category || S.mode || (S.sourceFilter && S.sourceFilter !== 'all') || hasActiveSubFilters);
 
         $('feed').innerHTML = \`
           <div class="empty">
@@ -1877,9 +1881,10 @@ module.exports = (req, res) => {
                 <a href="/\${getCitySlug(S.city)}/racing" id="emptyRacingGuideLink" style="color:var(--radar-cyan); font-weight:700; text-decoration:none; display:inline-block; margin-top:6px;">View Local Race Track &amp; Schedule Directory →</a>
               </div>
             \` : ''}
-            <div class="row" style="justify-content:center; margin-top:14px; gap:8px;">
-              \${(S.mode || S.showType || S.ageLimit || S.priceFilter || S.startingSoon || S.recurring || S.racingDiscipline) ? '<button onclick="S.mode=\\'\\'; S.showType=\\'\\'; S.ageLimit=\\'\\'; S.priceFilter=\\'\\'; S.startingSoon=false; S.recurring=false; S.racingDiscipline=\\'\\'; initControls(); loadFeed();" style="background:#191424; color:#fff">Clear Sub-Filters</button>' : ''}
-              <button onclick="S.radius=50; S.window='48h'; S.mode=''; initControls(); loadFeed();" style="background:var(--primary); color:var(--primary-dark); font-weight:800">
+            <div class="row" style="justify-content:center; margin-top:14px; gap:8px; flex-wrap:wrap;">
+              \${hasNarrowFilters ? '<button type="button" id="resetAllFiltersBtn" onclick="S.category=\\'\\'; S.mode=\\'\\'; S.sourceFilter=\\'all\\'; S.showType=\\'\\'; S.ageLimit=\\'\\'; S.priceFilter=\\'\\'; S.startingSoon=false; S.recurring=false; S.racingDiscipline=\\'\\'; initControls(); loadFeed();" style="background:#261f36; border-color:var(--primary); color:#fff; font-weight:700">Show All Categories &amp; Reset Filters</button>' : ''}
+              \${hasActiveSubFilters ? '<button type="button" onclick="S.mode=\\'\\'; S.showType=\\'\\'; S.ageLimit=\\'\\'; S.priceFilter=\\'\\'; S.startingSoon=false; S.recurring=false; S.racingDiscipline=\\'\\'; initControls(); loadFeed();" style="background:#191424; color:#fff">Clear Sub-Filters</button>' : ''}
+              <button type="button" onclick="S.radius=50; S.window='48h'; S.mode=''; initControls(); loadFeed();" style="background:var(--primary); color:var(--primary-dark); font-weight:800">
                 Search 50 Miles / Next 48 Hours →
               </button>
             </div>
@@ -2150,7 +2155,7 @@ module.exports = (req, res) => {
         <p style="color:var(--text-dim)">📍 \${esc(e.venue)}\${e.city ? ', ' + esc(e.city) : ''} \${e.distanceMiles != null ? ' · ' + e.distanceMiles.toFixed(1) + ' mi' : ''}<span id="detailDriveTime"></span></p>
         <p style="color:var(--text-dim)">⏰ \${esc(fmtTime(e.start))}</p>
         <p><b>Admission:</b> \${esc(e.priceDisplay || (e.isFree ? 'Free Admission' : 'Details on official page'))}</p>
-        \${e.sourceQualityLabel ? '<p style="font-size:12.5px; color:var(--text-dim); margin:4px 0 10px;"><b>Source Verification:</b> <span class="source-quality-tag">' + esc(e.sourceQualityLabel) + '</span></p>' : ''}
+        \${e.sourceQualityLabel ? '<p style="font-size:12.5px; color:var(--text-dim); margin:4px 0 10px;"><b>Source Verification:</b> <span class="source-quality-tag">' + esc(e.sourceQualityLabel) + '</span>' + (e.sourceQualityTooltip ? ' <span class="source-quality-helper" style="display:block; margin-top:4px; font-size:12px; color:var(--text-dim); line-height:1.4;">' + esc(e.sourceQualityTooltip) + '</span>' : '') + '</p>' : ''}
         \${e.desc ? \`<p style="line-height:1.5">\${esc(e.desc)}</p>\` : ''}
         \${e.category === 'civic' ? \`
           <div style="background:rgba(43,69,112,0.18); border:1px solid rgba(106,130,251,0.35); border-radius:12px; padding:12px; margin:14px 0; font-size:13.5px;">

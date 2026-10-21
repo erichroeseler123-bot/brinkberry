@@ -1,3 +1,4 @@
+require('../lib/test-isolation-harness');
 const { isValidTicketUrl } = require('../lib/affiliate');
 const { trackTicketClick, trackPilotTicketClick } = require('../lib/telemetry');
 const { getComedyShowById } = require('../lib/comedy/registry');
