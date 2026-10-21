@@ -142,9 +142,21 @@ function createHomeDomHarness(html, urlSearch = '') {
       return target === this || this.children.includes(target);
     }
 
-    focus() {}
-    showModal() {}
-    close() {}
+    removeAttribute(name) {
+      this.attributes.delete(name);
+    }
+
+    focus() {
+      document.activeElement = this;
+    }
+    showModal() {
+      this.open = true;
+      this.setAttribute('open', '');
+    }
+    close() {
+      this.open = false;
+      this.removeAttribute('open');
+    }
   }
 
   function parseAttrs(attrString) {
@@ -165,6 +177,21 @@ function createHomeDomHarness(html, urlSearch = '') {
       const attrs = parseAttrs(m[1]);
       const el = new MockElement('button', attrs);
       el.textContent = m[2].replace(/<[^>]+>/g, '').trim();
+      allElements.push(el);
+      parsed.push(el);
+    }
+    const cardRe = /<article\b([^>]*class="[^"]*\bcard\b[^"]*"[^>]*)>([\s\S]*?)<\/article>/gi;
+    while ((m = cardRe.exec(fragment)) !== null) {
+      const attrs = parseAttrs(m[1]);
+      const el = new MockElement('article', attrs);
+      allElements.push(el);
+      parsed.push(el);
+    }
+    const h2Re = /<h2\b([^>]*\bid="([^"]+)"[^>]*)>([\s\S]*?)<\/h2>/gi;
+    while ((m = h2Re.exec(fragment)) !== null) {
+      const attrs = parseAttrs(m[1]);
+      const el = new MockElement('h2', attrs);
+      el.textContent = m[3].replace(/<[^>]+>/g, '').trim();
       allElements.push(el);
       parsed.push(el);
     }
@@ -213,21 +240,38 @@ function createHomeDomHarness(html, urlSearch = '') {
         return attrVal === undefined ? true : el.getAttribute(attrName) === attrVal;
       });
     }
-    if (selector === '.card') return [];
+    const cardIdMatch = selector.match(/^\.card\[data-id="([^"]*)"\]$/);
+    if (cardIdMatch) {
+      return pool.filter(el => el.classList.contains('card') && el.dataset.id === cardIdMatch[1]);
+    }
+    if (selector === '.card') {
+      return pool.filter(el => el.classList.contains('card'));
+    }
     return [];
   }
 
+  const listeners = new Map();
   const document = {
+    activeElement: null,
+    onkeydown: null,
     getElementById(id) {
       return elementsById.get(id) || null;
     },
     querySelectorAll(selector) {
       return matchSelector(allElements, selector);
     },
-    querySelector() {
-      return null;
+    querySelector(selector) {
+      const matches = matchSelector(allElements, selector);
+      return matches.length > 0 ? matches[0] : null;
     },
-    addEventListener() {}
+    addEventListener(type, fn) {
+      if (!listeners.has(type)) listeners.set(type, []);
+      listeners.get(type).push(fn);
+    },
+    dispatchEvent(evt) {
+      const fns = listeners.get(evt.type) || [];
+      for (const fn of fns) fn(evt);
+    }
   };
 
   const scriptMatches = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gi)];
@@ -270,7 +314,7 @@ function createHomeDomHarness(html, urlSearch = '') {
   };
 
   vm.createContext(sandbox);
-  vm.runInContext(`${mainScript}\n;globalThis.__S = S; globalThis.__applyLocation = applyLocation; globalThis.__initControls = initControls; globalThis.__renderFeed = renderFeed; globalThis.__openDetail = openDetail;`, sandbox);
+  vm.runInContext(`${mainScript}\n;globalThis.__S = S; globalThis.__applyLocation = applyLocation; globalThis.__initControls = initControls; globalThis.__renderFeed = renderFeed; globalThis.__openDetail = openDetail; globalThis.__closeDetail = closeDetail;`, sandbox);
 
   return {
     document,
@@ -566,6 +610,113 @@ describe('Home Discovery Controls Programmatic State (WCAG 4.1.2)', () => {
     assert.match(detailHtml, /Source Verification:/);
     assert.match(detailHtml, /Confirmed by official venue calendar/);
     assert.match(detailHtml, /Verified directly against the official venue box office schedule\./);
+  });
+
+  test('event detail modal (#detailModal / openDetail / closeDetail) exposes dialog ARIA attributes, closes on Escape, and restores focus to trigger', () => {
+    const html = renderHomeHtml();
+    const h = createHomeDomHarness(html);
+    const S = h.sandbox.__S;
+    const renderFeed = h.sandbox.__renderFeed;
+    const openDetail = h.sandbox.__openDetail;
+    const closeDetail = h.sandbox.__closeDetail;
+
+    const detailModal = h.document.getElementById('detailModal');
+    const detailDlg = h.document.getElementById('detailDlg');
+    assert.ok(detailModal, 'Expected #detailModal element in DOM');
+    assert.equal(detailModal.getAttribute('role'), 'dialog');
+    assert.equal(detailModal.getAttribute('aria-modal'), 'true');
+    assert.equal(detailModal.getAttribute('aria-labelledby'), 'detailModalTitle');
+    assert.equal(detailModal.getAttribute('aria-hidden'), 'true');
+
+    assert.ok(detailDlg, 'Expected #detailDlg element in DOM');
+    assert.equal(detailDlg.getAttribute('role'), 'dialog');
+    assert.equal(detailDlg.getAttribute('aria-modal'), 'true');
+    assert.equal(detailDlg.getAttribute('aria-labelledby'), 'detailModalTitle');
+
+    S.events = [
+      {
+        id: 'evt_focus_test_1',
+        title: 'Late Night Stand-Up Underground',
+        venue: 'Denver Comedy Underground',
+        city: 'Denver',
+        start: '2026-10-18T22:00:00.000Z',
+        category: 'comedy',
+        priceDisplay: '$15'
+      }
+    ];
+    renderFeed();
+
+    const cardTrigger = h.document.querySelector('.card[data-id="evt_focus_test_1"]');
+    assert.ok(cardTrigger, 'Expected rendered event card trigger');
+    assert.equal(cardTrigger.getAttribute('tabindex'), '0');
+    assert.equal(cardTrigger.getAttribute('role'), 'button');
+
+    // Focus trigger and open detail modal via keyboard Enter on card
+    cardTrigger.focus();
+    assert.equal(h.document.activeElement, cardTrigger);
+    cardTrigger.onkeydown({ key: 'Enter', preventDefault() {} });
+
+    assert.equal(detailModal.getAttribute('aria-hidden'), 'false');
+    assert.equal(detailModal.getAttribute('role'), 'dialog');
+    assert.equal(detailModal.getAttribute('aria-modal'), 'true');
+    assert.equal(detailModal.getAttribute('aria-labelledby'), 'detailModalTitle');
+    assert.match(h.document.getElementById('detailBody').innerHTML, /<h2 id="detailModalTitle"[^>]*>Late Night Stand-Up Underground<\/h2>/);
+
+    // Press Escape to close modal cleanly and restore focus to cardTrigger
+    h.document.dispatchEvent({ type: 'keydown', key: 'Escape', preventDefault() {} });
+    assert.equal(detailModal.getAttribute('aria-hidden'), 'true');
+    assert.equal(S.currentDetailEvent, null);
+    assert.equal(h.document.activeElement, cardTrigger, 'Focus should return to triggering card after Escape');
+
+    // Re-open with explicit openDetail and close via closeDetail()
+    const customTrigger = h.document.getElementById('moreFiltersBtn');
+    customTrigger.focus();
+    openDetail('evt_focus_test_1', customTrigger);
+    assert.equal(detailModal.getAttribute('aria-hidden'), 'false');
+    closeDetail();
+    assert.equal(detailModal.getAttribute('aria-hidden'), 'true');
+    assert.equal(h.document.activeElement, customTrigger, 'Focus should return to custom triggering control after closeDetail()');
+  });
+
+  test('advanced filters drawer toggle (#moreFiltersBtn) synchronizes aria-expanded with #advancedFiltersDrawer and prevents 320px/375px horizontal overflow', () => {
+    const html = renderHomeHtml();
+    const h = createHomeDomHarness(html);
+
+    const moreFiltersBtn = h.document.getElementById('moreFiltersBtn');
+    const filtersDrawer = h.document.getElementById('advancedFiltersDrawer');
+    assert.ok(moreFiltersBtn, 'Expected #moreFiltersBtn in DOM');
+    assert.ok(filtersDrawer, 'Expected #advancedFiltersDrawer in DOM');
+
+    // Initial closed state
+    assert.equal(moreFiltersBtn.getAttribute('aria-controls'), 'advancedFiltersDrawer');
+    assert.equal(moreFiltersBtn.getAttribute('aria-expanded'), 'false');
+    assert.equal(filtersDrawer.style.display, 'none');
+    assert.equal(filtersDrawer.getAttribute('aria-hidden'), 'true');
+
+    // Open drawer
+    moreFiltersBtn.onclick();
+    assert.equal(moreFiltersBtn.getAttribute('aria-expanded'), 'true');
+    assert.equal(moreFiltersBtn.classList.contains('open'), true);
+    assert.equal(filtersDrawer.style.display, 'block');
+    assert.equal(filtersDrawer.getAttribute('aria-hidden'), 'false');
+
+    // Re-running initControls preserves synchronized aria-expanded state
+    h.sandbox.__initControls();
+    assert.equal(moreFiltersBtn.getAttribute('aria-expanded'), 'true');
+    assert.equal(filtersDrawer.style.display, 'block');
+
+    // Close drawer
+    moreFiltersBtn.onclick();
+    assert.equal(moreFiltersBtn.getAttribute('aria-expanded'), 'false');
+    assert.equal(moreFiltersBtn.classList.contains('open'), false);
+    assert.equal(filtersDrawer.style.display, 'none');
+    assert.equal(filtersDrawer.getAttribute('aria-hidden'), 'true');
+
+    // Mobile 320px & 375px viewport comfort: verify responsive CSS rules prevent horizontal overflow
+    assert.match(html, /\.app\s*\{[^}]*max-width:\s*100%;[^}]*overflow-x:\s*hidden;/);
+    assert.match(html, /\.quick-time-toggle\s*\{[^}]*min-width:\s*0;[^}]*flex-wrap:\s*wrap;/);
+    assert.match(html, /\.search-input-wrap,\s*#citySearchContainer\s*\{[^}]*min-width:\s*0\s*!important;/);
+    assert.match(html, /@media\s*\(max-width:\s*380px\)/);
   });
 });
 
