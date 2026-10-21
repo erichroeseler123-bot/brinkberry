@@ -150,6 +150,11 @@ function createHomeDomHarness(html, urlSearch = '') {
       document.activeElement = this;
     }
     showModal() {
+      if (this.open || this.attributes.has('open')) {
+        const err = new Error('InvalidStateError: The dialog is already open.');
+        err.name = 'InvalidStateError';
+        throw err;
+      }
       this.open = true;
       this.setAttribute('open', '');
     }
@@ -651,12 +656,24 @@ describe('Home Discovery Controls Programmatic State (WCAG 4.1.2)', () => {
     assert.equal(cardTrigger.getAttribute('tabindex'), '0');
     assert.equal(cardTrigger.getAttribute('role'), 'button');
 
-    // Focus trigger and open detail modal via keyboard Enter on card
+    // Keyboard Enter/Space on a nested descendant control inside the card must not hijack activation or open detail modal
+    const nestedControl = { tagName: 'A' };
+    let nestedPrevented = false;
+    cardTrigger.onkeydown({
+      key: 'Enter',
+      target: nestedControl,
+      preventDefault() { nestedPrevented = true; }
+    });
+    assert.equal(nestedPrevented, false, 'Enter on nested control must not preventDefault on card');
+    assert.equal(detailModal.getAttribute('aria-hidden'), 'true', 'Enter on nested control must not open detail modal');
+
+    // Focus trigger and open detail modal via keyboard Enter on card itself
     cardTrigger.focus();
     assert.equal(h.document.activeElement, cardTrigger);
-    cardTrigger.onkeydown({ key: 'Enter', preventDefault() {} });
+    cardTrigger.onkeydown({ key: 'Enter', target: cardTrigger, preventDefault() {} });
 
     assert.equal(detailModal.getAttribute('aria-hidden'), 'false');
+    assert.equal(detailDlg.open, true);
     assert.equal(detailModal.getAttribute('role'), 'dialog');
     assert.equal(detailModal.getAttribute('aria-modal'), 'true');
     assert.equal(detailModal.getAttribute('aria-labelledby'), 'detailModalTitle');

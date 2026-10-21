@@ -2037,6 +2037,7 @@ module.exports = (req, res) => {
       document.querySelectorAll('.card').forEach(c => {
         c.onclick = () => openDetail(c.dataset.id, c);
         c.onkeydown = (evt) => {
+          if (evt.target && evt.target !== c) return;
           if (evt.key === 'Enter' || evt.key === ' ') {
             evt.preventDefault();
             openDetail(c.dataset.id, c);
@@ -2269,8 +2270,13 @@ module.exports = (req, res) => {
         dlg.setAttribute('role', 'dialog');
         dlg.setAttribute('aria-modal', 'true');
         dlg.setAttribute('aria-labelledby', 'detailModalTitle');
-        dlg.setAttribute('open', '');
-        if (typeof dlg.showModal === 'function') dlg.showModal();
+        if (typeof dlg.showModal === 'function') {
+          if (!dlg.open && dlg.getAttribute('open') === null) {
+            dlg.showModal();
+          }
+        } else {
+          dlg.setAttribute('open', '');
+        }
       }
       const closeBtnEl = $('closeDetailBtn') || $('closeDetail');
       if (closeBtnEl && typeof closeBtnEl.focus === 'function') closeBtnEl.focus();
@@ -2541,8 +2547,10 @@ module.exports = (req, res) => {
     function closeDetail() {
       const dlg = $('detailDlg');
       if (dlg) {
+        if (typeof dlg.close === 'function' && (dlg.open || dlg.getAttribute('open') !== null)) {
+          dlg.close();
+        }
         dlg.removeAttribute('open');
-        if (typeof dlg.close === 'function') dlg.close();
       }
       const modalWrap = $('detailModal');
       if (modalWrap) {
