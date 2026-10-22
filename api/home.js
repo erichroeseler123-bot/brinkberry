@@ -1201,6 +1201,17 @@ module.exports = (req, res) => {
       </div>
     </div>
 
+    <!-- 5. Brinkberry + RollCall USA Co-Brand Banner -->
+    <div class="host-cta-banner" style="margin-top:14px; background:linear-gradient(135deg, rgba(24, 18, 42, 0.92), rgba(14, 24, 52, 0.92)); border-color:rgba(96, 165, 250, 0.28);">
+      <div class="host-cta-text" style="display:flex; flex-direction:column; gap:8px;">
+        <img src="/brand/brinkberry-and-rollcall.svg" alt="Brinkberry and RollCall USA" width="1070" height="145" style="height:34px;width:auto;display:block;align-self:flex-start;">
+        <p style="margin:0;">Already out at a show or event? See and message adults (18+) who are nearby right now on RollCall USA — map-free and visibility is always your choice.</p>
+      </div>
+      <div class="host-cta-actions">
+        <a href="https://rollcallusa.com" target="_blank" rel="noopener noreferrer" class="btn-details-sm" style="font-size:13.5px; padding:9px 18px; text-decoration:none; border-radius:999px; border-color:rgba(96, 165, 250, 0.45); color:#dbeafe;">Open RollCall USA (18+) ↗</a>
+      </div>
+    </div>
+
     <!-- Worldwide City Guides Indexable Footer -->
     <section class="city-guides-footer">
       <h3>Popular Worldwide Event Guides</h3>

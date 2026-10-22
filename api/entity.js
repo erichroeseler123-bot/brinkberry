@@ -280,7 +280,7 @@ function renderVenuePage(venue) {
 <body>
   <div class="wrap">
     <nav class="nav">
-      <a class="brand" href="/"><b>●</b> Brinkberry</a>
+      <a class="brand" href="/" aria-label="Brinkberry home"><img class="brand-logo" src="/brand/brinkberry-logo.svg" alt="Brinkberry" width="460" height="112" style="display:block;width:168px;max-width:43vw;height:auto;"></a>
       <a class="back-link" href="/${esc(venue.city.toLowerCase())}/comedy">← ${esc(venue.city)} Comedy Radar</a>
     </nav>
 
@@ -450,7 +450,7 @@ function renderComedianPage(comedian) {
 <body>
   <div class="wrap">
     <nav class="nav">
-      <a class="brand" href="/"><b>●</b> Brinkberry</a>
+      <a class="brand" href="/" aria-label="Brinkberry home"><img class="brand-logo" src="/brand/brinkberry-logo.svg" alt="Brinkberry" width="460" height="112" style="display:block;width:168px;max-width:43vw;height:auto;"></a>
       <a class="back-link" href="/">← Live Event Radar</a>
     </nav>
 

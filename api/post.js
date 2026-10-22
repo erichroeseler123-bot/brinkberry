@@ -357,7 +357,7 @@ function renderPostPage() {
 <body>
   <div class="container">
     <div class="header-bar">
-      <a class="brand" href="/">brink<b>berry</b></a>
+      <a class="brand" href="/" aria-label="Brinkberry home"><img class="brand-logo" src="/brand/brinkberry-logo.svg" alt="Brinkberry" width="460" height="112" style="display:block;width:168px;max-width:43vw;height:auto;"></a>
       <a class="btn-back" href="/">← Live Feed</a>
     </div>
 
@@ -845,7 +845,7 @@ function renderManagePage(post, deletionKey) {
 <body>
   <div class="container">
     <div class="header-bar">
-      <a class="brand" href="/">brink<b>berry</b></a>
+      <a class="brand" href="/" aria-label="Brinkberry home"><img class="brand-logo" src="/brand/brinkberry-logo.svg" alt="Brinkberry" width="460" height="112" style="display:block;width:168px;max-width:43vw;height:auto;"></a>
       <a class="btn-back" href="/event/${esc(post.id)}">← View Event Page</a>
     </div>
 
