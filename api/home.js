@@ -960,15 +960,26 @@ module.exports = (req, res) => {
     @media (max-width: 640px) {
       .grid { grid-template-columns: 1fr; }
       #radar { height: 400px; }
-      .app { padding: 14px 14px 50px; }
+      .app { padding: 14px 12px 50px; max-width: 100%; overflow-x: hidden; }
       .hero h1.hero-title { font-size: 23px; }
-      .hero-actions-bar { flex-direction: row; justify-content: space-between; width: 100%; }
-      .quick-time-toggle { flex: 1; justify-content: center; }
+      .hero-actions-bar { flex-direction: row; justify-content: space-between; width: 100%; gap: 8px; }
+      .quick-time-toggle { flex: 1 1 auto; min-width: 0; max-width: 100%; justify-content: center; flex-wrap: wrap; }
+      .quick-time-btn { padding: 5px 10px; font-size: 12px; }
+      .filters-toggle-btn { padding: 5px 11px; font-size: 12px; }
       .search-action-row { flex-direction: column; align-items: stretch; }
+      .search-input-wrap, #citySearchContainer { min-width: 0 !important; width: 100%; max-width: 100%; }
       .btn-loc { justify-content: center; width: 100%; }
       .filter-divider { display: none; }
-      .filter-bar { padding: 10px 12px; gap: 10px; }
-      .filter-group { width: 100%; justify-content: flex-start; }
+      .filter-bar { padding: 10px 12px; gap: 10px; max-width: 100%; }
+      .filter-group { width: 100%; justify-content: flex-start; flex-wrap: wrap; min-width: 0; }
+      .pills-wrap { max-width: 100%; min-width: 0; }
+      .advanced-filters-drawer, .comedy-sub-console, .racing-sub-console { max-width: 100%; min-width: 0; overflow-x: hidden; }
+    }
+    @media (max-width: 380px) {
+      .app { padding: 12px 10px 44px; }
+      .quick-time-btn { padding: 5px 8px; font-size: 11.5px; }
+      .cat-btn { padding: 5px 11px; font-size: 12.5px; }
+      .filter-bar button { padding: 4px 9px; font-size: 12px; }
     }
   </style>
 </head>
@@ -1081,11 +1092,12 @@ module.exports = (req, res) => {
             <button type="button" class="quick-time-btn active" data-time="48h" aria-pressed="true">Next 48 Hours</button>
             <button type="button" class="quick-time-btn" data-time="this_weekend" aria-pressed="false">This Weekend</button>
           </div>
-          <button id="filtersToggleBtn" class="filters-toggle-btn" type="button" aria-expanded="false" aria-controls="advancedFiltersDrawer">
+          <button id="moreFiltersBtn" class="filters-toggle-btn" type="button" aria-expanded="false" aria-controls="advancedFiltersDrawer">
             <span>⚙️ Filters</span>
             <span id="filterCountBadge" class="filter-count-badge" style="display:none;">0</span>
             <span class="filters-arrow">▾</span>
           </button>
+          <button id="filtersToggleBtn" class="sr-only" type="button" tabindex="-1" aria-hidden="true" aria-expanded="false" aria-controls="advancedFiltersDrawer">Filters</button>
         </div>
 
         <!-- Advanced Filters Drawer (Hidden by default until tapped) -->
@@ -1267,13 +1279,16 @@ module.exports = (req, res) => {
   </div>
 
   <!-- Event Detail Dialog -->
-  <dialog id="detailDlg">
-    <div id="detailBody"></div>
-    <div class="actions-bar">
-      <button id="shareModalBtn" class="btn" style="background:#191424; color:#fff">🔗 Share Event</button>
-      <button id="closeDetail" class="btn" style="margin-left:auto">Close</button>
-    </div>
-  </dialog>
+  <div id="detailModal" role="dialog" aria-modal="true" aria-labelledby="detailModalTitle" aria-hidden="true">
+    <dialog id="detailDlg" role="dialog" aria-modal="true" aria-labelledby="detailModalTitle">
+      <div id="detailBody"><h2 id="detailModalTitle" style="margin-top:0">Event Details</h2></div>
+      <div class="actions-bar">
+        <button id="shareModalBtn" class="btn" type="button" style="background:#191424; color:#fff">🔗 Share Event</button>
+        <button id="closeDetailBtn" class="btn" type="button" style="margin-left:auto">Close</button>
+        <button id="closeDetail" class="sr-only" type="button" tabindex="-1" aria-hidden="true">Close</button>
+      </div>
+    </dialog>
+  </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script>
@@ -1627,16 +1642,32 @@ module.exports = (req, res) => {
       }
 
       // 4. Advanced Filters Button & Drawer Toggle
-      const filtersBtn = $('filtersToggleBtn');
+      const moreFiltersBtn = $('moreFiltersBtn');
+      const legacyFiltersBtn = $('filtersToggleBtn');
       const filtersDrawer = $('advancedFiltersDrawer');
-      if (filtersBtn && filtersDrawer && !filtersBtn._bound) {
-        filtersBtn._bound = true;
-        filtersBtn.onclick = () => {
-          const isOpen = filtersDrawer.style.display !== 'none';
-          filtersDrawer.style.display = isOpen ? 'none' : 'block';
-          filtersBtn.setAttribute('aria-expanded', String(!isOpen));
-          filtersBtn.classList.toggle('open', !isOpen);
-        };
+      const syncFiltersToggleState = (isOpen) => {
+        if (!filtersDrawer) return;
+        filtersDrawer.style.display = isOpen ? 'block' : 'none';
+        filtersDrawer.setAttribute('aria-hidden', String(!isOpen));
+        [moreFiltersBtn, legacyFiltersBtn].forEach(btn => {
+          if (btn) {
+            btn.setAttribute('aria-expanded', String(isOpen));
+            btn.classList.toggle('open', isOpen);
+          }
+        });
+      };
+      if (filtersDrawer) {
+        const currentlyOpen = filtersDrawer.style.display !== 'none';
+        syncFiltersToggleState(currentlyOpen);
+        [moreFiltersBtn, legacyFiltersBtn].forEach(btn => {
+          if (btn && !btn._bound) {
+            btn._bound = true;
+            btn.onclick = () => {
+              const nextOpen = filtersDrawer.style.display === 'none';
+              syncFiltersToggleState(nextOpen);
+            };
+          }
+        });
       }
 
       // Calculate active filter count for badge
@@ -1970,7 +2001,7 @@ module.exports = (req, res) => {
       }
 
       $('feed').innerHTML = '<div class="grid">' + visibleEvents.map(e => \`
-        <article class="card \${e.onTheBrink ? 'brink' : ''}" data-id="\${e.id}">
+        <article class="card \${e.onTheBrink ? 'brink' : ''}" data-id="\${e.id}" tabindex="0" role="button" aria-label="View details for \${esc(e.title)}">
           <div class="card-img">
             <img src="\${esc(e.image || e.canonical_image_url || getCategoryFallback(e.category, e.id))}" alt="\${esc(e.title)}" onerror="this.onerror=null; this.src=getCategoryFallback('\${esc(e.category)}', '\${esc(e.id)}');" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;" loading="lazy">
             <span class="card-badge" style="position:relative; z-index:1;">\${esc(e.category)}</span>
@@ -2026,7 +2057,16 @@ module.exports = (req, res) => {
         </article>
       \`).join('') + '</div>';
 
-      document.querySelectorAll('.card').forEach(c => c.onclick = () => openDetail(c.dataset.id));
+      document.querySelectorAll('.card').forEach(c => {
+        c.onclick = () => openDetail(c.dataset.id, c);
+        c.onkeydown = (evt) => {
+          if (evt.target && evt.target !== c) return;
+          if (evt.key === 'Enter' || evt.key === ' ') {
+            evt.preventDefault();
+            openDetail(c.dataset.id, c);
+          }
+        };
+      });
       renderRadar();
       renderPlanB();
     }
@@ -2166,15 +2206,16 @@ module.exports = (req, res) => {
       }
     }
 
-    function openDetail(id) {
+    function openDetail(id, triggerEl) {
       const e = S.events.find(x => x.id === id);
       if (!e) return;
       S.currentDetailEvent = e;
+      S.detailTriggerEl = triggerEl || document.activeElement || document.querySelector(\`.card[data-id="\${id}"]\`);
       const destUrl = e.detailsUrl || e.ticketUrl || '';
       const clickUrl = destUrl ? \`/api/click?url=\${encodeURIComponent(destUrl)}&eventId=\${encodeURIComponent(e.id)}&surface=detail_modal\` : \`/event/\${encodeURIComponent(e.id)}\`;
       $('detailBody').innerHTML = \`
         <img src="\${esc(e.image || e.canonical_image_url || getCategoryFallback(e.category, e.id))}" alt="" onerror="this.onerror=null; this.src=getCategoryFallback('\${esc(e.category)}', '\${esc(e.id)}');" style="width:100%; max-height:240px; object-fit:cover; border-radius:12px; margin-bottom:14px;">
-        <h2 style="margin-top:0">\${esc(e.title)}</h2>
+        <h2 id="detailModalTitle" style="margin-top:0">\${esc(e.title)}</h2>
         <p style="color:var(--text-dim)">📍 \${esc(e.venue)}\${e.city ? ', ' + esc(e.city) : ''} \${e.distanceMiles != null ? ' · ' + e.distanceMiles.toFixed(1) + ' mi' : ''}<span id="detailDriveTime"></span></p>
         <p style="color:var(--text-dim)">⏰ \${esc(fmtTime(e.start))}</p>
         <p><b>Admission:</b> \${esc(e.priceDisplay || (e.isFree ? 'Free Admission' : 'Details on official page'))}</p>
@@ -2239,7 +2280,29 @@ module.exports = (req, res) => {
           <a class="btn" href="/event/\${encodeURIComponent(e.id)}" target="_blank">Standalone Event Page</a>
         </div>
       \`;
-      $('detailDlg').showModal();
+      const modalWrap = $('detailModal');
+      if (modalWrap) {
+        modalWrap.setAttribute('aria-hidden', 'false');
+        modalWrap.setAttribute('role', 'dialog');
+        modalWrap.setAttribute('aria-modal', 'true');
+        modalWrap.setAttribute('aria-labelledby', 'detailModalTitle');
+        modalWrap.classList.add('open');
+      }
+      const dlg = $('detailDlg');
+      if (dlg) {
+        dlg.setAttribute('role', 'dialog');
+        dlg.setAttribute('aria-modal', 'true');
+        dlg.setAttribute('aria-labelledby', 'detailModalTitle');
+        if (typeof dlg.showModal === 'function') {
+          if (!dlg.open && dlg.getAttribute('open') === null) {
+            dlg.showModal();
+          }
+        } else {
+          dlg.setAttribute('open', '');
+        }
+      }
+      const closeBtnEl = $('closeDetailBtn') || $('closeDetail');
+      if (closeBtnEl && typeof closeBtnEl.focus === 'function') closeBtnEl.focus();
 
       // Driving-time estimate via /api/route when location coordinates are available
       const driveEl = $('detailDriveTime');
@@ -2504,7 +2567,49 @@ module.exports = (req, res) => {
       alert('Event link copied to clipboard: ' + url);
     };
 
-    $('closeDetail').onclick = () => $('detailDlg').close();
+    function closeDetail() {
+      const dlg = $('detailDlg');
+      if (dlg) {
+        if (typeof dlg.close === 'function' && (dlg.open || dlg.getAttribute('open') !== null)) {
+          dlg.close();
+        }
+        dlg.removeAttribute('open');
+      }
+      const modalWrap = $('detailModal');
+      if (modalWrap) {
+        modalWrap.setAttribute('aria-hidden', 'true');
+        modalWrap.classList.remove('open');
+      }
+      S.currentDetailEvent = null;
+      const trigger = S.detailTriggerEl;
+      S.detailTriggerEl = null;
+      if (trigger && typeof trigger.focus === 'function') {
+        trigger.focus();
+      }
+    }
+    if ($('closeDetailBtn')) $('closeDetailBtn').onclick = () => closeDetail();
+    if ($('closeDetail')) $('closeDetail').onclick = () => closeDetail();
+    const handleDetailKeydown = (e) => {
+      if (e && (e.key === 'Escape' || e.key === 'Esc')) {
+        const dlg = $('detailDlg');
+        const modalWrap = $('detailModal');
+        const isOpen = Boolean(
+          S.currentDetailEvent ||
+          (dlg && (dlg.open || dlg.getAttribute('open') !== null)) ||
+          (modalWrap && modalWrap.getAttribute('aria-hidden') === 'false')
+        );
+        if (isOpen) {
+          if (typeof e.preventDefault === 'function') e.preventDefault();
+          closeDetail();
+        }
+      }
+    };
+    if (typeof document.addEventListener === 'function') {
+      document.addEventListener('keydown', handleDetailKeydown);
+    }
+    document.onkeydown = handleDetailKeydown;
+    if ($('detailDlg')) $('detailDlg').onkeydown = handleDetailKeydown;
+    if ($('detailModal')) $('detailModal').onkeydown = handleDetailKeydown;
 
     initControls();
     updateLocationDisplay(initLoc);
