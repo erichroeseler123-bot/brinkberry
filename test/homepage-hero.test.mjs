@@ -233,6 +233,65 @@ describe('Homepage Hero Redesign & Streamlined Discovery', () => {
     assert.match(output, /lng:\s*S\.lon/);
     assert.match(output, /lon:\s*S\.lon/);
   });
+
+  test('links to RollCall USA without any location parameters in the URL', () => {
+    let output = '';
+    const res = {
+      setHeader: () => {},
+      end: (content) => { output = content; }
+    };
+    homeHandler({
+      url: '/?city=denver&lat=39.7392&lon=-104.9903',
+      headers: {
+        'x-vercel-ip-city': 'Denver',
+        'x-vercel-ip-country-region': 'CO',
+        'x-vercel-ip-latitude': '39.7392',
+        'x-vercel-ip-longitude': '-104.9903'
+      }
+    }, res);
+
+    assert.match(output, /href="https:\/\/rollcallusa\.com"/);
+    assert.doesNotMatch(output, /https:\/\/rollcallusa\.com[/?#][^\s"']*(lat|lng|lon|cell|city)=/i);
+  });
+
+  test('POST /api/feed accepts parameters from JSON body without coordinates in URL', async () => {
+    const { createRequire } = await import('node:module');
+    const require = createRequire(import.meta.url);
+    const feedHandler = require('../api/feed.js');
+
+    let statusCode = 200;
+    let payload = null;
+    const req = {
+      url: '/api/feed',
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        lat: 39.7392,
+        lng: -104.9903,
+        window: '48h',
+        category: 'comedy',
+        radius: 25,
+        dynamic: false,
+        mock: true
+      })
+    };
+    const res = {
+      status(c) { statusCode = c; return this; },
+      json(d) { payload = d; return this; }
+    };
+
+    await feedHandler(req, res);
+    assert.equal(statusCode, 200);
+    assert.ok(payload && Array.isArray(payload.events));
+    assert.equal(payload.meta.window, '48h');
+    assert.equal(payload.meta.radiusMiles, 25);
+
+    // Missing coordinates in both POST body and URL returns 400
+    let missingStatus = 200;
+    await feedHandler(
+      { url: '/api/feed', method: 'POST', body: JSON.stringify({ window: 'tonight' }) },
+      { status(c) { missingStatus = c; return this; }, json() { return this; } }
+    );
+    assert.equal(missingStatus, 400);
+  });
 });
-
-

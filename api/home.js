@@ -171,6 +171,26 @@ module.exports = (req, res) => {
       box-shadow: 0 0 14px rgba(0, 230, 153, 0.5);
       color: #03291d;
     }
+    .btn-rollcall-nav {
+      color: #ded6ec;
+      font-size: 12.5px;
+      font-weight: 750;
+      text-decoration: none;
+      padding: 6px 13px;
+      border-radius: 999px;
+      background: rgba(106, 130, 251, 0.14);
+      border: 1px solid rgba(106, 130, 251, 0.38);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn-rollcall-nav:hover {
+      background: rgba(106, 130, 251, 0.26);
+      border-color: #8aa2ff;
+      color: #fff;
+    }
     .nav-menu-wrap {
       position: relative;
     }
@@ -957,12 +977,15 @@ module.exports = (req, res) => {
     <header class="top">
       <a class="brand" href="/"><b>●</b> Brinkberry</a>
       <div class="top-nav-right">
+        <a href="https://rollcallusa.com" id="rollCallNavBtn" class="btn-rollcall-nav" target="_blank" rel="noopener noreferrer" title="Meet adults nearby on RollCall USA (18+ · separate location permission)">👥 People Nearby</a>
         <a href="/post" id="postEventBtn" class="btn-post-event">+ Post an Event</a>
         <div class="nav-menu-wrap">
           <button id="navMenuBtn" class="nav-menu-btn" type="button" aria-expanded="false" aria-label="Open navigation menu">
             <span>☰ Menu</span>
           </button>
           <div id="navMenuDropdown" class="nav-menu-dropdown" style="display:none;" role="menu">
+            <a href="https://rollcallusa.com" class="menu-item" role="menuitem" target="_blank" rel="noopener noreferrer">👥 People Nearby (RollCall 18+)</a>
+            <div class="menu-divider"></div>
             <a href="/submit-comedy" class="menu-item" role="menuitem">🎤 Submit Show</a>
             <div class="menu-divider"></div>
             <div class="menu-item top-radar-indicator" style="border:none; background:transparent; padding:6px 10px;">

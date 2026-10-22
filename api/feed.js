@@ -132,27 +132,57 @@ async function resolveLocationName(lat, lng, fallbackName) {
   return fallbackName || 'Your Location';
 }
 
+async function parsePostBody(req) {
+  if (req?.method !== 'POST') return {};
+  if (req.body && typeof req.body === 'object') return req.body;
+  if (typeof req.body === 'string' && req.body.trim()) {
+    try { return JSON.parse(req.body); } catch (_) { return {}; }
+  }
+  if (typeof req?.on !== 'function') return {};
+  return new Promise((resolve) => {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(String(c))));
+    req.on('end', () => {
+      const raw = Buffer.concat(chunks).toString('utf8').trim();
+      if (!raw) return resolve({});
+      try { resolve(JSON.parse(raw)); } catch (_) { resolve({}); }
+    });
+    req.on('error', () => resolve({}));
+  });
+}
+
 module.exports = async (req, res) => {
   const overallStart = Date.now();
   try {
-    const u = new URL(req.url, 'https://brinkberry.local');
-    const lat = Number(u.searchParams.get('lat'));
-    const lng = Number(u.searchParams.get('lng') ?? u.searchParams.get('lon'));
-    const window = u.searchParams.get('window') || 'tonight';
-    const mode = u.searchParams.get('mode') || '';
-    const category = u.searchParams.get('category') || '';
-    const showType = u.searchParams.get('showType') || '';
-    const ageLimit = u.searchParams.get('ageLimit') || '';
-    const priceFilter = u.searchParams.get('priceFilter') || '';
-    const startingSoon = u.searchParams.get('startingSoon') === 'true';
-    const recurring = u.searchParams.get('recurring') === 'true';
-    const clean = u.searchParams.get('clean') === 'true';
-    const sourceFilter = u.searchParams.get('sourceFilter') || u.searchParams.get('source') || 'all';
-    const radiusParam = Number(u.searchParams.get('radius')) || 25;
+    const u = new URL(req.url || '/api/feed', 'https://brinkberry.local');
+    const body = await parsePostBody(req);
+    const param = (key, fallbackKey) => {
+      if (body && body[key] !== undefined && body[key] !== null) return String(body[key]);
+      if (fallbackKey && body && body[fallbackKey] !== undefined && body[fallbackKey] !== null) return String(body[fallbackKey]);
+      const q = u.searchParams.get(key);
+      if (q !== null) return q;
+      return fallbackKey ? u.searchParams.get(fallbackKey) : null;
+    };
+
+    const rawLat = param('lat');
+    const rawLng = param('lng', 'lon');
+    const lat = (rawLat !== null && rawLat !== undefined && String(rawLat).trim() !== '') ? Number(rawLat) : NaN;
+    const lng = (rawLng !== null && rawLng !== undefined && String(rawLng).trim() !== '') ? Number(rawLng) : NaN;
+    const window = param('window') || 'tonight';
+    const mode = param('mode') || '';
+    const category = param('category') || '';
+    const showType = param('showType') || '';
+    const ageLimit = param('ageLimit') || '';
+    const priceFilter = param('priceFilter') || '';
+    const startingSoon = param('startingSoon') === 'true';
+    const recurring = param('recurring') === 'true';
+    const clean = param('clean') === 'true';
+    const sourceFilter = param('sourceFilter', 'source') || 'all';
+    const radiusParam = Number(param('radius')) || 25;
     const radiusMiles = Math.min(100, Math.max(1, radiusParam));
-    const dynamicParam = u.searchParams.get('dynamic');
+    const dynamicParam = param('dynamic');
     const enableDynamic = dynamicParam !== 'false' && dynamicParam !== '0';
-    const useTestMock = u.searchParams.get('mock') === 'true';
+    const useTestMock = param('mock') === 'true';
 
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       return res.status(400).json({ error: 'Location required' });
@@ -194,7 +224,7 @@ module.exports = async (req, res) => {
       process.env.BRINKBERRY_ADMIN_KEY
     ].filter(Boolean);
     const isAdmin = Boolean(adminToken && validAdminSecrets.includes(adminToken));
-    const requestedPreview = u.searchParams.get('includePreview') === 'true' || u.searchParams.get('preview') === 'true';
+    const requestedPreview = param('includePreview') === 'true' || param('preview') === 'true';
     const allowPreview = isPreviewEnv || (isAdmin && requestedPreview);
 
     // Query verified canonical submissions from storage
@@ -335,7 +365,7 @@ module.exports = async (req, res) => {
       useTestMock
     });
 
-    const locationParam = u.searchParams.get('city') || u.searchParams.get('locationName') || '';
+    const locationParam = param('city', 'locationName') || '';
     const coverage = checkCoverage(lat, lng, hybridResult);
     const resolvedLocationName = await resolveLocationName(lat, lng, locationParam);
     coverage.locationName = resolvedLocationName;
