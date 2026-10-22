@@ -86,6 +86,7 @@ module.exports = (req, res) => {
   <title>Brinkberry — Find What’s Happening Near You Right Now</title>
   <meta name="description" content="Find fun things to do near you right now. Stand-up comedy, grassroots motorsports, live music, and real local events to enjoy with friends within the next 48 hours.">
   <link rel="canonical" href="https://brinkberry.com/">
+  <link rel="icon" type="image/svg+xml" href="/brand/brinkberry-icon.svg">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Brinkberry — Find What’s Happening Near You Right Now">
   <meta property="og:description" content="Find fun things to do near you right now. Stand-up comedy, grassroots motorsports, live music, and real local events to enjoy with friends within the next 48 hours.">
@@ -142,10 +143,7 @@ module.exports = (req, res) => {
       color: #fff;
       text-decoration: none;
     }
-    .brand b {
-      color: var(--accent);
-      text-shadow: 0 0 10px var(--accent-glow);
-    }
+    .brand-logo { display: block; width: 180px; max-width: 43vw; height: auto; }
     .top-nav-right {
       display: flex;
       align-items: center;
@@ -975,7 +973,7 @@ module.exports = (req, res) => {
 <body>
   <div class="app">
     <header class="top">
-      <a class="brand" href="/"><b>●</b> Brinkberry</a>
+      <a class="brand" href="/" aria-label="Brinkberry home"><img class="brand-logo" src="/brand/brinkberry-logo.svg" alt="Brinkberry" width="460" height="112"></a>
       <div class="top-nav-right">
         <a href="https://rollcallusa.com" id="rollCallNavBtn" class="btn-rollcall-nav" target="_blank" rel="noopener noreferrer" title="Meet adults nearby on RollCall USA (18+ · separate location permission)">👥 People Nearby</a>
         <a href="/post" id="postEventBtn" class="btn-post-event">+ Post an Event</a>
