@@ -273,6 +273,28 @@ module.exports = async (req, res) => {
       ` : `<a class="btn-share" href="/card/${esc(e.id)}" target="_blank" style="text-decoration:none;">Social Card ↗</a>`}
     </div>
 
+    ${(() => {
+      const {
+        isRedRocksOrDenverConcertRelevant,
+        buildPartyAtRedRocksHandoffUrl,
+        getActiveBrinkberryContextId,
+      } = require('../lib/dcc-site');
+      if (!isRedRocksOrDenverConcertRelevant(e)) return '';
+      const activeCtx = getActiveBrinkberryContextId(req);
+      const parrUrl = buildPartyAtRedRocksHandoffUrl({ event: e, contextId: activeCtx });
+      return `
+        <div data-dcc-handoff-banner="partyatredrocks" style="margin-top:20px; padding:14px 18px; border-radius:12px; background:rgba(255,184,107,0.08); border:1px solid rgba(255,184,107,0.28); display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
+          <div style="font-size:0.9rem; color:#f4eff8;">
+            <strong style="color:#ffb86b;">Need Red Rocks / Denver Concert Transport?</strong>
+            <span style="color:#c4bdd0;"> Request concert shuttle or private group transport on Party at Red Rocks (inquiry/checkout confirmed directly on partyatredrocks.com).</span>
+          </div>
+          <a href="${esc(parrUrl)}" data-dcc-cross-site-link="partyatredrocks.com" target="_blank" rel="noopener noreferrer" style="color:#ffb86b; font-weight:700; text-decoration:underline; font-size:0.9rem;">
+            Explore Party at Red Rocks Shuttles →
+          </a>
+        </div>
+      `;
+    })()}
+
     ${isCommunityPost ? `
       <!-- Report Modal Dialog -->
       <dialog id="reportDialog" style="background:#140f22; color:#fff; border:1px solid #281f38; border-radius:16px; padding:24px; max-width:480px; width:90%; box-shadow:0 12px 36px rgba(0,0,0,0.6);">

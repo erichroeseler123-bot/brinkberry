@@ -28,11 +28,16 @@ const KNOWN_CITIES = {
   'edinburgh': { city: 'Edinburgh', locationName: 'Edinburgh, UK', lat: 55.9533, lon: -3.1883 }
 };
 
+const { handleDccContextIntercept } = require('../lib/dcc-site');
+
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
 }
 
 module.exports = (req, res) => {
+  if (handleDccContextIntercept(req, res)) {
+    return;
+  }
   res.setHeader('content-type', 'text/html; charset=utf-8');
 
   // Check URL query for city/coords override

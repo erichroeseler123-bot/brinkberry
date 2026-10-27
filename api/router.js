@@ -72,11 +72,28 @@ function wrapRes(res) {
   return res;
 }
 
+const {
+  BRINKBERRY_SITE_MANIFEST,
+  handleDccContextIntercept,
+} = require('../lib/dcc-site');
+
 module.exports = async (req, res) => {
   wrapRes(res);
   try {
     const u = new URL(req.url, 'https://brinkberry.local');
     const p = u.pathname;
+
+    if (p === '/.well-known/dcc-site') {
+      res.statusCode = 200;
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+      res.setHeader('X-DCC-Manifest-Schema', BRINKBERRY_SITE_MANIFEST.schema);
+      res.setHeader('X-DCC-Site-Id', BRINKBERRY_SITE_MANIFEST.site_id);
+      return res.json(BRINKBERRY_SITE_MANIFEST);
+    }
+
+    if (handleDccContextIntercept(req, res)) {
+      return;
+    }
 
     if (p === '/' && u.searchParams.get('mine')) {
       res.statusCode = 302;
