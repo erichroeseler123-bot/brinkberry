@@ -79,6 +79,19 @@ describe('Brinkberry DCC Site Manifest, Context Redemption & Outbound Handoffs',
     });
     assert.equal(parrUrl, 'https://partyatredrocks.com/book?ctx=dcc_ctx_parr_test_001');
 
+    const parrEventUrl = buildPartyAtRedRocksHandoffUrl({
+      event: {
+        title: 'Khruangbin at Red Rocks',
+        start_time: '2026-08-18T19:30:00Z',
+        venue_name: 'Red Rocks Amphitheatre',
+      },
+    });
+    assert.equal(parrEventUrl.includes('venue=red-rocks-amphitheatre'), true);
+    assert.equal(parrEventUrl.includes('date=2026-08-18'), true);
+    assert.equal(parrEventUrl.includes('event=Khruangbin+at+Red+Rocks'), true);
+    assert.equal(parrEventUrl.includes('artist=Khruangbin+at+Red+Rocks'), true);
+    assert.equal(parrEventUrl.includes('utm_source=brinkberry'), true);
+
     const activeFeastly = buildFeastlySpreadHandoffUrl({
       marketSlug: 'wisconsin-dells',
       contextId: 'dcc_ctx_feastly_001',
