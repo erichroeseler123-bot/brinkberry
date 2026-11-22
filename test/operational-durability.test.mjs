@@ -339,7 +339,7 @@ END:VCALENDAR`;
     assert.equal(c2.status, 'ok');
     assert.equal(c2.confirmedCount, 1);
 
-    const recoveredEvent = (await testCanonicalStorage.queryEvents({ category: 'comedy', windowEnd: '2026-12-31T23:59:59Z' }))[0];
+    const recoveredEvent = (await testCanonicalStorage.queryEvents({ category: 'comedy', windowStart: '2026-11-10T00:00:00Z', windowEnd: '2026-12-31T23:59:59Z' }))[0];
     assert.ok(recoveredEvent);
     assert.equal(recoveredEvent.freshnessStatus, 'verified_current');
   });
