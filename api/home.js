@@ -1276,6 +1276,7 @@ module.exports = (req, res) => {
         <a href="/embed" style="color: var(--text-dim); text-decoration: none;">Partner Widget</a>
         <a href="/terms" style="color: var(--text-dim); text-decoration: none;">Terms of Service</a>
         <a href="/privacy" style="color: var(--text-dim); text-decoration: none;">Privacy Policy</a>
+        <a href="mailto:contact@brinkberry.com" style="color: var(--text-dim); text-decoration: none;">Contact</a>
       </div>
     </footer>
   </div>
